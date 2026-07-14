@@ -1,0 +1,22 @@
+{
+  "name": "@aether-cloud/opentelemetry-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/context-async-hooks": "2.9.0",
+    "@opentelemetry/core": "2.9.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.220.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.220.0",
+    "@opentelemetry/resources": "2.9.0",
+    "@opentelemetry/sdk-metrics": "2.9.0",
+    "@opentelemetry/sdk-trace-base": "2.9.0",
+    "@opentelemetry/sdk-trace-node": "2.9.0",
+    "@opentelemetry/semantic-conventions": "1.43.0"
+  }
+}

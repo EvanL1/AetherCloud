@@ -1,0 +1,16 @@
+{
+  "name": "@aether-cloud/infrastructure-engine-opentofu",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@aether-cloud/infrastructure-conformance": "workspace:*"
+  }
+}

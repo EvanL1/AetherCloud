@@ -1,0 +1,1298 @@
+{
+  "schema_version": 1,
+  "status_vocabulary": {
+    "implemented": "The documented transport and its production-required application behavior are executable.",
+    "partial": "One or more named layers are executable, but the complete product surface is not.",
+    "planned": "A reviewed contract with no executable product surface yet.",
+    "deprecated": "Still discoverable for migration but not for new integrations."
+  },
+  "capabilities": [
+    {
+      "name": "provider.region.discover",
+      "kind": "query",
+      "permission": "provider.region.read",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["production-provider-adapter", "http"]
+    },
+    {
+      "name": "infrastructure.stack.plan",
+      "kind": "command",
+      "permission": "infrastructure.stack.plan",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "opentofu-cli-adapter"
+      ],
+      "missing_layers": [
+        "production-remote-state",
+        "distributed-lock-adapter",
+        "encrypted-artifact-store",
+        "sandboxed-worker-deployment",
+        "durable-audit",
+        "http"
+      ]
+    },
+    {
+      "name": "fleet.gateway.register",
+      "kind": "command",
+      "permission": "fleet.gateway.create",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["durable-audit", "postgresql", "http"]
+    },
+    {
+      "name": "fleet.gateway.enrollment.issue",
+      "kind": "command",
+      "permission": "fleet.gateway.enrollment.issue",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": [
+        "durable-audit",
+        "postgresql",
+        "kms-token-service",
+        "http"
+      ]
+    },
+    {
+      "name": "fleet.gateway.enrollment.claim",
+      "kind": "command",
+      "permission": "fleet.gateway.enrollment.claim",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": [
+        "credential-binding",
+        "durable-audit",
+        "postgresql",
+        "http"
+      ]
+    },
+    {
+      "name": "fleet.gateway.enrollment.get",
+      "kind": "query",
+      "permission": "fleet.gateway.enrollment.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "cloudlink.session.open",
+      "kind": "command",
+      "permission": "cloudlink.session.open",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": [
+        "production-credential-binding",
+        "postgresql",
+        "durable-audit",
+        "cloudlink-wire",
+        "cloudlink-composition-root"
+      ]
+    },
+    {
+      "name": "cloudlink.session.heartbeat",
+      "kind": "command",
+      "permission": "cloudlink.session.heartbeat",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": [
+        "production-credential-binding",
+        "postgresql",
+        "durable-audit",
+        "cloudlink-wire",
+        "cloudlink-composition-root"
+      ]
+    },
+    {
+      "name": "fleet.cloudlink.session.get",
+      "kind": "query",
+      "permission": "fleet.cloudlink.session.read",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "fleet.runtime-manifest.report",
+      "kind": "command",
+      "permission": "fleet.runtime-manifest.report",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": [
+        "postgresql",
+        "durable-audit",
+        "outbox",
+        "cloudlink-wire"
+      ]
+    },
+    {
+      "name": "fleet.runtime-manifest.get",
+      "kind": "query",
+      "permission": "fleet.runtime-manifest.read",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "telemetry.batch.ingest",
+      "kind": "command",
+      "permission": "telemetry.batch.ingest",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-inbox-history-outbox-audit",
+        "opentelemetry-decorator"
+      ],
+      "missing_layers": [
+        "postgresql",
+        "durable-audit",
+        "cloudlink-wire",
+        "production-composition-root"
+      ]
+    },
+    {
+      "name": "telemetry.history.query",
+      "kind": "query",
+      "permission": "telemetry.history.read",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-history-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "alarm.fact.ingest",
+      "kind": "command",
+      "permission": "alarm.fact.ingest",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-projection-adapter"
+      ],
+      "missing_layers": ["postgresql", "durable-audit", "cloudlink-wire"]
+    },
+    {
+      "name": "alarm.projection.get",
+      "kind": "query",
+      "permission": "alarm.projection.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-projection-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "alarm.workflow.acknowledge",
+      "kind": "command",
+      "permission": "alarm.workflow.acknowledge",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-projection-adapter"],
+      "missing_layers": ["postgresql", "durable-audit", "http"]
+    },
+    {
+      "name": "artifact.revision.publish",
+      "kind": "command",
+      "permission": "artifact.revision.publish",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-metadata-content-signature-audit-outbox-adapter"
+      ],
+      "missing_layers": [
+        "postgresql-metadata-store",
+        "production-object-store",
+        "production-signature-verifier",
+        "durable-audit-outbox",
+        "http"
+      ]
+    },
+    {
+      "name": "artifact.revision.get",
+      "kind": "query",
+      "permission": "artifact.revision.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-metadata-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "deployment.rollout.start",
+      "kind": "command",
+      "permission": "deployment.rollout.start",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": [
+        "postgresql",
+        "durable-audit-outbox",
+        "cloudlink-wire",
+        "http",
+        "target-scheduler"
+      ]
+    },
+    {
+      "name": "deployment.rollout.pause",
+      "kind": "command",
+      "permission": "deployment.rollout.pause",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "deployment.rollout.resume",
+      "kind": "command",
+      "permission": "deployment.rollout.resume",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "worker", "http"]
+    },
+    {
+      "name": "deployment.rollout.cancel-request",
+      "kind": "command",
+      "permission": "deployment.rollout.cancel",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "worker", "cloudlink-wire", "http"]
+    },
+    {
+      "name": "deployment.rollout.mark-unknown",
+      "kind": "command",
+      "permission": "deployment.rollout.reconcile",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "worker"]
+    },
+    {
+      "name": "deployment.rollout.rollback",
+      "kind": "command",
+      "permission": "deployment.rollout.rollback",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "cloudlink-wire", "http"]
+    },
+    {
+      "name": "deployment.observation.report",
+      "kind": "command",
+      "permission": "deployment.observation.report",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "cloudlink-wire"]
+    },
+    {
+      "name": "deployment.rollout.get",
+      "kind": "query",
+      "permission": "deployment.rollout.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-adapter"],
+      "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "edge.job.create",
+      "kind": "command",
+      "permission": "edge.job.create",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission-and-capability-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter",
+        "mcp-application-interface"
+      ],
+      "missing_layers": [
+        "postgresql-ledger",
+        "runtime-manifest-catalog-wiring",
+        "cloudlink-delivery",
+        "http",
+        "mcp-wire-composition-root"
+      ]
+    },
+    {
+      "name": "edge.job.confirm",
+      "kind": "command",
+      "permission": "edge.job.confirm",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "http", "mcp"]
+    },
+    {
+      "name": "edge.job.queue",
+      "kind": "command",
+      "permission": "edge.job.dispatch",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "worker"]
+    },
+    {
+      "name": "edge.job.offer",
+      "kind": "command",
+      "permission": "edge.job.dispatch",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "cloudlink-delivery", "worker"]
+    },
+    {
+      "name": "edge.job.mark-unknown",
+      "kind": "command",
+      "permission": "edge.job.reconcile",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "worker"]
+    },
+    {
+      "name": "edge.job.cancel-request",
+      "kind": "command",
+      "permission": "edge.job.cancel",
+      "risk": "medium",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "cloudlink-delivery", "http"]
+    },
+    {
+      "name": "edge.job.expire",
+      "kind": "command",
+      "permission": "edge.job.reconcile",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "worker"]
+    },
+    {
+      "name": "edge.job.receipt.ingest",
+      "kind": "command",
+      "permission": "edge.job.receipt.ingest",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": [
+        "postgresql-inbox-ledger",
+        "production-credential-binding",
+        "cloudlink-wire"
+      ]
+    },
+    {
+      "name": "edge.job.get",
+      "kind": "query",
+      "permission": "edge.job.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-adapter"],
+      "missing_layers": ["postgresql-ledger", "http", "mcp"]
+    },
+    {
+      "name": "audit.event.search",
+      "kind": "query",
+      "permission": "audit.event.read",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "http-json",
+        "http-sse-finite-snapshot",
+        "mcp-resource-interface"
+      ],
+      "missing_layers": [
+        "postgresql-append-only-store",
+        "production-identity",
+        "live-event-notifier"
+      ]
+    },
+    {
+      "name": "integration.webhook.delivery.enqueue",
+      "kind": "command",
+      "permission": "integration.webhook.enqueue",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": [
+        "postgresql-delivery-store",
+        "outbox-dispatch",
+        "worker"
+      ]
+    },
+    {
+      "name": "integration.webhook.delivery.process",
+      "kind": "command",
+      "permission": "integration.webhook.deliver",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "missing_layers": [
+        "postgresql-attempt-leasing",
+        "destination-registry",
+        "secret-backed-signed-http-sender",
+        "worker"
+      ]
+    },
+    {
+      "name": "integration.webhook.delivery.redrive",
+      "kind": "command",
+      "permission": "integration.webhook.redrive",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql-delivery-store", "worker", "http", "mcp"]
+    },
+    {
+      "name": "integration.webhook.subscription.create",
+      "kind": "command",
+      "permission": "integration.webhook.subscription.create",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": [
+        "destination-registry",
+        "secret-storage",
+        "postgresql",
+        "http",
+        "mcp"
+      ]
+    },
+    {
+      "name": "integration.webhook.subscription.disable",
+      "kind": "command",
+      "permission": "integration.webhook.subscription.disable",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "http", "mcp"]
+    },
+    {
+      "name": "integration.webhook.subscription.get",
+      "kind": "query",
+      "permission": "integration.webhook.subscription.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-adapter"],
+      "missing_layers": ["postgresql", "http", "mcp"]
+    },
+    {
+      "name": "data.export.request",
+      "kind": "command",
+      "permission": "data.export.create",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter",
+        "mcp-application-interface"
+      ],
+      "missing_layers": [
+        "postgresql",
+        "object-storage",
+        "export-worker",
+        "http",
+        "mcp-wire-composition-root"
+      ]
+    },
+    {
+      "name": "data.export.outcome.report",
+      "kind": "command",
+      "permission": "data.export.process",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-audit-outbox-adapter"
+      ],
+      "missing_layers": ["postgresql", "object-storage", "export-worker"]
+    },
+    {
+      "name": "data.export.get",
+      "kind": "query",
+      "permission": "data.export.read",
+      "status": "partial",
+      "implemented_layers": ["application", "memory-adapter"],
+      "missing_layers": ["postgresql", "authorized-download", "http", "mcp"]
+    }
+  ],
+  "http_operations": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "operation_id": "getHealth",
+      "authentication": "public",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform",
+      "operation_id": "getPlatformProfile",
+      "authentication": "public-product-metadata",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/audit/events",
+      "operation_id": "searchAuditEvents",
+      "authentication": "configured-bearer-tenant-subject",
+      "permission": "audit.event.read",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/audit/events/stream",
+      "operation_id": "streamAuditEventSnapshot",
+      "authentication": "configured-bearer-tenant-subject",
+      "permission": "audit.event.read",
+      "resume": "last-event-id-audit-sequence",
+      "liveness": "finite-snapshot",
+      "status": "implemented"
+    }
+  ],
+  "mcp_exposures": [
+    {
+      "kind": "resource",
+      "uri": "aethercloud://capabilities",
+      "authentication": "tenant-subject",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
+      "kind": "resource-template",
+      "uri_template": "aethercloud://audit/events{?cursor,limit}",
+      "capability": "audit.event.search",
+      "permission": "audit.event.read",
+      "authentication": "tenant-subject",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
+      "kind": "tool",
+      "name": "data.export.request",
+      "capability": "data.export.request",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
+      "kind": "tool",
+      "name": "edge.job.create",
+      "capability": "edge.job.create",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
+      "kind": "tool",
+      "name": "integration.webhook.subscription.create",
+      "capability": "integration.webhook.subscription.create",
+      "interface_status": "planned",
+      "transport_status": "planned"
+    }
+  ],
+  "errors": [
+    {
+      "code": "invalid-input",
+      "status": "implemented",
+      "http_mapping": "partial"
+    },
+    {
+      "code": "permission-denied",
+      "status": "implemented",
+      "http_mapping": "partial"
+    },
+    {
+      "code": "unauthenticated",
+      "status": "implemented",
+      "http_mapping": "implemented"
+    },
+    {
+      "code": "confirmation-required",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "command-expired",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "idempotency-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-already-exists",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "invalid-enrollment-token",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "enrollment-claim-expired",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "invalid-gateway-enrollment-transition",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "concurrent-modification",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-digest-mismatch",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-materialization-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-store-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-cancelled",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-init-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-not-installed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-output-limit-exceeded",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-plan-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-show-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-timeout",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-validate-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "engine-version-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "plan-json-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "state-lock-release-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "state-lock-timeout",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "workspace-cleanup-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "workspace-creation-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "invalid-gateway-credential",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-credential-inactive",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "unsupported-protocol-version",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "session-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "stale-cloudlink-session-epoch",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "runtime-manifest-integrity-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "runtime-manifest-generation-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "runtime-manifest-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "telemetry-conflicting-replay",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "telemetry-sequence-gap",
+      "status": "partial",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "telemetry-position-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "telemetry-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "alarm-sequence-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "alarm-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-channel-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-content-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-revision-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-signature-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "artifact-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-artifact-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-idempotency-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-observation-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-observation-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "deployment-version-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-already-exists",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-capability-denied",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-idempotency-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-receipt-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-receipt-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-transition-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "job-version-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-delivery-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-delivery-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-idempotency-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-not-due",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-sender-invalid-response",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-transition-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-version-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-subscription-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-subscription-idempotency-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-subscription-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-subscription-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-subscription-transition-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "webhook-subscription-version-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "data-export-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "data-export-idempotency-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "data-export-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "data-export-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "data-export-transition-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "data-export-version-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "mcp-resource-not-found",
+      "status": "implemented",
+      "http_mapping": "not-applicable"
+    },
+    {
+      "code": "mcp-tool-not-implemented",
+      "status": "implemented",
+      "http_mapping": "not-applicable"
+    },
+    {
+      "code": "outcome-unknown",
+      "status": "planned",
+      "http_mapping": "planned"
+    }
+  ],
+  "events": [
+    {
+      "name": "fleet.gateway.registered.v1",
+      "status": "planned",
+      "producer": "fleet"
+    },
+    {
+      "name": "fleet.gateway.enrollment-claimed.v1",
+      "status": "planned",
+      "producer": "fleet"
+    },
+    {
+      "name": "telemetry.batch-accepted.v1",
+      "status": "partial",
+      "producer": "telemetry"
+    },
+    {
+      "name": "alarm.projection-updated.v1",
+      "status": "partial",
+      "producer": "alarms"
+    },
+    {
+      "name": "artifact.revision-published.v1",
+      "status": "partial",
+      "producer": "artifacts"
+    },
+    {
+      "name": "deployment.target-applied.v1",
+      "status": "planned",
+      "producer": "deployments"
+    },
+    {
+      "name": "deployment.observation-recorded.v1",
+      "status": "partial",
+      "producer": "deployments"
+    },
+    {
+      "name": "deployment.desired-created.v1",
+      "status": "partial",
+      "producer": "deployments"
+    },
+    {
+      "name": "edge.job-created.v1",
+      "status": "partial",
+      "producer": "jobs"
+    },
+    {
+      "name": "edge.job-controlled.v1",
+      "status": "partial",
+      "producer": "jobs"
+    },
+    {
+      "name": "edge.job-receipt-ingested.v1",
+      "status": "partial",
+      "producer": "jobs"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@aether-cloud/deployment-memory-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/artifact-memory-adapter": "workspace:*",
+    "@aether-cloud/domain": "workspace:*"
+  }
+}

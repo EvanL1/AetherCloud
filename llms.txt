@@ -1,0 +1,59 @@
+# AetherCloud
+
+> AI-native, multi-cloud IoT fusion and control plane built with TypeScript.
+> AetherCloud unifies provider capabilities, infrastructure plans, fleets,
+> desired state, telemetry, and audited jobs while AetherIot edge runtimes
+> retain authority over live state and physical control.
+
+Use this file as the primary documentation index. Read the narrowest page that
+answers the task, then follow its links for deeper context.
+
+## Start here
+
+- [Product overview](docs/get-started/overview.md): Understand the multi-cloud product, its authority boundaries, and the first vertical slices
+- [Build with an AI agent](docs/guides/build-with-an-agent.md): Use repository contracts and verification commands without inventing unsupported APIs
+- [Add a Provider Adapter](docs/guides/add-provider-adapter.md): Implement provider discovery behind the application port and prove it with the shared conformance suite
+- [Plan infrastructure safely](docs/guides/plan-infrastructure.md): Run the implemented OpenTofu Plan worker without implying Apply, production remote State, or safe plaintext output
+- [AetherCloud Agent Skill](skills/aether-cloud/SKILL.md): Route implementation tasks to the right contracts, invariants, and safety checks
+
+## Concepts
+
+- [Architecture](docs/concepts/architecture.md): Understand the modular-monolith processes, dependency direction, and evolution rules
+- [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md): Use the partial audit HTTP/SSE and integration workflow foundations without implying production durability, sending, or export retrieval
+- [Current implementation audit](docs/concepts/current-state-audit.md): Distinguish executable layers from reviewed contracts and missing production surfaces
+- [IoT Cloud capability map](docs/concepts/iot-cloud-capability-map.md): Audit implemented and planned IoT capabilities by bounded context, authority, storage, edge interaction, risk, and phase
+- [IoT business telemetry](docs/concepts/iot-telemetry.md): Use the partial replay-safe ingest/history foundation while CloudLink, PostgreSQL, public API, and analytics layers remain planned
+- [Artifact registry and immutable publication](docs/concepts/artifact-registry.md): Use the partial signed content-addressed publication foundation without implying deployment or edge application
+- [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md): Use the partial single-target rollout foundation without treating dispatch, timeout, or connection as Applied evidence
+- [Governed capability Jobs](docs/concepts/governed-capability-jobs.md): Use the partial capability-gated Job and ordered Receipt foundation without implying arbitrary RPC or remote execution
+- [Operational observability](docs/concepts/operational-observability.md): Use the optional OpenTelemetry adapter foundation without replacing IoT telemetry or durable audit
+- [MCP application interface](docs/concepts/mcp-application-interface.md): Use the implemented transport-neutral resources/tools while treating the MCP wire server, production identity, and persistence as planned
+- [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md): Use the implemented registration and claim foundation without implying production certificates or HTTP routes
+- [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md): Use the partial session, heartbeat, and Runtime Manifest foundations while keeping wire, process, and durable delivery behavior planned
+- [Multi-cloud fusion](docs/concepts/multi-cloud-fusion.md): Unify cloud lifecycle and policy without erasing provider capabilities or sharing one global state
+- [Edge, AetherCloud, and provider authority](docs/concepts/edge-cloud-boundary.md): Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers
+- [Resource model](docs/concepts/resource-model.md): Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently
+- [AI invariants](ai/invariants.md): Preserve authority, tenancy, command safety, and documentation truth across refactors
+
+## Reference
+
+- [HTTP API](docs/reference/http-api.md): Call the implemented HTTP endpoints and distinguish them from planned versioned APIs
+- [Application contract catalog](docs/reference/application-contracts.md): Read machine-readable capability governance, errors, events, HTTP operations, and layer status
+- [Repository layout](docs/reference/repository-layout.md): Place code in the correct application, domain, adapter, or composition-root package
+- [Terminology](docs/reference/terminology.md): Resolve AetherCloud terms before naming contracts or database records
+- [IoT Cloud vertical-slice roadmap](docs/guides/iot-cloud-roadmap.md): Deliver independently testable Gateway, CloudLink, telemetry, artifact, deployment, Job, operations, and MCP slices
+
+## Decisions
+
+- [ADR-0001: Edge-first cloud control plane](docs/adr/0001-edge-first-cloud-control-plane.md): Keep the cloud optional for deterministic edge operation
+- [ADR-0002: TypeScript modular monolith](docs/adr/0002-typescript-modular-monolith.md): Start with one workspace and independently scalable composition roots
+- [ADR-0003: Agent-ready documentation](docs/adr/0003-agent-ready-documentation.md): Treat LLM-readable documentation as a tested product interface
+- [ADR-0004: Capability-driven multi-cloud fusion](docs/adr/0004-multi-cloud-fusion.md): Use OpenTofu by default, preserve provider modules, and isolate infrastructure state by deployment stack
+- [ADR-0005: Gateway identity and enrollment](docs/adr/0005-gateway-identity-and-enrollment.md): Separate registration, bootstrap claims, credential binding, revocation, and recovery
+- [ADR-0006: CloudLink sessions and durable delivery](docs/adr/0006-cloudlink-durable-delivery.md): Fence sessions and acknowledge cloud-edge data only after durable acceptance
+- [ADR-0007: Durable IoT telemetry ingestion](docs/adr/0007-durable-iot-telemetry.md): Accept replayed batches atomically and acknowledge only durable business facts
+- [ADR-0008: OpenTelemetry operational observability](docs/adr/0008-operational-observability.md): Keep traces and metrics outside IoT data authority and audit
+- [ADR-0009: Immutable artifact publication](docs/adr/0009-immutable-artifact-publication.md): Keep immutable revision content separate from channels, deployment intent, and edge application evidence
+- [ADR-0010: Desired, Reported, and Applied deployment](docs/adr/0010-desired-reported-applied-deployment.md): Preserve cloud intent, edge observation, applied evidence, and unknown as separate facts
+- [ADR-0011: Governed capability Jobs and Receipts](docs/adr/0011-governed-capability-jobs.md): Deny undeclared capabilities and preserve uncertainty, cancellation intent, ordered Receipts, and edge outcomes
+- [ADR-0012: Durable audit and outbound integrations](docs/adr/0012-durable-audit-and-outbound-integrations.md): Separate committed outcomes from audit streams, outbound attempts, dead letters, and immutable exports

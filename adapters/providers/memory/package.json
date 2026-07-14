@@ -1,0 +1,16 @@
+{
+  "name": "@aether-cloud/provider-adapter-memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@aether-cloud/provider-conformance": "workspace:*"
+  }
+}
