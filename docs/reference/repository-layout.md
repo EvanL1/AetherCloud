@@ -26,6 +26,7 @@ packages/
   contracts/            planned runtime schemas and generated wire types
 adapters/
   fleet/memory/          implemented Gateway repository/token test adapters
+  fleet/postgres/        implemented Gateway SQL/migration/driver adapter; production composition planned
   cloudlink/memory/      implemented session and heartbeat test adapter
   runtime/memory/        implemented Runtime Manifest history test adapter
   telemetry/memory/      implemented atomic telemetry conformance adapter
@@ -41,7 +42,7 @@ adapters/
   infrastructure/memory/ implemented deterministic Plan engine and repository
   infrastructure/opentofu/ implemented real local Plan-only CLI adapter
   infrastructure/terraform/ planned Terraform CLI adapter
-  persistence/          planned PostgreSQL and object-store adapters
+  persistence/          planned shared migration runner and object-store adapters
 infra/modules/           planned versioned provider-specific IaC modules
 proto/                   planned versioned CloudLink definitions
 ai/                      invariants and machine-readable documentation catalog

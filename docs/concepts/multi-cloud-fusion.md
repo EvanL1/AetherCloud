@@ -19,7 +19,7 @@ AetherCloud owns a small, capability-driven vocabulary:
 - provider and cloud-connection identity
 - regions, zones, and placement constraints
 - capabilities such as compute, object storage, private networking, managed
-  Kubernetes, and IoT ingress
+  Kubernetes, managed PostgreSQL, and IoT ingress
 - deployment stacks, desired topology, saved plans, policy decisions, jobs, and
   normalized resource observations
 - cost, quota, health, provenance, and freshness metadata
@@ -149,6 +149,22 @@ Fusion occurs above individual State files:
 
 A cross-cloud rollout is a saga of provider-scoped jobs, not a distributed
 transaction. Partial success remains visible and compensation is explicit.
+
+## Control-plane database portability
+
+`managed-postgresql` is a portable Provider capability, not a fixed vendor
+product. Future provider profiles retain native engine variants, supported
+versions and extensions, HA, backup, encryption, private connectivity,
+replication, region, sovereignty, RPO/RTO, price evidence, and namespaced
+extensions. Core persistence code remains one PostgreSQL adapter and never
+branches on a provider enum.
+
+Each AetherCloud control-plane cell has one authoritative PostgreSQL writer
+topology. Managing resources across many providers does not require synchronous
+cross-cloud database writes. Tenant home-cell placement, replica promotion,
+disaster recovery, and migration are explicit governed workflows. See
+[PostgreSQL persistence and multi-cloud cells](persistence-and-multi-cloud-cells.md)
+and [ADR-0013](../adr/0013-postgresql-control-plane-persistence.md).
 
 ## Lessons retained from HPC-NOW
 

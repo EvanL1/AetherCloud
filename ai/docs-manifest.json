@@ -17,6 +17,13 @@
       "audience": ["developer", "agent"]
     },
     {
+      "path": "docs/concepts/persistence-and-multi-cloud-cells.md",
+      "title": "PostgreSQL persistence and multi-cloud cells",
+      "description": "Place portable transactional authority in one control-plane cell while evolving telemetry and provider database profiles independently",
+      "status": "mixed",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
       "path": "docs/concepts/audit-and-integrations.md",
       "title": "Audit, subscriptions, webhook delivery, and data export",
       "description": "Expose Tenant-scoped evidence and durable integration workflows without bypassing application use cases or leaking destination secrets",
@@ -251,6 +258,13 @@
       "path": "docs/adr/0012-durable-audit-and-outbound-integrations.md",
       "title": "ADR-0012: Durable audit and outbound integrations",
       "description": "Separate committed business outcomes from resumable audit queries, webhook attempts, dead letters, and immutable data exports",
+      "status": "normative",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
+      "path": "docs/adr/0013-postgresql-control-plane-persistence.md",
+      "title": "ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells",
+      "description": "Use PostgreSQL as the portable transactional authority while provider profiles place independent control-plane cells",
       "status": "normative",
       "audience": ["developer", "agent", "operator"]
     },

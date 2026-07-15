@@ -5,6 +5,7 @@ import {
   IssueGatewayEnrollment,
   RegisterGateway,
   type ApplicationClock,
+  type GatewayIdentityMutationEvidence,
 } from "@aether-cloud/application";
 import {
   parseGatewayId,
@@ -31,6 +32,18 @@ class FixedClock implements ApplicationClock {
   }
 }
 
+function registrationEvidence(): GatewayIdentityMutationEvidence {
+  return {
+    requestId: parseEnrollmentRequestId("register-request-001"),
+    actor: { kind: "user", subjectId: "operator:alice" },
+    occurredAt: parseUtcInstant("2026-07-14T08:00:00.000Z"),
+    action: "fleet.gateway.register",
+    risk: "low",
+    confirmation: "not-required",
+    eventName: "fleet.gateway.registered.v1",
+  };
+}
+
 describe("fleet in-memory adapters", () => {
   it("scopes gateway identities by tenant and rejects stale replacements", async () => {
     const repository = new InMemoryGatewayIdentityRepository();
@@ -43,15 +56,29 @@ describe("fleet in-memory adapters", () => {
       registeredAt: parseUtcInstant("2026-07-14T08:00:00.000Z"),
     });
 
-    expect(await repository.insert(gateway)).toBe("inserted");
-    expect(await repository.insert(gateway)).toBe("already-exists");
-    expect(await repository.find({ tenantId, projectId }, gatewayId)).toBe(
+    const request = {
+      tenantId,
+      projectId,
       gateway,
-    );
+      evidence: registrationEvidence(),
+    };
+    expect(await repository.insert(request)).toBe("inserted");
+    expect(await repository.insert(request)).toBe("already-exists");
+    expect(await repository.find({ tenantId, projectId }, gatewayId)).toEqual({
+      outcome: "found",
+      gateway,
+    });
     expect(
       await repository.find({ tenantId: otherTenantId, projectId }, gatewayId),
-    ).toBeUndefined();
-    expect(await repository.replace(gateway, 0)).toBe("version-conflict");
+    ).toEqual({ outcome: "not-found" });
+    expect(
+      await repository.replace({
+        ...request,
+        expectedRevision: 0,
+      }),
+    ).toBe("version-conflict");
+    expect(repository.auditEvents()).toHaveLength(1);
+    expect(repository.pendingOutboxEvents()).toHaveLength(1);
   });
 
   it("issues replay-stable token material and detects conflicting reuse", async () => {
@@ -105,6 +132,7 @@ describe("fleet in-memory adapters", () => {
       {
         tenantId,
         projectId,
+        subjectKind: "user",
         subjectId: "operator:alice",
         permissions: ["fleet.gateway.create"],
         idempotencyKey: "register-request-001",
@@ -117,6 +145,7 @@ describe("fleet in-memory adapters", () => {
       {
         tenantId,
         projectId,
+        subjectKind: "user",
         subjectId: "operator:alice",
         permissions: ["fleet.gateway.enrollment.issue"],
         idempotencyKey: "issue-request-001",
@@ -151,5 +180,7 @@ describe("fleet in-memory adapters", () => {
       replayed: false,
       value: { state: "claimed", revision: 3 },
     });
+    expect(repository.auditEvents()).toHaveLength(3);
+    expect(repository.pendingOutboxEvents()).toHaveLength(3);
   });
 });

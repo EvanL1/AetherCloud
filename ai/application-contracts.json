@@ -50,8 +50,14 @@
       "expiry": "required",
       "audit": "required",
       "status": "partial",
-      "implemented_layers": ["domain", "application", "memory-adapter"],
-      "missing_layers": ["durable-audit", "postgresql", "http"]
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "transactional-audit-outbox"
+      ],
+      "missing_layers": ["production-database-composition", "http"]
     },
     {
       "name": "fleet.gateway.enrollment.issue",
@@ -63,10 +69,15 @@
       "expiry": "required",
       "audit": "required",
       "status": "partial",
-      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "transactional-audit-outbox"
+      ],
       "missing_layers": [
-        "durable-audit",
-        "postgresql",
+        "production-database-composition",
         "kms-token-service",
         "http"
       ]
@@ -81,11 +92,16 @@
       "expiry": "required",
       "audit": "required",
       "status": "partial",
-      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "transactional-audit-outbox"
+      ],
       "missing_layers": [
         "credential-binding",
-        "durable-audit",
-        "postgresql",
+        "production-database-composition",
         "http"
       ]
     },
@@ -94,8 +110,12 @@
       "kind": "query",
       "permission": "fleet.gateway.enrollment.read",
       "status": "partial",
-      "implemented_layers": ["application", "memory-adapter"],
-      "missing_layers": ["postgresql", "http"]
+      "implemented_layers": [
+        "application",
+        "memory-adapter",
+        "postgresql-adapter"
+      ],
+      "missing_layers": ["production-database-composition", "http"]
     },
     {
       "name": "cloudlink.session.open",
@@ -843,6 +863,11 @@
       "http_mapping": "planned"
     },
     {
+      "code": "gateway-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
       "code": "invalid-enrollment-token",
       "status": "implemented",
       "http_mapping": "planned"
@@ -1241,12 +1266,17 @@
   "events": [
     {
       "name": "fleet.gateway.registered.v1",
-      "status": "planned",
+      "status": "partial",
+      "producer": "fleet"
+    },
+    {
+      "name": "fleet.gateway.enrollment-issued.v1",
+      "status": "partial",
       "producer": "fleet"
     },
     {
       "name": "fleet.gateway.enrollment-claimed.v1",
-      "status": "planned",
+      "status": "partial",
       "producer": "fleet"
     },
     {

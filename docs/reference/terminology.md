@@ -22,6 +22,10 @@ provider identity, account or subscription scope, and secret reference.
 **CloudLink** — The versioned, authenticated protocol between AetherCloud and
 an AetherIot runtime. It is not a device protocol.
 
+**Control-plane cell** — One independently operated API, CloudLink, worker,
+PostgreSQL, and object-storage placement with one authoritative transactional
+writer topology. A Tenant has an explicit home cell.
+
 **Connected** — A gateway has a sufficiently recent authenticated CloudLink
 session. This does not imply that downstream devices are online.
 
@@ -74,6 +78,11 @@ inventory.
 **Provider Adapter** — A capability-driven plugin that owns provider
 authentication, discovery, provider-specific modules, normalized observations,
 and conformance evidence.
+
+**Provider database profile** — Provider-specific evidence for a managed or
+self-hosted PostgreSQL placement, including version, HA, backup, encryption,
+network, extension, replica, region, RPO/RTO, cost, and native extensions. It is
+not the application persistence contract.
 
 **Reported state** — A time-stamped edge observation. It may become stale and
 does not overwrite desired state.

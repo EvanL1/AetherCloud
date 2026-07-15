@@ -34,32 +34,33 @@ and authority rules below.
 
 ## Documentation routing
 
-| Task                                  | Read first                                                                                                     |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Understand the product                | `docs/get-started/overview.md`                                                                                 |
-| Add or change a Provider Adapter      | `docs/concepts/multi-cloud-fusion.md`, `ai/invariants.md`                                                      |
-| Implement Provider discovery          | `docs/guides/add-provider-adapter.md`                                                                          |
-| Add an IoT Cloud capability           | `docs/concepts/iot-cloud-capability-map.md`, `docs/guides/iot-cloud-roadmap.md`                                |
-| Change IoT telemetry                  | `docs/concepts/iot-telemetry.md`, `docs/adr/0007-durable-iot-telemetry.md`                                     |
-| Change Artifact Registry              | `docs/concepts/artifact-registry.md`, `docs/adr/0009-immutable-artifact-publication.md`                        |
-| Change edge deployment                | `docs/concepts/desired-reported-applied-deployment.md`, `docs/adr/0010-desired-reported-applied-deployment.md` |
-| Change governed edge Jobs             | `docs/concepts/governed-capability-jobs.md`, `docs/adr/0011-governed-capability-jobs.md`                       |
-| Change audit, webhook, or export      | `docs/concepts/audit-and-integrations.md`, `docs/adr/0012-durable-audit-and-outbound-integrations.md`          |
-| Add or change an MCP resource/tool    | `docs/concepts/mcp-application-interface.md`, `docs/reference/application-contracts.md`                        |
-| Change artifact publication           | `docs/concepts/artifact-registry.md`, `docs/adr/0009-immutable-artifact-publication.md`                        |
-| Add operational instrumentation       | `docs/concepts/operational-observability.md`, `docs/adr/0008-operational-observability.md`                     |
-| Change Gateway enrollment             | `docs/concepts/gateway-identity-and-enrollment.md`, `docs/adr/0005-gateway-identity-and-enrollment.md`         |
-| Define or change CloudLink            | `docs/concepts/cloudlink-and-core-state-machines.md`, `docs/adr/0006-cloudlink-durable-delivery.md`            |
-| Change Runtime Manifest ingestion     | `docs/concepts/cloudlink-and-core-state-machines.md`, `docs/guides/iot-cloud-roadmap.md`                       |
-| Add infrastructure Plan               | `docs/guides/plan-infrastructure.md`, `docs/adr/0004-multi-cloud-fusion.md`                                    |
-| Propose infrastructure Apply          | `docs/guides/plan-infrastructure.md`, `ai/invariants.md`, then add or amend an ADR                             |
-| Add a domain concept                  | `docs/concepts/resource-model.md`, `ai/invariants.md`                                                          |
-| Decide edge/cloud/provider ownership  | `docs/concepts/edge-cloud-boundary.md`                                                                         |
-| Add an application module             | `docs/concepts/architecture.md`, `docs/reference/repository-layout.md`                                         |
-| Call or change HTTP                   | `docs/reference/http-api.md`                                                                                   |
-| Add a command, query, error, or event | `docs/reference/application-contracts.md`, `ai/application-contracts.json`                                     |
-| Name a resource or state transition   | `docs/reference/terminology.md`                                                                                |
-| Propose a foundational change         | `docs/adr/`, then add or amend an ADR                                                                          |
+| Task                                     | Read first                                                                                                     |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Understand the product                   | `docs/get-started/overview.md`                                                                                 |
+| Add or change a Provider Adapter         | `docs/concepts/multi-cloud-fusion.md`, `ai/invariants.md`                                                      |
+| Change persistence or database placement | `docs/concepts/persistence-and-multi-cloud-cells.md`, `docs/adr/0013-postgresql-control-plane-persistence.md`  |
+| Implement Provider discovery             | `docs/guides/add-provider-adapter.md`                                                                          |
+| Add an IoT Cloud capability              | `docs/concepts/iot-cloud-capability-map.md`, `docs/guides/iot-cloud-roadmap.md`                                |
+| Change IoT telemetry                     | `docs/concepts/iot-telemetry.md`, `docs/adr/0007-durable-iot-telemetry.md`                                     |
+| Change Artifact Registry                 | `docs/concepts/artifact-registry.md`, `docs/adr/0009-immutable-artifact-publication.md`                        |
+| Change edge deployment                   | `docs/concepts/desired-reported-applied-deployment.md`, `docs/adr/0010-desired-reported-applied-deployment.md` |
+| Change governed edge Jobs                | `docs/concepts/governed-capability-jobs.md`, `docs/adr/0011-governed-capability-jobs.md`                       |
+| Change audit, webhook, or export         | `docs/concepts/audit-and-integrations.md`, `docs/adr/0012-durable-audit-and-outbound-integrations.md`          |
+| Add or change an MCP resource/tool       | `docs/concepts/mcp-application-interface.md`, `docs/reference/application-contracts.md`                        |
+| Change artifact publication              | `docs/concepts/artifact-registry.md`, `docs/adr/0009-immutable-artifact-publication.md`                        |
+| Add operational instrumentation          | `docs/concepts/operational-observability.md`, `docs/adr/0008-operational-observability.md`                     |
+| Change Gateway enrollment                | `docs/concepts/gateway-identity-and-enrollment.md`, `docs/adr/0005-gateway-identity-and-enrollment.md`         |
+| Define or change CloudLink               | `docs/concepts/cloudlink-and-core-state-machines.md`, `docs/adr/0006-cloudlink-durable-delivery.md`            |
+| Change Runtime Manifest ingestion        | `docs/concepts/cloudlink-and-core-state-machines.md`, `docs/guides/iot-cloud-roadmap.md`                       |
+| Add infrastructure Plan                  | `docs/guides/plan-infrastructure.md`, `docs/adr/0004-multi-cloud-fusion.md`                                    |
+| Propose infrastructure Apply             | `docs/guides/plan-infrastructure.md`, `ai/invariants.md`, then add or amend an ADR                             |
+| Add a domain concept                     | `docs/concepts/resource-model.md`, `ai/invariants.md`                                                          |
+| Decide edge/cloud/provider ownership     | `docs/concepts/edge-cloud-boundary.md`                                                                         |
+| Add an application module                | `docs/concepts/architecture.md`, `docs/reference/repository-layout.md`                                         |
+| Call or change HTTP                      | `docs/reference/http-api.md`                                                                                   |
+| Add a command, query, error, or event    | `docs/reference/application-contracts.md`, `ai/application-contracts.json`                                     |
+| Name a resource or state transition      | `docs/reference/terminology.md`                                                                                |
+| Propose a foundational change            | `docs/adr/`, then add or amend an ADR                                                                          |
 
 ## Workflow
 
@@ -89,8 +90,10 @@ route remain planned. The Gateway registration and claim foundation is
 implemented in domain, application, and memory-adapter code. The
 transport-neutral CloudLink session/heartbeat and Runtime Manifest report/query
 foundations are also implemented at those inner layers. They provide no public
-HTTP route, CloudLink wire or process, PostgreSQL adapter, durable audit/outbox,
-or CA/KMS integration. Telemetry, alarm, Artifact Registry, single-target
+HTTP route, CloudLink wire or process, production database composition, or
+CA/KMS integration. A Gateway PostgreSQL adapter/migration now atomically
+writes aggregate, Audit, and Outbox evidence behind Tenant RLS; remaining
+PostgreSQL contexts are planned. Telemetry, alarm, Artifact Registry, single-target
 deployment, and governed Job domain/application/memory slices, plus the
 operational OpenTelemetry adapter foundation, are partial rather than
 production end-to-end features. Audit query is additionally exposed by

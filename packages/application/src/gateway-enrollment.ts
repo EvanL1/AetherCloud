@@ -39,6 +39,7 @@ type GatewayEnrollmentFailureCode =
   | "enrollment-claim-expired"
   | "gateway-already-exists"
   | "gateway-not-found"
+  | "gateway-storage-unavailable"
   | "idempotency-conflict"
   | "invalid-enrollment-token"
   | "invalid-gateway-enrollment-transition"
@@ -71,6 +72,7 @@ export interface GatewayEnrollmentView {
 }
 
 interface TenantCommandContext extends GatewayScope {
+  readonly subjectKind: "service-account" | "user";
   readonly subjectId: string;
   readonly permissions: ReadonlySet<string>;
   readonly requestId: EnrollmentRequestId;
@@ -130,6 +132,15 @@ function decodePermissions(input: unknown): ReadonlySet<string> {
   return new Set(input);
 }
 
+function decodeTenantSubjectKind(
+  input: unknown,
+): TenantCommandContext["subjectKind"] {
+  if (input !== "service-account" && input !== "user") {
+    throw new InputDecodingError("subjectKind must be user or service-account");
+  }
+  return input;
+}
+
 function decodeScope(record: Record<string, unknown>): GatewayScope {
   return {
     tenantId: parseTenantId(record.tenantId),
@@ -150,6 +161,7 @@ function decodeTenantCommandContext(input: unknown): TenantCommandContext {
   }
   return {
     ...decodeScope(record),
+    subjectKind: decodeTenantSubjectKind(record.subjectKind),
     subjectId: requireString(record.subjectId, "subjectId"),
     permissions: decodePermissions(record.permissions),
     requestId: parseEnrollmentRequestId(record.idempotencyKey),
@@ -329,9 +341,15 @@ export class RegisterGateway {
     if (timeFailure !== undefined) return { ok: false, failure: timeFailure };
 
     const existing = await this.#repository.find(context, gatewayId);
-    if (existing !== undefined) {
+    if (existing.outcome === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
+    if (existing.outcome === "found") {
       return resolveExistingRegistration(
-        existing,
+        existing.gateway,
         context.requestId,
         displayName,
       );
@@ -344,12 +362,40 @@ export class RegisterGateway {
       requestId: context.requestId,
       registeredAt: now,
     });
-    const insert = await this.#repository.insert(gateway);
+    const insert = await this.#repository.insert({
+      ...context,
+      gateway,
+      evidence: {
+        requestId: context.requestId,
+        actor: { kind: context.subjectKind, subjectId: context.subjectId },
+        occurredAt: now,
+        action: REGISTER_GATEWAY_COMMAND.name,
+        risk: REGISTER_GATEWAY_COMMAND.risk,
+        confirmation: REGISTER_GATEWAY_COMMAND.confirmation,
+        eventName: "fleet.gateway.registered.v1",
+      },
+    });
+    if (insert === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
     if (insert === "already-exists") {
       const raced = await this.#repository.find(context, gatewayId);
-      return raced === undefined
+      if (raced.outcome === "storage-unavailable") {
+        return failure(
+          "gateway-storage-unavailable",
+          "gateway identity storage is unavailable",
+        );
+      }
+      return raced.outcome === "not-found"
         ? failure("concurrent-modification", "gateway registration raced")
-        : resolveExistingRegistration(raced, context.requestId, displayName);
+        : resolveExistingRegistration(
+            raced.gateway,
+            context.requestId,
+            displayName,
+          );
     }
     return {
       ok: true,
@@ -424,10 +470,17 @@ export class IssueGatewayEnrollment {
       );
     }
 
-    const gateway = await this.#repository.find(context, gatewayId);
-    if (gateway === undefined) {
+    const found = await this.#repository.find(context, gatewayId);
+    if (found.outcome === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
+    if (found.outcome === "not-found") {
       return failure("gateway-not-found", "gateway identity was not found");
     }
+    const gateway = found.gateway;
     if (gateway.enrollment.state === "awaiting-claim") {
       if (
         gateway.enrollment.requestId === context.requestId &&
@@ -470,21 +523,44 @@ export class IssueGatewayEnrollment {
       expiresAt: claimExpiresAt,
     });
     if (!transition.ok) return transition;
-    const replaced = await this.#repository.replace(
-      transition.value,
-      gateway.revision,
-    );
+    const replaced = await this.#repository.replace({
+      ...context,
+      gateway: transition.value,
+      expectedRevision: gateway.revision,
+      evidence: {
+        requestId: context.requestId,
+        actor: { kind: context.subjectKind, subjectId: context.subjectId },
+        occurredAt: now,
+        action: ISSUE_GATEWAY_ENROLLMENT_COMMAND.name,
+        risk: ISSUE_GATEWAY_ENROLLMENT_COMMAND.risk,
+        confirmation: ISSUE_GATEWAY_ENROLLMENT_COMMAND.confirmation,
+        eventName: "fleet.gateway.enrollment-issued.v1",
+      },
+    });
+    if (replaced === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
     if (replaced !== "replaced") {
       const raced = await this.#repository.find(context, gatewayId);
+      if (raced.outcome === "storage-unavailable") {
+        return failure(
+          "gateway-storage-unavailable",
+          "gateway identity storage is unavailable",
+        );
+      }
       if (
-        raced?.enrollment.state === "awaiting-claim" &&
-        raced.enrollment.requestId === context.requestId &&
-        raced.enrollment.claim.expiresAt === claimExpiresAt
+        raced.outcome === "found" &&
+        raced.gateway.enrollment.state === "awaiting-claim" &&
+        raced.gateway.enrollment.requestId === context.requestId &&
+        raced.gateway.enrollment.claim.expiresAt === claimExpiresAt
       ) {
         return {
           ok: true,
           replayed: true,
-          value: { gateway: toGatewayEnrollmentView(raced) },
+          value: { gateway: toGatewayEnrollmentView(raced.gateway) },
         };
       }
       return failure(
@@ -550,7 +626,14 @@ export class ClaimGatewayEnrollment {
     const now = this.#clock.now();
     const timeFailure = validateCommandTime(context, now);
     if (timeFailure !== undefined) return { ok: false, failure: timeFailure };
-    const gateway = await this.#repository.find(context, gatewayId);
+    const found = await this.#repository.find(context, gatewayId);
+    if (found.outcome === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
+    const gateway = found.outcome === "found" ? found.gateway : undefined;
     if (
       gateway === undefined ||
       gateway.enrollment.state === "registered" ||
@@ -579,23 +662,45 @@ export class ClaimGatewayEnrollment {
         value: toGatewayEnrollmentView(transition.value),
       };
     }
-    const replaced = await this.#repository.replace(
-      transition.value,
-      gateway.revision,
-    );
+    const replaced = await this.#repository.replace({
+      ...context,
+      gateway: transition.value,
+      expectedRevision: gateway.revision,
+      evidence: {
+        requestId: context.requestId,
+        actor: { kind: "gateway", subjectId: gatewayId },
+        occurredAt: now,
+        action: CLAIM_GATEWAY_ENROLLMENT_COMMAND.name,
+        risk: CLAIM_GATEWAY_ENROLLMENT_COMMAND.risk,
+        confirmation: CLAIM_GATEWAY_ENROLLMENT_COMMAND.confirmation,
+        eventName: "fleet.gateway.enrollment-claimed.v1",
+      },
+    });
+    if (replaced === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
     if (replaced !== "replaced") {
       const raced = await this.#repository.find(context, gatewayId);
+      if (raced.outcome === "storage-unavailable") {
+        return failure(
+          "gateway-storage-unavailable",
+          "gateway identity storage is unavailable",
+        );
+      }
       if (
-        raced !== undefined &&
-        raced.enrollment.state === "claimed" &&
-        raced.enrollment.requestId === context.requestId &&
-        raced.enrollment.credentialRequestFingerprint ===
+        raced.outcome === "found" &&
+        raced.gateway.enrollment.state === "claimed" &&
+        raced.gateway.enrollment.requestId === context.requestId &&
+        raced.gateway.enrollment.credentialRequestFingerprint ===
           credentialRequestFingerprint
       ) {
         return {
           ok: true,
           replayed: true,
-          value: toGatewayEnrollmentView(raced),
+          value: toGatewayEnrollmentView(raced.gateway),
         };
       }
       return failure(
@@ -637,12 +742,18 @@ export class GetGatewayEnrollment {
     );
     if (authorization !== undefined)
       return { ok: false, failure: authorization };
-    const gateway = await this.#repository.find(context, gatewayId);
-    return gateway === undefined
+    const found = await this.#repository.find(context, gatewayId);
+    if (found.outcome === "storage-unavailable") {
+      return failure(
+        "gateway-storage-unavailable",
+        "gateway identity storage is unavailable",
+      );
+    }
+    return found.outcome === "not-found"
       ? failure("gateway-not-found", "gateway identity was not found")
       : {
           ok: true,
-          value: toGatewayEnrollmentView(gateway),
+          value: toGatewayEnrollmentView(found.gateway),
         };
   }
 }

@@ -54,8 +54,11 @@ query the resulting state through application use cases.
 **API and protocol.** Implemented transport-neutral register, issue, claim, and
 get capabilities. No public HTTP route or CloudLink message yet.
 
-**Persistence.** Implemented optimistic repository port, memory repository, and
-memory token service. PostgreSQL is planned.
+**Persistence.** Implemented optimistic repository port, memory repository,
+memory token service, and PostgreSQL Gateway repository/migration. The SQL
+adapter provides Tenant RLS and atomic aggregate/Audit/Outbox writes. Production
+database composition, roles, migration execution, backup/restore, and KMS token
+service remain planned.
 
 **Security.** Tenant-scoped permission checks, explicit confirmation for issue,
 server expiry, idempotency conflicts, token digest at rest, raw token returned
@@ -69,7 +72,7 @@ query, optimistic replacement, token verification, and full memory flow.
 dependency audit pass; agent documentation states the exact implemented surface.
 
 **Not included.** CA/KMS, active credential, revocation, recovery, attestation,
-PostgreSQL, durable audit, HTTP enrollment, CloudLink, or device control.
+production database deployment, HTTP enrollment, CloudLink, or device control.
 
 ## Phase 2: CloudLink heartbeat and session
 

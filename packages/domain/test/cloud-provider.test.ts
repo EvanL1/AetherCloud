@@ -12,11 +12,17 @@ describe("cloud provider descriptor", () => {
       id: "private-openstack-a",
       displayName: "Private OpenStack A",
       kind: "private-cloud",
-      capabilities: ["compute", "object-storage", "private-network"],
+      capabilities: [
+        "compute",
+        "managed-postgresql",
+        "object-storage",
+        "private-network",
+      ],
     });
 
     expect(provider.id).toBe("private-openstack-a");
     expect(providerSupports(provider, "compute")).toBe(true);
+    expect(providerSupports(provider, "managed-postgresql")).toBe(true);
     expect(providerSupports(provider, "managed-kubernetes")).toBe(false);
   });
 

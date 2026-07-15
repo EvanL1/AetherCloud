@@ -25,11 +25,17 @@ The current TypeScript foundation implements:
   expiry, audit, and authorization policy
 - typed application failures and runtime decoding of untrusted inputs
 - optimistic `GatewayIdentityRepository` insert and replace operations
+- mutation evidence carrying authenticated actor, command governance, and
+  integration event identity
+- typed storage-unavailable outcomes for read and write paths
 - an in-memory repository and token service for conformance and local tests
+- a PostgreSQL repository, explicit migration, Tenant RLS, Node `pg` pool
+  boundary, optimistic revision checks, and atomic Gateway/Audit/Outbox writes
+- an opt-in PostgreSQL 18 integration test with a constrained application role
 
 These are application and adapter contracts. No fleet HTTP route, CloudLink
-message, PostgreSQL table, durable audit ledger, CA, or KMS integration is
-implemented.
+message, production database composition/migration runner, CA, or KMS
+integration is implemented. The SQL adapter is executable but not deployed.
 
 ## Command boundary
 
@@ -69,6 +75,7 @@ It never returns a token, token digest, or command idempotency key.
 - `idempotency-conflict`
 - `gateway-already-exists`
 - `gateway-not-found`
+- `gateway-storage-unavailable`
 - `invalid-enrollment-token`
 - `enrollment-claim-expired`
 - `invalid-gateway-enrollment-transition`
@@ -99,4 +106,6 @@ requires explicit authorization and creates a new generation rather than
 reactivating revoked material.
 
 Read [ADR-0005](../adr/0005-gateway-identity-and-enrollment.md) for the decision
-and the [IoT Cloud roadmap](../guides/iot-cloud-roadmap.md) for delivery gates.
+and [ADR-0013](../adr/0013-postgresql-control-plane-persistence.md) for its
+durable transaction boundary. The [IoT Cloud roadmap](../guides/iot-cloud-roadmap.md)
+defines remaining delivery gates.

@@ -11,6 +11,7 @@ export type CoreCloudCapability =
   | "compute"
   | "iot-ingress"
   | "managed-kubernetes"
+  | "managed-postgresql"
   | "object-storage"
   | "private-network";
 

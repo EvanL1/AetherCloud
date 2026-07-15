@@ -16,12 +16,14 @@
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs && vitest run",
     "test:opentofu-integration": "AETHER_CLOUD_RUN_OPENTOFU_INTEGRATION=1 vitest run --config vitest.opentofu.config.ts",
+    "test:postgres-integration": "vitest run --config vitest.postgres.config.ts",
     "test:coverage": "node --test tests/*.test.mjs && vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
     "@types/node": "24.10.0",
+    "@types/pg": "8.20.0",
     "@vitest/coverage-v8": "4.0.10",
     "eslint": "9.39.1",
     "prettier": "3.7.4",

@@ -93,8 +93,10 @@ than exposing its internal records to another context.
 
 ## Data and messaging
 
-PostgreSQL will hold transactional AetherCloud product state. Infrastructure
-state is different: each provider-scoped deployment stack uses its own remote,
+PostgreSQL is the default transactional AetherCloud product store. The first
+Gateway Identity SQL adapter and migration are implemented, while composition
+root wiring and every other PostgreSQL bounded-context adapter remain planned.
+Infrastructure state is different: each provider-scoped deployment stack uses its own remote,
 locked backend. Workers are stateless with respect to infrastructure state and
 consume saved JSON plans rather than scraping terminal output or raw state
 text.
@@ -202,6 +204,13 @@ stable delivery identity across bounded retries, and becomes a visible dead
 letter when exhausted. Data exports publish immutable object references rather
 than returning unbounded history through the API process. See
 [audit and integrations](audit-and-integrations.md).
+
+Multi-cloud portability is expressed through independently deployable cells
+and Provider database profiles, not a generic lowest-common-denominator
+database API. One cell has one authoritative PostgreSQL writer topology; a
+Tenant has an explicit home cell. Cross-cloud backup, disaster recovery, and
+Tenant migration require fencing and governed workflows. Read
+[PostgreSQL persistence and multi-cloud cells](persistence-and-multi-cloud-cells.md).
 
 ## Tenant isolation
 

@@ -225,7 +225,11 @@ export type {
 export type {
   ApplicationClock,
   EnrollmentTokenService,
+  GatewayFindResult,
+  GatewayIdentityInsertRequest,
+  GatewayIdentityMutationEvidence,
   GatewayIdentityRepository,
+  GatewayIdentityReplaceRequest,
   GatewayInsertResult,
   GatewayReplaceResult,
   GatewayScope,

@@ -1,4 +1,7 @@
 import type {
+  AuditConfirmation,
+  AuditRisk,
+  AuditSubjectKind,
   EnrollmentClaimId,
   EnrollmentRequestId,
   EnrollmentTokenDigest,
@@ -14,21 +17,54 @@ export interface GatewayScope {
   readonly projectId: ProjectId;
 }
 
-export type GatewayInsertResult = "already-exists" | "inserted";
+export interface GatewayIdentityMutationEvidence {
+  readonly requestId: EnrollmentRequestId;
+  readonly actor: Readonly<{
+    kind: AuditSubjectKind;
+    subjectId: string;
+  }>;
+  readonly occurredAt: UtcInstant;
+  readonly action:
+    | "fleet.gateway.enrollment.claim"
+    | "fleet.gateway.enrollment.issue"
+    | "fleet.gateway.register";
+  readonly risk: AuditRisk;
+  readonly confirmation: AuditConfirmation;
+  readonly eventName:
+    | "fleet.gateway.enrollment-claimed.v1"
+    | "fleet.gateway.enrollment-issued.v1"
+    | "fleet.gateway.registered.v1";
+}
+
+export interface GatewayIdentityInsertRequest extends GatewayScope {
+  readonly gateway: GatewayIdentity;
+  readonly evidence: GatewayIdentityMutationEvidence;
+}
+
+export interface GatewayIdentityReplaceRequest extends GatewayIdentityInsertRequest {
+  readonly expectedRevision: number;
+}
+
+export type GatewayFindResult =
+  | Readonly<{ outcome: "found"; gateway: GatewayIdentity }>
+  | Readonly<{ outcome: "not-found" }>
+  | Readonly<{ outcome: "storage-unavailable" }>;
+
+export type GatewayInsertResult =
+  | "already-exists"
+  | "inserted"
+  | "storage-unavailable";
 export type GatewayReplaceResult =
   | "not-found"
   | "replaced"
+  | "storage-unavailable"
   | "version-conflict";
 
 export interface GatewayIdentityRepository {
-  find(
-    scope: GatewayScope,
-    gatewayId: GatewayId,
-  ): Promise<GatewayIdentity | undefined>;
-  insert(gateway: GatewayIdentity): Promise<GatewayInsertResult>;
+  find(scope: GatewayScope, gatewayId: GatewayId): Promise<GatewayFindResult>;
+  insert(request: GatewayIdentityInsertRequest): Promise<GatewayInsertResult>;
   replace(
-    gateway: GatewayIdentity,
-    expectedRevision: number,
+    request: GatewayIdentityReplaceRequest,
   ): Promise<GatewayReplaceResult>;
 }
 

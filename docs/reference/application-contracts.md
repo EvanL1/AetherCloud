@@ -58,6 +58,8 @@ authenticated Audit query operations (JSON and finite SSE snapshot);
 partial provider, Plan, enrollment, CloudLink session, Runtime Manifest,
 telemetry, alarm, Artifact Registry, deployment, governed Job, audit, webhook,
 and Data Export application slices; and planned later IoT product capabilities.
-It does not claim a production live event stream, external webhook sender,
-export worker/download interface, MCP wire server, CloudLink process or wire schema,
-or production persistence adapter exists.
+Gateway registration and enrollment events are now `partial` because the
+PostgreSQL adapter writes them into the same transaction as aggregate and Audit
+state. It does not claim a production live event stream, external webhook
+sender, export worker/download interface, MCP wire server, CloudLink process or
+wire schema, migration runner, or deployed production database exists.

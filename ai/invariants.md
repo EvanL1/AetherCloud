@@ -131,3 +131,8 @@ These rules are more stable than the current directory layout.
     inject authenticated scope, advertise the underlying permission and command
     governance, invoke the same application use case, and reject planned tools
     without simulation.
+53. PostgreSQL is the default transactional store for one control-plane cell,
+    not a provider identity. Provider database profiles preserve native
+    capabilities, one Tenant has explicit home-cell write authority, and
+    cross-cloud failover or migration never becomes an implicit synchronous
+    transaction in a CloudLink acknowledgement path.

@@ -1,0 +1,14 @@
+{
+  "name": "@aether-cloud/fleet-postgres-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/domain": "workspace:*",
+    "pg": "8.22.0"
+  }
+}

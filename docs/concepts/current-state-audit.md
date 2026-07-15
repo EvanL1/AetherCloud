@@ -13,9 +13,9 @@ adapter, or complete AetherIot integration unless those layers are named.
 
 ## Repository baseline
 
-The repository is on the unborn `main` branch: there is no Git commit yet and
-all current files are untracked. That is a workspace fact, not permission to
-replace them. The complete tree is treated as the project baseline.
+The repository is on `main`, with the bootstrap baseline recorded at commit
+`d698a97`. Existing tracked and untracked workspace changes remain user-owned
+project state and are not permission to reset, replace, or delete them.
 
 The workspace uses Node.js 24, pnpm 11, TypeScript 5.9, ESM, strict type
 checking, ESLint, Prettier, Vitest, an 80 percent coverage gate, and a Node test
@@ -33,7 +33,7 @@ documentation contract tests before this capability expansion began.
 | Edge/cloud/provider authority values       | `packages/domain/src/authority.ts` and its tests                                                                     | Implemented domain value, not an authorization service                                                                                                                                                      |
 | Provider catalog and region discovery      | `packages/domain`, `packages/application/src/discover-provider-regions.ts`, provider conformance, and memory adapter | Domain/application/test-adapter implemented; real provider and HTTP planned                                                                                                                                 |
 | Deployment Stack and governed Plan         | Domain/application Plan modules, infrastructure conformance, memory adapter, and `adapters/infrastructure/opentofu`  | Real local OpenTofu Plan worker implemented; production remote State, durable encrypted artifacts, audit, and HTTP planned                                                                                  |
-| Gateway registration and enrollment claim  | Gateway domain/application modules and `adapters/fleet/memory`                                                       | Domain/application/test-adapter implemented; production identity binding, audit, PostgreSQL, CA/KMS, and HTTP planned                                                                                       |
+| Gateway registration and enrollment claim  | Gateway domain/application modules plus `adapters/fleet/memory` and `adapters/fleet/postgres`                        | Domain/application, memory conformance, PostgreSQL SQL/migration/driver adapter, and atomic Gateway/Audit/Outbox write implemented; production DB composition, identity binding, CA/KMS, and HTTP planned   |
 | CloudLink session and heartbeat foundation | CloudLink domain/application modules and `adapters/cloudlink/memory`                                                 | Credential-authenticated use cases, epoch fencing, cursor resume, and memory adapter implemented; wire/root/PostgreSQL planned                                                                              |
 | Runtime Manifest and capability foundation | Runtime domain/application modules and `adapters/runtime/memory`                                                     | AetherIot v1 checksum, monotonic history, report/query, and memory adapter implemented; wire/PostgreSQL/HTTP planned                                                                                        |
 | IoT telemetry ingestion and history        | Telemetry domain/application modules and `adapters/telemetry/memory`                                                 | Atomic replay/gap/cursor/history semantics implemented with a memory conformance adapter; production durability and wire planned                                                                            |
@@ -52,6 +52,11 @@ documentation contract tests before this capability expansion began.
 The infrastructure engine port is deliberately Plan-only. No executable Apply,
 Destroy, Import, or State-repair operation exists.
 
+The PostgreSQL Gateway adapter is a real SQL/driver boundary with scripted
+transaction/migration tests and an opt-in PostgreSQL 18 integration test using
+a constrained application role. It is not evidence of a running managed
+database, production migration orchestration, credentials, or backup/restore.
+
 ## Reviewed contracts without executable product surfaces
 
 The following are designed or named in documentation but have no corresponding
@@ -59,8 +64,9 @@ domain/application implementation at this audit point:
 
 - Tenant/User/Service Account IAM, RBAC/ABAC, API credentials, and durable audit
 - Site, Instance, Point metadata, groups, topology, and dynamic queries
-- production Gateway credentials, revocation, recovery, CA/KMS, and durable
-  credential binding; the current verifier is an in-memory conformance adapter
+- production Gateway credentials, revocation, recovery, CA/KMS, durable
+  credential binding, database composition, and migration execution; the
+  Gateway aggregate SQL adapter covers only registration and claim state
 - CloudLink process, wire schema, PostgreSQL session/inbox/outbox/cursor,
   production backpressure, and actual edge integration; the transport-neutral
   session, heartbeat, fencing, and memory resume foundation is executable
@@ -127,12 +133,16 @@ conformance tools and never satisfy that production durability gate.
 The completed foundation was verified on 2026-07-15 with the repository's
 default external-service-free path:
 
-- `pnpm check`: 341 Vitest behavior tests and 12 agent-documentation contract
+- `pnpm check`: 365 Vitest behavior tests and 13 agent-documentation contract
   tests passed; TypeScript, ESLint, and Prettier checks passed
-- `pnpm test:coverage`: 87.67% statements, 80.07% branches, 97.69% functions,
-  and 89.4% lines
+- `pnpm test:coverage`: 87.6% statements, 80.17% branches, 97.27% functions,
+  and 89.27% lines
+- `pnpm test:postgres-integration`: the Gateway migration and
+  register/issue/claim transaction passed against PostgreSQL 18 with a
+  non-superuser, non-`BYPASSRLS` application role
 - `pnpm audit --prod`: no known production dependency vulnerabilities
 
 These results cover executable inner layers and memory conformance adapters;
-they are not evidence that any planned PostgreSQL, object-store, CloudLink wire,
-worker, or production identity integration exists.
+the PostgreSQL result covers only the Gateway Identity slice. They are not
+evidence that other planned PostgreSQL adapters, object-store integration,
+CloudLink wire, workers, or production identity integration exist.

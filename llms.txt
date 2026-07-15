@@ -19,6 +19,7 @@ answers the task, then follow its links for deeper context.
 ## Concepts
 
 - [Architecture](docs/concepts/architecture.md): Understand the modular-monolith processes, dependency direction, and evolution rules
+- [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md): Use the implemented Gateway SQL adapter and portable cell boundary without implying a deployed production database or global active-active writes
 - [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md): Use the partial audit HTTP/SSE and integration workflow foundations without implying production durability, sending, or export retrieval
 - [Current implementation audit](docs/concepts/current-state-audit.md): Distinguish executable layers from reviewed contracts and missing production surfaces
 - [IoT Cloud capability map](docs/concepts/iot-cloud-capability-map.md): Audit implemented and planned IoT capabilities by bounded context, authority, storage, edge interaction, risk, and phase
@@ -57,3 +58,4 @@ answers the task, then follow its links for deeper context.
 - [ADR-0010: Desired, Reported, and Applied deployment](docs/adr/0010-desired-reported-applied-deployment.md): Preserve cloud intent, edge observation, applied evidence, and unknown as separate facts
 - [ADR-0011: Governed capability Jobs and Receipts](docs/adr/0011-governed-capability-jobs.md): Deny undeclared capabilities and preserve uncertainty, cancellation intent, ordered Receipts, and edge outcomes
 - [ADR-0012: Durable audit and outbound integrations](docs/adr/0012-durable-audit-and-outbound-integrations.md): Separate committed outcomes from audit streams, outbound attempts, dead letters, and immutable exports
+- [ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells](docs/adr/0013-postgresql-control-plane-persistence.md): Use PostgreSQL as portable cell authority while keeping provider profiles, telemetry analytics, and failover explicit

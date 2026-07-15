@@ -23,6 +23,7 @@
     "apps/**/*.ts",
     "packages/**/*.ts",
     "vitest.config.ts",
-    "vitest.opentofu.config.ts"
+    "vitest.opentofu.config.ts",
+    "vitest.postgres.config.ts"
   ]
 }

@@ -28,6 +28,7 @@ const requiredDocuments = [
   "docs/concepts/mcp-application-interface.md",
   "docs/concepts/multi-cloud-fusion.md",
   "docs/concepts/operational-observability.md",
+  "docs/concepts/persistence-and-multi-cloud-cells.md",
   "docs/concepts/resource-model.md",
   "docs/guides/build-with-an-agent.md",
   "docs/guides/iot-cloud-roadmap.md",
@@ -49,6 +50,7 @@ const requiredDocuments = [
   "docs/adr/0010-desired-reported-applied-deployment.md",
   "docs/adr/0011-governed-capability-jobs.md",
   "docs/adr/0012-durable-audit-and-outbound-integrations.md",
+  "docs/adr/0013-postgresql-control-plane-persistence.md",
 ];
 
 function read(path) {
@@ -217,6 +219,19 @@ test("telemetry documentation separates business data, live authority, audit, an
   assert.match(observability, /not.*IoT.*telemetry/is);
   assert.match(observability, /not.*audit/is);
   assert.match(observability, /high.cardinality/i);
+});
+
+test("persistence documentation separates PostgreSQL cells from provider identity and analytics", () => {
+  const source = read("docs/concepts/persistence-and-multi-cloud-cells.md");
+
+  assert.match(source, /one authoritative PostgreSQL writer/i);
+  assert.match(source, /Tenant home cell/i);
+  assert.match(source, /managed-postgresql/);
+  assert.match(source, /does not require synchronous.*database writes/is);
+  assert.match(source, /TimescaleDB or ClickHouse/);
+  assert.match(source, /not.*write\s+authority.*governed failover/is);
+  assert.match(source, /implemented/i);
+  assert.match(source, /planned/i);
 });
 
 test("integration documentation preserves audit, delivery, SSRF, and export boundaries", () => {

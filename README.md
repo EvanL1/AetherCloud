@@ -47,10 +47,17 @@ port, policy receipts, a deterministic conformance adapter, and a real local
 OpenTofu saved-Plan worker with bounded argv-only process execution and
 temporary-workspace cleanup. Real provider adapters, credential resolution,
 production remote State and encrypted object storage, a CloudLink wire/process,
-durable persistence, Apply, production Gateway credentials, production
+remaining durable persistence, Apply, production Gateway credentials, production
 telemetry/alarm/artifact/deployment/Job persistence, remaining public interfaces,
 scheduling, production integration delivery, and MCP transport are separate contract-first vertical
 slices.
+
+The first PostgreSQL persistence slice now adds a parameterized Gateway
+Identity repository, explicit migration, Tenant-scoped Row-Level Security,
+optimistic revisions, a real `pg` pool boundary, and atomic aggregate, Audit,
+and Outbox writes. `managed-postgresql` is a portable Provider capability;
+provider-specific database profiles and production database composition remain
+planned.
 
 ## Development
 
@@ -72,6 +79,7 @@ readiness endpoint.
 
 - [Product overview](docs/get-started/overview.md)
 - [Architecture](docs/concepts/architecture.md)
+- [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md)
 - [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md)
 - [Current implementation audit](docs/concepts/current-state-audit.md)
 - [IoT Cloud capability map](docs/concepts/iot-cloud-capability-map.md)
@@ -104,8 +112,10 @@ opt-in integration-tested without a cloud account. Production remote State,
 distributed locking, durable encrypted Plan storage, a public Plan API, and
 every Apply path remain planned. Gateway registration,
 claim issuance, claim consumption, and enrollment status query are implemented
-as domain/application contracts with memory adapters; they are not HTTP routes,
-production certificate enrollment, or durable persistence. CloudLink
+as domain/application contracts with memory and PostgreSQL adapters. The
+PostgreSQL slice atomically writes Gateway, Audit, and Outbox records, but it is
+not wired to an HTTP route or production database deployment and does not issue
+certificates. CloudLink
 session/heartbeat, Runtime Manifest, telemetry ingestion/history, alarm
 projection/workflow, Artifact Registry publication/query, single-target
 deployment, and governed capability Jobs are implemented as
@@ -113,8 +123,8 @@ domain/application contracts with memory adapters. Audit search is additionally
 exposed through authenticated JSON and finite resumable SSE routes; webhook
 subscription/delivery and data export are inner-layer foundations only. The MCP
 resource/tool application interface is implemented without a wire server. No
-CloudLink wire, long-running composition root, PostgreSQL adapter, public fleet
-endpoint, or durable production audit/outbox exists. Most public Tenant APIs,
+CloudLink wire, long-running CloudLink/worker composition root, public fleet
+endpoint, or general production persistence exists. Most public Tenant APIs,
 production telemetry storage, production artifact stores/signers, scheduling,
 Job delivery, and the MCP transport runtime also remain planned. OpenTelemetry
 instrumentation is partial and does not replace business telemetry or audit.

@@ -11,7 +11,9 @@ import {
   RegisterGateway,
   type ApplicationClock,
   type EnrollmentTokenService,
+  type GatewayIdentityInsertRequest,
   type GatewayIdentityRepository,
+  type GatewayIdentityReplaceRequest,
 } from "../src/index.js";
 import {
   parseEnrollmentClaimId,
@@ -42,28 +44,35 @@ class FixedClock implements ApplicationClock {
 
 class MemoryRepository implements GatewayIdentityRepository {
   readonly #gateways = new Map<string, GatewayIdentity>();
+  readonly evidence: GatewayIdentityInsertRequest["evidence"][] = [];
 
   find(
     scope: Readonly<{ tenantId: TenantId; projectId: ProjectId }>,
     requestedGatewayId: GatewayIdentity["gatewayId"],
   ) {
+    const gateway = this.#gateways.get(
+      `${scope.tenantId}:${scope.projectId}:${requestedGatewayId}`,
+    );
     return Promise.resolve(
-      this.#gateways.get(
-        `${scope.tenantId}:${scope.projectId}:${requestedGatewayId}`,
-      ),
+      gateway === undefined
+        ? ({ outcome: "not-found" } as const)
+        : ({ outcome: "found", gateway } as const),
     );
   }
 
-  insert(gateway: GatewayIdentity) {
+  insert(request: GatewayIdentityInsertRequest) {
+    const { gateway } = request;
     const key = `${gateway.tenantId}:${gateway.projectId}:${gateway.gatewayId}`;
     if (this.#gateways.has(key)) {
       return Promise.resolve("already-exists" as const);
     }
     this.#gateways.set(key, gateway);
+    this.evidence.push(request.evidence);
     return Promise.resolve("inserted" as const);
   }
 
-  replace(gateway: GatewayIdentity, expectedRevision: number) {
+  replace(request: GatewayIdentityReplaceRequest) {
+    const { gateway, expectedRevision } = request;
     const key = `${gateway.tenantId}:${gateway.projectId}:${gateway.gatewayId}`;
     const current = this.#gateways.get(key);
     if (current === undefined) return Promise.resolve("not-found" as const);
@@ -71,6 +80,7 @@ class MemoryRepository implements GatewayIdentityRepository {
       return Promise.resolve("version-conflict" as const);
     }
     this.#gateways.set(key, gateway);
+    this.evidence.push(request.evidence);
     return Promise.resolve("replaced" as const);
   }
 }
@@ -104,6 +114,7 @@ function commandContext(
   return {
     tenantId,
     projectId,
+    subjectKind: "user",
     subjectId: "operator:alice",
     permissions: [permission],
     idempotencyKey,
@@ -233,6 +244,74 @@ describe("gateway enrollment application boundary", () => {
       ok: false,
       failure: { code: "invalid-input" },
     });
+    expect(
+      await register.execute(
+        commandContext("fleet.gateway.create", "register-request-002", {
+          subjectKind: "robot",
+        }),
+        registerInput,
+      ),
+    ).toMatchObject({
+      ok: false,
+      failure: { code: "invalid-input" },
+    });
+  });
+
+  it("maps PostgreSQL read, insert, and replace unavailability to typed failures", async () => {
+    const clock = new FixedClock();
+    const unavailableRead: GatewayIdentityRepository = {
+      find: () => Promise.resolve({ outcome: "storage-unavailable" }),
+      insert: () => Promise.resolve("storage-unavailable"),
+      replace: () => Promise.resolve("storage-unavailable"),
+    };
+    const unavailableInsert: GatewayIdentityRepository = {
+      ...unavailableRead,
+      find: () => Promise.resolve({ outcome: "not-found" }),
+    };
+    const read = await new GetGatewayEnrollment({
+      repository: unavailableRead,
+    }).execute(
+      {
+        tenantId,
+        projectId,
+        subjectId: "operator:alice",
+        permissions: ["fleet.gateway.enrollment.read"],
+      },
+      { gatewayId },
+    );
+    const insert = await new RegisterGateway({
+      repository: unavailableInsert,
+      clock,
+    }).execute(
+      commandContext("fleet.gateway.create", "register-request-storage"),
+      registerInput,
+    );
+
+    const stored = new MemoryRepository();
+    await new RegisterGateway({ repository: stored, clock }).execute(
+      commandContext("fleet.gateway.create", "register-request-001"),
+      registerInput,
+    );
+    const unavailableReplace: GatewayIdentityRepository = {
+      find: stored.find.bind(stored),
+      insert: stored.insert.bind(stored),
+      replace: () => Promise.resolve("storage-unavailable"),
+    };
+    const replace = await new IssueGatewayEnrollment({
+      repository: unavailableReplace,
+      tokens: new FixedTokenService(),
+      clock,
+    }).execute(
+      commandContext("fleet.gateway.enrollment.issue", "issue-request-001"),
+      issueInput,
+    );
+
+    for (const outcome of [read, insert, replace]) {
+      expect(outcome).toMatchObject({
+        ok: false,
+        failure: { code: "gateway-storage-unavailable" },
+      });
+    }
   });
 
   it("requires explicit confirmation before issuing a claim token", async () => {
@@ -253,7 +332,7 @@ describe("gateway enrollment application boundary", () => {
   });
 
   it("registers a gateway and idempotently issues a token only once", async () => {
-    const { register, issue } = createUseCases();
+    const { register, issue, repository } = createUseCases();
 
     const registration = await registerGateway(register);
     const first = await issue.execute(
@@ -292,6 +371,19 @@ describe("gateway enrollment application boundary", () => {
     if (replay.ok) {
       expect("enrollmentToken" in replay.value).toBe(false);
     }
+    expect(repository.evidence).toMatchObject([
+      {
+        action: "fleet.gateway.register",
+        eventName: "fleet.gateway.registered.v1",
+        actor: { kind: "user", subjectId: "operator:alice" },
+      },
+      {
+        action: "fleet.gateway.enrollment.issue",
+        eventName: "fleet.gateway.enrollment-issued.v1",
+        risk: "high",
+        confirmation: "explicit",
+      },
+    ]);
   });
 
   it("distinguishes registration replay, idempotency conflict, and identity conflict", async () => {
@@ -435,6 +527,11 @@ describe("gateway enrollment application boundary", () => {
       gatewayId as GatewayIdentity["gatewayId"],
     );
     expect(JSON.stringify(stored)).not.toContain(enrollmentToken);
+    expect(repository.evidence.at(-1)).toMatchObject({
+      action: "fleet.gateway.enrollment.claim",
+      eventName: "fleet.gateway.enrollment-claimed.v1",
+      actor: { kind: "gateway", subjectId: gatewayId },
+    });
   });
 
   it("idempotently replays a claimed Gateway after verifying the token", async () => {
