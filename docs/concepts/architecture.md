@@ -225,12 +225,11 @@ Tenant keys, and row-level security as defense in depth. Cross-Tenant access is
 available only through an explicit platform use case with separate permission
 and audit evidence.
 
-Read [ADR-0006](../adr/0006-cloudlink-durable-delivery.md) and
-[CloudLink and core state machines](cloudlink-and-core-state-machines.md) before
-defining a wire contract.
+Before implementing a CloudLink integration, read the
+[CloudLink MQTT reference](../reference/cloudlink-mqtt-v1.md) and
+[CloudLink reliability and lifecycle](cloudlink-and-core-state-machines.md).
 
 Read [IoT business telemetry](iot-telemetry.md) before adding history or
 ingestion and [operational observability](operational-observability.md) before
-adding instrumentation. The [current implementation audit](current-state-audit.md)
-is the evidence-backed status source; the target process diagram alone does not
-prove that a composition root exists.
+adding instrumentation. Use the [IoT Cloud roadmap](../guides/iot-cloud-roadmap.md)
+to distinguish capabilities available now from those that remain planned.

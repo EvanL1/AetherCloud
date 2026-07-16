@@ -85,8 +85,8 @@ lifecycle, shared AetherEdge conformance, timeout scheduler, PostgreSQL
 session/epoch state, durable data-loss facts, multi-instance ownership, and
 backpressure remain planned, so Phase 2 is not complete. The accepted-telemetry
 PostgreSQL inbox/cursor/receipt/ACK transaction and delivery use case are
-implemented, but they do not complete session durability. ADR-0015 fixes the release sequence:
-shared-Broker origin authentication, one joint wire profile, identical
+implemented, but they do not complete session durability. The production
+release sequence is: shared-Broker origin authentication, one joint wire profile, identical
 fixtures, a dual Edge/Cloud Broker harness, fault injection, crash-durable ACK
 persistence, then explicit legacy cutover. The target profile is not yet the
 implemented codec.

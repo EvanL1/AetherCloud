@@ -105,7 +105,6 @@ versioned. Revocation permanently fences a credential generation. Recovery
 requires explicit authorization and creates a new generation rather than
 reactivating revoked material.
 
-Read [ADR-0005](../adr/0005-gateway-identity-and-enrollment.md) for the decision
-and [ADR-0013](../adr/0013-postgresql-control-plane-persistence.md) for its
-durable transaction boundary. The [IoT Cloud roadmap](../guides/iot-cloud-roadmap.md)
-defines remaining delivery gates.
+The [IoT Cloud roadmap](../guides/iot-cloud-roadmap.md) identifies which
+credential, persistence, and public API capabilities are available now and
+which remain planned.

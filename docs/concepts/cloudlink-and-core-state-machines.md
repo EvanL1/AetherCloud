@@ -1,11 +1,11 @@
 ---
-title: CloudLink and core state machines
-description: Define offline, duplicate, ordering, timeout, retry, partial-success, and cancellation semantics
+title: CloudLink reliability and lifecycle
+description: Understand delivery, retries, acknowledgements, offline recovery, and current production limits
 updated: 2026-07-16
 status: mixed
 ---
 
-# CloudLink and core state machines
+# CloudLink reliability and lifecycle
 
 This page mixes executable inner-layer foundations with planned end-to-end
 behavior. An experimental JSON/MQTT v1 codec, application bridge, independently
@@ -13,10 +13,10 @@ startable ingress lifecycle, Schemas, fixtures, and real-broker harness now
 exist, and the public AetherContracts alpha.3 release is the sole shared
 authority. The opt-in real Mosquitto dual harness and fault matrix are
 executable alpha evidence. They do not constitute a production process;
-production authentication and PostgreSQL durability remain gates.
-ADR-0015 additionally orders authentication, one wire profile, shared fixtures,
-a dual real-Broker harness, fault injection, crash-durable persistence, and
-legacy cutover so later evidence cannot bypass an earlier safety gate.
+production authentication and PostgreSQL durability remain gates. Production
+readiness requires authentication, one wire profile, shared fixtures, a dual
+real-Broker harness, fault injection, crash-durable persistence, and an
+explicit legacy cutover in that order.
 
 ## CloudLink responsibility
 
@@ -303,6 +303,6 @@ pending -> leased -> delivered
 - Partial fan-out success remains visible per endpoint. No distributed
   transaction is claimed across subscribers.
 
-These rules extend the authority boundary in
-[ADR-0001](../adr/0001-edge-first-cloud-control-plane.md) and the planned
-transport decision in [ADR-0006](../adr/0006-cloudlink-durable-delivery.md).
+These rules preserve the edge-first authority boundary: the edge remains
+authoritative for live state and physical control, while the cloud records
+accepted facts and governed intent without claiming unproven device outcomes.

@@ -85,6 +85,5 @@ this single-target aggregate. Production CloudLink sends only versioned Desired
 offers or immutable references through application-owned outbox records; it may
 not write an edge cache, SHM, point, or device register.
 
-Read [ADR-0010](../adr/0010-desired-reported-applied-deployment.md) for the
-decision and [Artifact registry](artifact-registry.md) for publication
-authority.
+Read [Artifact registry](artifact-registry.md) to understand how immutable
+revisions are published before a deployment references them.

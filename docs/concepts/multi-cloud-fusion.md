@@ -164,7 +164,7 @@ topology. Managing resources across many providers does not require synchronous
 cross-cloud database writes. Tenant home-cell placement, replica promotion,
 disaster recovery, and migration are explicit governed workflows. See
 [PostgreSQL persistence and multi-cloud cells](persistence-and-multi-cloud-cells.md)
-and [ADR-0013](../adr/0013-postgresql-control-plane-persistence.md).
+for the user-visible placement and isolation model.
 
 ## Lessons retained from HPC-NOW
 

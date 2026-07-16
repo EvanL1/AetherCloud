@@ -31,7 +31,7 @@ answers the task, then follow its links for deeper context.
 - [Operational observability](docs/concepts/operational-observability.md): Use the optional OpenTelemetry adapter foundation without replacing IoT telemetry or durable audit
 - [MCP application interface](docs/concepts/mcp-application-interface.md): Use the implemented transport-neutral resources/tools while treating the MCP wire server, production identity, and persistence as planned
 - [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md): Use the implemented registration and claim foundation without implying production certificates or HTTP routes
-- [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md): Use the partial session, heartbeat, Runtime Manifest, and experimental MQTT ingress while production process and durable delivery remain planned
+- [CloudLink reliability and lifecycle](docs/concepts/cloudlink-and-core-state-machines.md): Understand delivery, retries, acknowledgements, offline recovery, and current production limits
 - [Multi-cloud fusion](docs/concepts/multi-cloud-fusion.md): Unify cloud lifecycle and policy without erasing provider capabilities or sharing one global state
 - [Edge, AetherCloud, and provider authority](docs/concepts/edge-cloud-boundary.md): Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers
 - [Resource model](docs/concepts/resource-model.md): Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently
