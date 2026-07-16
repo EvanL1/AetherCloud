@@ -1,4 +1,7 @@
+import { createHash } from "node:crypto";
+
 import type {
+  CloudLinkDurableAcknowledgement,
   TelemetryHistoryQuery,
   TelemetryPersistenceInput,
   TelemetryPersistenceResult,
@@ -35,6 +38,34 @@ interface StoredRequest {
   readonly batchKey: string;
   readonly payloadDigest: string;
   readonly receipt: TelemetryIngestionReceipt;
+}
+
+function acknowledgementKey(input: TelemetryPersistenceInput): string {
+  const intent = input.durableAcknowledgement;
+  if (intent === undefined) return "";
+  return [
+    input.binding.tenantId,
+    input.binding.projectId,
+    input.binding.gatewayId,
+    intent.sessionId,
+    intent.sessionEpoch,
+    intent.streamId,
+    intent.streamEpoch,
+    intent.acknowledgedPosition,
+    intent.batchId,
+    intent.digest,
+  ].join("\u0000");
+}
+
+function stableAcknowledgementId(key: string): string {
+  return `outbox:cloudlink-ack:${createHash("sha256").update(key, "utf8").digest("hex")}`;
+}
+
+function acknowledgementReceiptId(batchId: string): string {
+  const candidate = `receipt:cloudlink:${batchId}`;
+  return candidate.length <= 128
+    ? candidate
+    : `receipt:cloudlink:${createHash("sha256").update(batchId, "utf8").digest("hex")}`;
 }
 
 function gatewayKey(input: {
@@ -80,6 +111,10 @@ export class InMemoryTelemetryRepository implements TelemetryRepository {
   readonly #contiguousPositions = new Map<string, bigint>();
   readonly #auditEvents: InMemoryTelemetryAuditEvent[] = [];
   readonly #outboxEvents: InMemoryTelemetryOutboxEvent[] = [];
+  readonly #durableAcknowledgements = new Map<
+    string,
+    CloudLinkDurableAcknowledgement
+  >();
   #failNext = false;
 
   constructor(options: InMemoryTelemetryRepositoryOptions = {}) {
@@ -99,12 +134,20 @@ export class InMemoryTelemetryRepository implements TelemetryRepository {
     const requestIdentity = requestKey(input);
     const priorRequest = this.#requests.get(requestIdentity);
     if (priorRequest !== undefined) {
-      return Promise.resolve(
-        priorRequest.batchKey === identity &&
-          priorRequest.payloadDigest === input.payloadDigest
-          ? { outcome: "duplicate", receipt: priorRequest.receipt }
-          : { outcome: "conflicting-replay" },
-      );
+      if (
+        priorRequest.batchKey !== identity ||
+        priorRequest.payloadDigest !== input.payloadDigest
+      ) {
+        return Promise.resolve({ outcome: "conflicting-replay" });
+      }
+      const durableAcknowledgement = this.#acknowledgement(input);
+      return Promise.resolve({
+        outcome: "duplicate",
+        receipt: priorRequest.receipt,
+        ...(durableAcknowledgement === undefined
+          ? {}
+          : { durableAcknowledgement }),
+      });
     }
     const priorBatch = this.#batches.get(identity);
     if (priorBatch !== undefined) {
@@ -116,9 +159,13 @@ export class InMemoryTelemetryRepository implements TelemetryRepository {
         payloadDigest: input.payloadDigest,
         receipt: priorBatch.receipt,
       });
+      const durableAcknowledgement = this.#acknowledgement(input);
       return Promise.resolve({
         outcome: "duplicate",
         receipt: priorBatch.receipt,
+        ...(durableAcknowledgement === undefined
+          ? {}
+          : { durableAcknowledgement }),
       });
     }
 
@@ -154,6 +201,7 @@ export class InMemoryTelemetryRepository implements TelemetryRepository {
         gatewayId: input.binding.gatewayId,
         streamId: input.batch.streamId,
         streamEpoch: input.batch.streamEpoch,
+        topology: input.batch.topology,
         batchIdentity: input.batch.batchIdentity,
         receivedAt: input.receivedAt,
         persistedAt: input.receivedAt,
@@ -243,7 +291,42 @@ export class InMemoryTelemetryRepository implements TelemetryRepository {
         batchIdentity: input.batch.batchIdentity,
       }),
     );
-    return Promise.resolve({ outcome: "persisted", receipt });
+    const durableAcknowledgement = this.#acknowledgement(input);
+    return Promise.resolve({
+      outcome: "persisted",
+      receipt,
+      ...(durableAcknowledgement === undefined
+        ? {}
+        : { durableAcknowledgement }),
+    });
+  }
+
+  #acknowledgement(
+    input: TelemetryPersistenceInput,
+  ): CloudLinkDurableAcknowledgement | undefined {
+    const intent = input.durableAcknowledgement;
+    if (intent === undefined) return undefined;
+    const key = acknowledgementKey(input);
+    const prior = this.#durableAcknowledgements.get(key);
+    if (prior !== undefined) return prior;
+    const acknowledgement = Object.freeze({
+      outboxEventId: stableAcknowledgementId(key),
+      tenantId: input.binding.tenantId,
+      projectId: input.binding.projectId,
+      gatewayId: input.binding.gatewayId,
+      sessionId: intent.sessionId,
+      sessionEpoch: intent.sessionEpoch,
+      credentialGeneration: intent.credentialGeneration,
+      streamId: intent.streamId,
+      streamEpoch: intent.streamEpoch,
+      acknowledgedPosition: intent.acknowledgedPosition,
+      batchId: intent.batchId,
+      digest: intent.digest,
+      receiptId: acknowledgementReceiptId(intent.batchId),
+      acknowledgedAt: intent.acknowledgedAt,
+    });
+    this.#durableAcknowledgements.set(key, acknowledgement);
+    return acknowledgement;
   }
 
   queryHistory(

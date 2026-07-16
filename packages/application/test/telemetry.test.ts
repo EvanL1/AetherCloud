@@ -12,6 +12,7 @@ import {
   type TelemetryPersistenceInput,
   type TelemetryPersistenceResult,
   type TelemetryRepository,
+  TelemetryStorageUnavailableError,
 } from "../src/index.js";
 import {
   parseGatewayCredentialGeneration,
@@ -79,17 +80,49 @@ class StubRepository implements TelemetryRepository {
   persisted: TelemetryPersistenceInput | undefined;
   history: readonly PersistedTelemetryRecord[] = [];
   result: TelemetryPersistenceResult | undefined;
+  historyUnavailable = false;
 
   persist(
     input: TelemetryPersistenceInput,
   ): Promise<TelemetryPersistenceResult> {
     this.persisted = input;
+    const durableAcknowledgement = input.durableAcknowledgement;
     return Promise.resolve(
-      this.result ?? { outcome: "persisted", receipt: receipt(input) },
+      this.result ?? {
+        outcome: "persisted",
+        receipt: receipt(input),
+        ...(durableAcknowledgement === undefined
+          ? {}
+          : {
+              durableAcknowledgement: {
+                outboxEventId: "outbox:cloudlink-ack:test",
+                tenantId: input.binding.tenantId,
+                projectId: input.binding.projectId,
+                gatewayId: input.binding.gatewayId,
+                sessionId: durableAcknowledgement.sessionId,
+                sessionEpoch: durableAcknowledgement.sessionEpoch,
+                credentialGeneration:
+                  durableAcknowledgement.credentialGeneration,
+                streamId: durableAcknowledgement.streamId,
+                streamEpoch: durableAcknowledgement.streamEpoch,
+                acknowledgedPosition:
+                  durableAcknowledgement.acknowledgedPosition,
+                batchId: durableAcknowledgement.batchId,
+                digest: durableAcknowledgement.digest,
+                receiptId: `receipt:cloudlink:${durableAcknowledgement.batchId}`,
+                acknowledgedAt: durableAcknowledgement.acknowledgedAt,
+              },
+            }),
+      },
     );
   }
 
   queryHistory() {
+    if (this.historyUnavailable) {
+      return Promise.reject(
+        new TelemetryStorageUnavailableError("simulated storage failure"),
+      );
+    }
     return Promise.resolve(this.history);
   }
 }
@@ -128,6 +161,10 @@ const telemetryInput = {
   },
   streamId: "business-telemetry",
   streamEpoch: "3",
+  topology: {
+    publicationEpoch: "11",
+    snapshotDigest: "fx64:0123456789abcdef",
+  },
   retentionClass: "standard-30d",
   replay: false,
   records: [
@@ -136,10 +173,10 @@ const telemetryInput = {
       position: "10",
       sourceTimestampMs: "1784016000000",
       instanceId: "42",
+      pointKind: "telemetry",
       pointId: "7",
       quality: "good",
       value: { type: "float64", value: 21.5 },
-      model: { modelId: "aether.temperature-sensor", revision: "7" },
     },
   ],
 };
@@ -230,8 +267,58 @@ describe("telemetry application", () => {
       binding: { tenantId, projectId, gatewayId, generation: "3" },
       payloadDigest: "a".repeat(64),
       receivedAt: "2026-07-14T09:05:00.000Z",
-      batch: { recordCount: 1, replay: false },
+      batch: {
+        recordCount: 1,
+        replay: false,
+        topology: {
+          publicationEpoch: "11",
+          snapshotDigest: "fx64:0123456789abcdef",
+        },
+      },
     });
+  });
+
+  it("validates and persists an exact CloudLink acknowledgement intent with the accepted application position", async () => {
+    const fixture = makeUseCase();
+    const durableAcknowledgement = {
+      sessionId: "44444444-4444-4444-8444-444444444444",
+      sessionEpoch: "7",
+      credentialGeneration: "3",
+      streamId: "business-telemetry",
+      streamEpoch: "3",
+      acknowledgedPosition: "11",
+      acceptedTelemetryPosition: "10",
+      batchId: "batch-011",
+      digest: `sha256:${"b".repeat(64)}`,
+    };
+
+    await expect(
+      fixture.useCase.execute(commandContext, {
+        ...telemetryInput,
+        durableAcknowledgement,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(fixture.repository.persisted).toMatchObject({
+      durableAcknowledgement: {
+        ...durableAcknowledgement,
+        acknowledgedAt: "2026-07-14T09:05:00.000Z",
+      },
+    });
+
+    const mismatched = makeUseCase();
+    await expect(
+      mismatched.useCase.execute(commandContext, {
+        ...telemetryInput,
+        durableAcknowledgement: {
+          ...durableAcknowledgement,
+          acceptedTelemetryPosition: "9",
+        },
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "invalid-input" },
+    });
+    expect(mismatched.repository.persisted).toBeUndefined();
   });
 
   it("fails closed for rejected and inactive Gateway credentials", async () => {
@@ -313,6 +400,7 @@ describe("telemetry application", () => {
       gatewayId,
       streamId: persisted.batch.streamId,
       streamEpoch: persisted.batch.streamEpoch,
+      topology: persisted.batch.topology,
       batchIdentity: persisted.batch.batchIdentity,
       receivedAt: persisted.receivedAt,
       persistedAt: ingested.value.receipt.persistedAt,
@@ -345,5 +433,10 @@ describe("telemetry application", () => {
     expect(
       await query.execute({ ...context, permissions: [] }, input),
     ).toMatchObject({ ok: false, failure: { code: "permission-denied" } });
+    fixture.repository.historyUnavailable = true;
+    expect(await query.execute(context, input)).toMatchObject({
+      ok: false,
+      failure: { code: "telemetry-storage-unavailable" },
+    });
   });
 });

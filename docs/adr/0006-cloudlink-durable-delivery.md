@@ -1,7 +1,7 @@
 ---
 title: "ADR-0006: CloudLink sessions and durable delivery"
 description: Fence authenticated sessions and acknowledge cloud-edge data only after durable acceptance
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -9,8 +9,13 @@ status: normative
 
 ## Status
 
-Accepted on 2026-07-14 as a planned protocol decision. No CloudLink executable,
-Protobuf contract, or production session store is implemented yet.
+Accepted on 2026-07-14. The session domain/application/memory foundation and an
+experimental JSON/MQTT codec, bridge, ingress lifecycle, contract fixtures, and
+real-broker harness are implemented. A PostgreSQL telemetry transaction now
+persists an exact ACK outbox projection, and an application-owned leased worker
+delivers it after commit. PostgreSQL session/epoch storage, production identity,
+durable data-loss facts, backpressure, and deployed database/worker composition
+remain planned. ADR-0014 owns the experimental MQTT binding.
 
 ## Context
 
@@ -48,11 +53,13 @@ impossible.
 
 ## Consequences
 
-- PostgreSQL inbox/outbox and cursor transactions precede a production
-  CloudLink release.
+- The implemented PostgreSQL telemetry inbox/cursor/receipt/ACK transaction is
+  necessary but not sufficient for a production CloudLink release; session,
+  credential, loss-marker, and production composition durability remain gated.
 - Protocol conformance tests must cover duplicate, gap, reorder, reconnect,
   fencing, backpressure, and acknowledgement-after-crash behavior.
 - Telemetry, deployment, and Job state machines stay in their bounded contexts;
   CloudLink owns transport delivery, not their business meaning.
-- A broker may be introduced only after measured throughput or isolation needs,
-  and must preserve the same application contracts and durable cursors.
+- A transport or broker binding must preserve the same application contracts
+  and durable cursors. MQTT transport delivery never substitutes for the
+  application acknowledgement; see [ADR-0014](0014-cloudlink-mqtt-transport-binding.md).

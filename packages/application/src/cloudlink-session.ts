@@ -6,6 +6,7 @@ import {
   parseGatewayId,
   parseProjectId,
   parseProtocolVersion,
+  parseStreamEpoch,
   parseStreamId,
   parseStreamPosition,
   parseTenantId,
@@ -73,11 +74,18 @@ export interface CloudLinkSessionView {
   readonly protocolVersion?: string;
   readonly resumeCursors?: readonly Readonly<{
     streamId: string;
+    streamEpoch: string;
     position: string;
   }>[];
   readonly openedAt: UtcInstant;
   readonly activatedAt?: UtcInstant;
   readonly lastHeartbeatAt?: UtcInstant;
+}
+
+export interface CloudLinkDurableCursorView {
+  readonly streamId: string;
+  readonly streamEpoch: string;
+  readonly position: string;
 }
 
 interface CommandContext {
@@ -172,11 +180,15 @@ function decodeClientPositions(input: unknown): void {
   for (const rawCursor of input) {
     const cursor = requireRecord(rawCursor, "client position");
     const streamId = parseStreamId(cursor.streamId);
+    const streamEpoch = parseStreamEpoch(cursor.streamEpoch);
     parseStreamPosition(cursor.position);
-    if (streams.has(streamId)) {
-      throw new CloudLinkInputError("clientPositions must use unique streams");
+    const identity = `${streamId}:${streamEpoch}`;
+    if (streams.has(identity)) {
+      throw new CloudLinkInputError(
+        "clientPositions must use unique stream/epoch identities",
+      );
     }
-    streams.add(streamId);
+    streams.add(identity);
   }
 }
 
@@ -474,6 +486,74 @@ export class RecordCloudLinkHeartbeat {
       );
     }
     return { ok: true, replayed: false, value: toView(transition.value) };
+  }
+}
+
+export class RecordCloudLinkDurableCursor {
+  readonly #repository: CloudLinkSessionRepository;
+  readonly #credentialVerifier: GatewayCredentialVerifier;
+  readonly #clock: ApplicationClock;
+
+  constructor(dependencies: {
+    readonly repository: CloudLinkSessionRepository;
+    readonly credentialVerifier: GatewayCredentialVerifier;
+    readonly clock: ApplicationClock;
+  }) {
+    this.#repository = dependencies.repository;
+    this.#credentialVerifier = dependencies.credentialVerifier;
+    this.#clock = dependencies.clock;
+  }
+
+  async execute(
+    rawContext: unknown,
+    rawInput: unknown,
+  ): Promise<CloudLinkApplicationResult<CloudLinkDurableCursorView>> {
+    const decoded = decodeSafely(() => {
+      const context = decodeCommandContext(rawContext);
+      const input = requireRecord(rawInput, "CloudLink durable cursor input");
+      return {
+        context,
+        credential: decodeCredential(input.credential),
+        sessionId: parseCloudLinkSessionId(input.sessionId),
+        sessionEpoch: parseCloudLinkSessionEpoch(input.sessionEpoch),
+        cursor: {
+          streamId: parseStreamId(input.streamId),
+          streamEpoch: parseStreamEpoch(input.streamEpoch),
+          position: parseStreamPosition(input.position),
+        },
+      };
+    });
+    if (!decoded.ok) return decoded;
+    const timeFailure = validateCommandTime(
+      decoded.value.context,
+      this.#clock.now(),
+    );
+    if (timeFailure !== undefined) return { ok: false, failure: timeFailure };
+    const verified = await verifyActiveCredential(
+      this.#credentialVerifier,
+      decoded.value.credential,
+    );
+    if (!verified.ok) return verified;
+    const recorded = await this.#repository.recordDurableCursor({
+      binding: verified.value,
+      sessionId: decoded.value.sessionId,
+      sessionEpoch: decoded.value.sessionEpoch,
+      cursor: decoded.value.cursor,
+    });
+    if (recorded === "not-found") {
+      return failure("session-not-found", "CloudLink session was not found");
+    }
+    if (recorded === "stale-session") {
+      return failure(
+        "stale-cloudlink-session-epoch",
+        "CloudLink durable cursor belongs to a stale session",
+      );
+    }
+    return {
+      ok: true,
+      replayed: recorded === "replayed",
+      value: { ...decoded.value.cursor },
+    };
   }
 }
 

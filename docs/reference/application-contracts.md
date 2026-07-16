@@ -60,6 +60,8 @@ telemetry, alarm, Artifact Registry, deployment, governed Job, audit, webhook,
 and Data Export application slices; and planned later IoT product capabilities.
 Gateway registration and enrollment events are now `partial` because the
 PostgreSQL adapter writes them into the same transaction as aggregate and Audit
-state. It does not claim a production live event stream, external webhook
-sender, export worker/download interface, MCP wire server, CloudLink process or
-wire schema, migration runner, or deployed production database exists.
+state. The catalog now names the experimental CloudLink MQTT layer separately
+from production composition and joint AetherIot conformance. It does not claim a
+production live event stream, external webhook sender, export worker/download
+interface, MCP wire server, production CloudLink process, migration runner, or
+deployed production database exists.

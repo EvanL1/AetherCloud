@@ -40,6 +40,7 @@ export class NodeTelemetryBatchDigestor implements TelemetryBatchDigestor {
     const businessContent = {
       streamId: batch.streamId,
       streamEpoch: batch.streamEpoch,
+      topology: batch.topology,
       retentionClass: batch.retentionClass,
       records: batch.records,
     };

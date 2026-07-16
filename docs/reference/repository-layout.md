@@ -15,7 +15,7 @@ when their first vertical slice is implemented.
 apps/
   api/                  HTTP composition root
   mcp/                  implemented transport-neutral MCP application interface; wire root planned
-  cloud-link/           planned edge-session composition root
+  cloudlink/            experimental MQTT ingress composition; production wiring planned
   worker/               planned background-work composition root
   web/                  planned operator client
 packages/
@@ -23,11 +23,11 @@ packages/
   application/          transport-neutral use cases
   provider-conformance/ reusable Provider Adapter contract tests
   infrastructure-conformance/ reusable Infrastructure Engine contract tests
-  contracts/            planned runtime schemas and generated wire types
 adapters/
   fleet/memory/          implemented Gateway repository/token test adapters
   fleet/postgres/        implemented Gateway SQL/migration/driver adapter; production composition planned
   cloudlink/memory/      implemented session and heartbeat test adapter
+  cloudlink/mqtt/        experimental strict codec and MQTT.js transport adapter
   runtime/memory/        implemented Runtime Manifest history test adapter
   telemetry/memory/      implemented atomic telemetry conformance adapter
   alarm/memory/          implemented alarm projection conformance adapter
@@ -44,7 +44,7 @@ adapters/
   infrastructure/terraform/ planned Terraform CLI adapter
   persistence/          planned shared migration runner and object-store adapters
 infra/modules/           planned versioned provider-specific IaC modules
-proto/                   planned versioned CloudLink definitions
+contracts/cloudlink/     experimental JSON Schemas and golden fixtures
 ai/                      invariants and machine-readable documentation catalog
 skills/aether-cloud/     coding-agent workflow and routing
 docs/                    concepts, guides, reference, and decisions

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import test from "node:test";
@@ -36,6 +37,7 @@ const requiredDocuments = [
   "docs/guides/plan-infrastructure.md",
   "docs/reference/http-api.md",
   "docs/reference/application-contracts.md",
+  "docs/reference/cloudlink-mqtt-v1.md",
   "docs/reference/repository-layout.md",
   "docs/reference/terminology.md",
   "docs/adr/0001-edge-first-cloud-control-plane.md",
@@ -51,6 +53,9 @@ const requiredDocuments = [
   "docs/adr/0011-governed-capability-jobs.md",
   "docs/adr/0012-durable-audit-and-outbound-integrations.md",
   "docs/adr/0013-postgresql-control-plane-persistence.md",
+  "docs/adr/0014-cloudlink-mqtt-transport-binding.md",
+  "docs/adr/0015-cloudlink-interoperability-release-gates.md",
+  "docs/adr/0016-pinned-aethercontracts-consumption.md",
 ];
 
 function read(path) {
@@ -219,6 +224,210 @@ test("telemetry documentation separates business data, live authority, audit, an
   assert.match(observability, /not.*IoT.*telemetry/is);
   assert.match(observability, /not.*audit/is);
   assert.match(observability, /high.cardinality/i);
+});
+
+test("documentation records the implemented PostgreSQL telemetry ACK slice without passing the full CloudLink gate", () => {
+  const telemetry = read("docs/concepts/iot-telemetry.md");
+  const persistence = read(
+    "docs/concepts/persistence-and-multi-cloud-cells.md",
+  );
+  const cloudLink = read("docs/reference/cloudlink-mqtt-v1.md");
+  const migration = read(
+    "adapters/telemetry/postgres/migrations/0002_cloudlink_telemetry.sql",
+  );
+  const packageJson = JSON.parse(read("package.json"));
+
+  assert.match(telemetry, /PostgreSQL.*telemetry.*implemented/is);
+  assert.match(telemetry, /exact.*durable ACK.*outbox/is);
+  assert.match(persistence, /PostgresTelemetryRepository/);
+  assert.match(persistence, /pre-commit.*no ACK/is);
+  assert.match(persistence, /post-commit.*identical ACK/is);
+  assert.match(cloudLink, /telemetry acceptance.*PostgreSQL.*implemented/is);
+  assert.match(cloudLink, /full.*crash-durable.*gate.*blocked/is);
+  assert.match(cloudLink, /production composition.*planned/is);
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/);
+  assert.match(migration, /cloudlink_durable_ack_outbox/);
+  assert.match(
+    packageJson.scripts["test:postgres-integration"],
+    /vitest\.postgres\.config\.ts/,
+  );
+});
+
+test("CloudLink MQTT documentation preserves broker, identity, legacy, and durability boundaries", () => {
+  const source = read("docs/reference/cloudlink-mqtt-v1.md");
+  const decision = read("docs/adr/0014-cloudlink-mqtt-transport-binding.md");
+
+  assert.match(source, /experimental/i);
+  assert.match(source, /customer-selected broker/i);
+  assert.match(source, /topic identity is untrusted/i);
+  assert.match(source, /MQTT PUBACK.*transport evidence/is);
+  assert.match(source, /PostgreSQL.*planned/is);
+  assert.match(source, /distribution integrity alone.*not codec/is);
+  assert.match(source, /pnpm test:cloudlink-dual/);
+  assert.match(source, /pnpm test:cloudlink-aws-iot/);
+  assert.match(source, /AWS IoT Core/i);
+  assert.match(source, /us-west-2/i);
+  assert.match(source, /two.*X\.509/is);
+  assert.match(source, /delet.*certificat.*polic/is);
+  assert.match(source, /does not pass.*authentication.*gate/is);
+  assert.match(source, /unknown.*process-crash durability/is);
+  assert.match(source, /pending imports/i);
+  assert.match(source, /do not override AetherContracts/i);
+  assert.match(decision, /legacy.*retained/is);
+  assert.match(decision, /physical[- ]control topic/i);
+  assert.match(decision, /OpenTelemetry/i);
+
+  const packageJson = JSON.parse(read("package.json"));
+  assert.match(
+    packageJson.scripts["test:cloudlink-aws-iot"],
+    /AETHER_CLOUD_RUN_AWS_IOT_INTEGRATION=1/,
+  );
+  const awsHarness = read("scripts/run-cloudlink-aws-iot-harness.ts");
+  assert.match(awsHarness, /detach-policy/);
+  assert.match(awsHarness, /update-certificate/);
+  assert.match(awsHarness, /delete-certificate/);
+  assert.match(awsHarness, /delete-policy/);
+  assert.doesNotMatch(awsHarness, /create-thing/);
+
+  for (const path of [
+    "contracts/cloudlink/v1/contract-manifest.json",
+    "contracts/cloudlink/v1/envelope.schema.json",
+    "contracts/cloudlink/v1/session-hello.schema.json",
+    "contracts/cloudlink/v1/durable-ack.schema.json",
+    "contracts/cloudlink/v1/fixtures/session-hello.valid.json",
+    "contracts/cloudlink/v1/fixtures/telemetry-batch.valid.json",
+    "contracts/cloudlink/v1/fixtures/durable-ack.valid.json",
+  ]) {
+    assert.doesNotThrow(() => JSON.parse(read(path)), `${path} must be JSON`);
+  }
+});
+
+test("CloudLink readiness evidence references public gates and fails closed", () => {
+  const gates = JSON.parse(
+    read("contracts/cloudlink/v1/interoperability-gates.json"),
+  );
+  const authoritativeGates = JSON.parse(
+    read(
+      "contracts/aether-contracts/v0.1.0-alpha.3/compatibility/cloudlink-v1alpha1-gates.json",
+    ),
+  );
+  const authentication = JSON.parse(
+    read("contracts/cloudlink/v1/session-authentication.schema.json"),
+  );
+  const wireProfile = JSON.parse(
+    read("contracts/cloudlink/v1/wire-profile.json"),
+  );
+  const deliveryEnvelope = JSON.parse(
+    read("contracts/cloudlink/v1/envelope.schema.json"),
+  );
+  const durableAck = JSON.parse(
+    read("contracts/cloudlink/v1/durable-ack.schema.json"),
+  );
+  const fixtureManifest = JSON.parse(
+    read("contracts/cloudlink/v1/fixture-manifest.json"),
+  );
+  assert.equal(gates.schema_version, 1);
+  assert.equal(gates.contract, "aether.cloudlink");
+  assert.equal(
+    gates.authoritative_gate_definition,
+    "AetherContracts compatibility/cloudlink-v1alpha1-gates.json",
+  );
+  assert.equal(gates.default_mode, "legacy");
+  assert.equal(gates.physical_control, "forbidden");
+  assert.deepEqual(
+    Object.keys(gates.gate_evidence).sort(),
+    authoritativeGates.gates.map((gate) => gate.id).sort(),
+  );
+  assert.ok(
+    Object.values(gates.gate_evidence).every((gate) =>
+      ["blocked", "proposal", "implemented-alpha3", "passed"].includes(
+        gate.status,
+      ),
+    ),
+  );
+  for (const gate of Object.values(gates.gate_evidence)) {
+    assert.equal("depends_on" in gate, false);
+    assert.equal("exit_criteria" in gate, false);
+  }
+  assert.equal(
+    gates.gate_evidence["shared-broker-authentication"].status,
+    "proposal",
+  );
+  assert.equal(gates.gate_evidence["signed-durable-ack"].status, "blocked");
+  assert.equal(gates.gate_evidence["legacy-cutover"].status, "blocked");
+
+  assert.equal(authentication.$id, "session-authentication.schema.json");
+  assert.deepEqual(
+    authentication.$defs.authenticationMethod.oneOf.map((candidate) => {
+      const definitionName = candidate.$ref.split("/").at(-1);
+      return authentication.$defs[definitionName].properties.method.const;
+    }),
+    ["gateway-signature", "trusted-broker-attestation"],
+  );
+  assert.equal(
+    wireProfile.status,
+    "non-authoritative-aethercloud-implementation-overlay",
+  );
+  assert.equal(
+    wireProfile.authoritative_artifacts.core_profile,
+    "AetherContracts profiles/cloudlink/v1alpha1/core.json",
+  );
+  assert.equal(wireProfile.implementation.authentication, "proposal");
+  assert.equal(wireProfile.implementation.application_ack, "unsigned-alpha3");
+  assert.equal(wireProfile.implementation.legacy_default, true);
+  assert.equal(wireProfile.implementation.physical_control, "forbidden");
+  assert.equal("envelope" in wireProfile, false);
+  assert.equal("identity" in wireProfile, false);
+  assert.equal("digest" in wireProfile, false);
+  assert.equal("ack" in wireProfile, false);
+  assert.equal(deliveryEnvelope.$id, "envelope.schema.json");
+  assert.ok(deliveryEnvelope.required.includes("delivery"));
+  assert.equal(deliveryEnvelope.$defs.digest.pattern, "^sha256:[0-9a-f]{64}$");
+  assert.equal(durableAck.$id, "durable-ack.schema.json");
+  assert.equal(durableAck.properties.message_kind.const, "durable-ack");
+  assert.equal(fixtureManifest.hash_algorithm, "sha256");
+  assert.equal(fixtureManifest.fixtures.length, 25);
+  for (const fixture of fixtureManifest.fixtures) {
+    assert.equal(
+      createHash("sha256")
+        .update(read(`contracts/cloudlink/v1/fixtures/${fixture.file}`))
+        .digest("hex"),
+      fixture.sha256,
+      `${fixture.file} drifted from the fixture manifest`,
+    );
+  }
+
+  const reference = read("docs/reference/cloudlink-mqtt-v1.md");
+  assert.match(reference, /challenge.*signature/is);
+  assert.match(reference, /trusted Broker attestation/i);
+  assert.match(reference, /25 public fixture\s+bytes/i);
+  assert.match(reference, /pending imports.*empty/i);
+  assert.match(reference, /ACK loss/i);
+  assert.match(reference, /crash-durable/i);
+  assert.match(reference, /legacy.*default/is);
+  assert.match(reference, /no physical control/i);
+});
+
+test("AetherContracts documentation keeps distribution and behavior conformance distinct", () => {
+  const lock = JSON.parse(read("aether-contracts.lock.json"));
+  const decision = read("docs/adr/0016-pinned-aethercontracts-consumption.md");
+
+  assert.equal(lock.schema, "aether.contracts.consumer-lock.v1alpha1");
+  assert.equal(lock.status, "complete-consumer");
+  assert.equal(lock.release.version, "0.1.0-alpha.3");
+  assert.equal(lock.pending_imports.length, 0);
+  assert.equal(lock.release.commit.length, 40);
+  assert.equal(lock.release.bundle.sha256.length, 64);
+  assert.equal(lock.policy.conformance_claim, "distribution-only");
+  assert.equal(lock.policy.production_release, false);
+  assert.equal(lock.policy.legacy_default, true);
+  assert.equal(lock.policy.physical_control, false);
+  assert.equal(lock.imports.length, 53);
+  assert.equal(lock.pending_imports.length, 0);
+  assert.match(decision, /53 exact alpha\.3 artifacts/i);
+  assert.match(decision, /does not pass codec\/TCK/i);
+  assert.match(decision, /legacy remains default/i);
 });
 
 test("persistence documentation separates PostgreSQL cells from provider identity and analytics", () => {

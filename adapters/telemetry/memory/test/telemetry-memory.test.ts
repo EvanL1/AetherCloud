@@ -14,6 +14,8 @@ import {
   parseTelemetryStreamPosition,
   parseTenantId,
   parseThingModelRevision,
+  parseTopologyPublicationEpoch,
+  parseTopologySnapshotDigest,
   parseUtcInstant,
   type GatewayCredentialBinding,
   type TelemetryBatch,
@@ -39,6 +41,10 @@ function batch(first: string, count: number, replay = false): TelemetryBatch {
   return defineTelemetryBatch({
     streamId: parseTelemetryStreamId("business-telemetry"),
     streamEpoch: parseTelemetryStreamEpoch("3"),
+    topology: {
+      publicationEpoch: parseTopologyPublicationEpoch("11"),
+      snapshotDigest: parseTopologySnapshotDigest("fx64:0123456789abcdef"),
+    },
     retentionClass: "standard-30d",
     replay,
     records: Array.from({ length: count }, (_, offset) => ({
@@ -50,6 +56,7 @@ function batch(first: string, count: number, replay = false): TelemetryBatch {
         (1_784_016_000_000n + BigInt(offset)).toString(),
       ),
       instanceId: parseEdgeInstanceId("42"),
+      pointKind: "telemetry" as const,
       pointId: parseEdgePointId("7"),
       quality: "good" as const,
       value: { type: "float64" as const, value: 21.5 + offset },

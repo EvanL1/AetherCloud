@@ -96,6 +96,7 @@ export {
   parseCloudLinkSessionId,
   parseGatewayCredentialGeneration,
   parseProtocolVersion,
+  parseStreamEpoch,
   parseStreamId,
   parseStreamPosition,
 } from "./cloudlink-session.js";
@@ -173,6 +174,7 @@ export type {
   GatewayCredentialGeneration,
   GatewayCredentialStatus,
   ProtocolVersion,
+  StreamEpoch,
   StreamId,
   StreamPosition,
 } from "./cloudlink-session.js";
@@ -305,8 +307,11 @@ export {
   parseTelemetryStreamId,
   parseTelemetryStreamPosition,
   parseThingModelRevision,
+  parseTopologyPublicationEpoch,
+  parseTopologySnapshotDigest,
 } from "./telemetry.js";
 export type {
+  AcquisitionPointKind,
   DeviceEvent,
   DeviceEventId,
   DeviceEventPayloadValue,
@@ -331,6 +336,9 @@ export type {
   TelemetryValue,
   ThingModelReference,
   ThingModelRevision,
+  TelemetryTopologyBinding,
+  TopologyPublicationEpoch,
+  TopologySnapshotDigest,
 } from "./telemetry.js";
 export type {
   AetherRuntimeManifestV1,

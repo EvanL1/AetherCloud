@@ -22,7 +22,25 @@ agents, and the first Gateway identity and enrollment domain/application
 foundation. Transport-neutral CloudLink session/heartbeat and Runtime Manifest
 report/query foundations now add credential-derived scope, epoch fencing,
 lossless resume positions, canonical checksum verification, monotonic manifest
-history, and memory adapters. Atomic IoT telemetry ingestion/history and alarm
+history, and memory adapters. An experimental CloudLink MQTT slice adds strict
+versioned JSON codecs, topic/session binding, a MQTT.js transport, an
+application bridge, an independently startable ingress lifecycle, candidate
+Schemas/fixtures, and an opt-in real-broker transport harness. The ordered
+CloudLink interoperability gates now record provisional core fixture
+convergence while requiring shared-Broker message-origin authentication first,
+then one public alpha.3 wire profile with unsigned application ACKs. A dual
+Edge/Cloud real-Broker harness and alpha fault injection now provide opt-in
+evidence. A separate opt-in AWS IoT Core mTLS harness provisions and cleans
+ephemeral least-privilege principals while exercising the same Cloud ingress
+and Edge spool. A separate PostgreSQL telemetry slice now supplies atomic
+receipt/fact/Audit/integration-Outbox/exact-ACK evidence across pre-commit and
+post-commit failures, but the full crash-durable gate remains blocked before
+legacy cutover. The
+public AetherContracts `v0.1.0-alpha.3` release is consumed through the same
+complete, digest-pinned lock in Cloud and Edge with no pending imports. This
+proves offline distribution integrity and product fixture execution; it does
+not prove production authentication, signed ACK, full CloudLink crash
+durability, or cutover readiness. Atomic IoT telemetry ingestion/history and alarm
 projection/workflow foundations now add lossless stream positions, durable
 receipt semantics, replay/conflict/gap handling, cloud-only acknowledgement,
 and memory inbox/outbox/audit conformance adapters. An OpenTelemetry adapter
@@ -46,7 +64,8 @@ infrastructure Plan command, a dynamic plan-only OpenTofu/Terraform engine
 port, policy receipts, a deterministic conformance adapter, and a real local
 OpenTofu saved-Plan worker with bounded argv-only process execution and
 temporary-workspace cleanup. Real provider adapters, credential resolution,
-production remote State and encrypted object storage, a CloudLink wire/process,
+production remote State and encrypted object storage, production CloudLink
+identity/durability/process configuration,
 remaining durable persistence, Apply, production Gateway credentials, production
 telemetry/alarm/artifact/deployment/Job persistence, remaining public interfaces,
 scheduling, production integration delivery, and MCP transport are separate contract-first vertical
@@ -55,9 +74,12 @@ slices.
 The first PostgreSQL persistence slice now adds a parameterized Gateway
 Identity repository, explicit migration, Tenant-scoped Row-Level Security,
 optimistic revisions, a real `pg` pool boundary, and atomic aggregate, Audit,
-and Outbox writes. `managed-postgresql` is a portable Provider capability;
-provider-specific database profiles and production database composition remain
-planned.
+and Outbox writes. The telemetry PostgreSQL slice adds lossless cursor/history,
+idempotent receipts, forced RLS, Audit/integration Outbox, an exact durable ACK
+outbox, and a bounded leased delivery use case. Its PostgreSQL 18 tests prove no
+ACK before commit and identical ACK recovery after an uncertain commit.
+`managed-postgresql` is a portable Provider capability; production database and
+worker composition plus provider-specific database profiles remain planned.
 
 ## Development
 
@@ -91,6 +113,8 @@ readiness endpoint.
 - [Operational observability](docs/concepts/operational-observability.md)
 - [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md)
 - [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md)
+- [Pre-release CloudLink MQTT v1](docs/reference/cloudlink-mqtt-v1.md)
+- [CloudLink interoperability release gates](docs/adr/0015-cloudlink-interoperability-release-gates.md)
 - [IoT Cloud vertical-slice roadmap](docs/guides/iot-cloud-roadmap.md)
 - [Multi-cloud fusion](docs/concepts/multi-cloud-fusion.md)
 - [Edge, cloud, and provider authority](docs/concepts/edge-cloud-boundary.md)
@@ -119,13 +143,20 @@ certificates. CloudLink
 session/heartbeat, Runtime Manifest, telemetry ingestion/history, alarm
 projection/workflow, Artifact Registry publication/query, single-target
 deployment, and governed capability Jobs are implemented as
-domain/application contracts with memory adapters. Audit search is additionally
+domain/application contracts with memory adapters. Telemetry also has a bounded
+PostgreSQL repository and exact ACK-delivery slice, without a production
+composition root. Audit search is additionally
 exposed through authenticated JSON and finite resumable SSE routes; webhook
 subscription/delivery and data export are inner-layer foundations only. The MCP
-resource/tool application interface is implemented without a wire server. No
-CloudLink wire, long-running CloudLink/worker composition root, public fleet
-endpoint, or general production persistence exists. Most public Tenant APIs,
-production telemetry storage, production artifact stores/signers, scheduling,
+resource/tool application interface is implemented without a wire server. The
+experimental CloudLink MQTT codec/ingress and complete digest-pinned alpha.3
+contract adoption exist. Production key lifecycle, a signed-ACK profile,
+production CloudLink process configuration, complete session/loss durability,
+and full production crash-restart proof do not exist. The consumer dual Edge/Cloud harness is
+development evidence only. The candidate is experimental; legacy remains the default and no
+physical control is part of this milestone. No long-running worker root, public fleet endpoint, or general
+production persistence exists. Most public Tenant APIs,
+production telemetry composition and analytics, production artifact stores/signers, scheduling,
 Job delivery, and the MCP transport runtime also remain planned. OpenTelemetry
 instrumentation is partial and does not replace business telemetry or audit.
 IoT telemetry is product data and remains separate from sampled operational

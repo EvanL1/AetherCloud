@@ -136,3 +136,44 @@ These rules are more stable than the current directory layout.
     capabilities, one Tenant has explicit home-cell write authority, and
     cross-cloud failover or migration never becomes an implicit synchronous
     transaction in a CloudLink acknowledgement path.
+54. MQTT topic identity and Broker delivery are not Gateway authorization or
+    durable business acceptance. Retained or non-QoS-1 CloudLink uplinks fail
+    closed. Generic shared-Broker mode requires challenge/Gateway signature at
+    establishment and session-bound Gateway signatures on later uplinks. The
+    only alternative is configured trusted-adapter origin evidence outside the
+    payload for every delivered publish. Per-Gateway ACLs are defense in depth,
+    not origin proof.
+55. The legacy AetherIot MQTT adapter remains a separate migration surface.
+    CloudLink cannot silently reinterpret legacy topics, and removal requires a
+    later ADR, joint conformance, rollback evidence, and an elapsed support
+    window.
+56. Authentication is replay bounded. Generic shared-Broker sessions use a
+    Cloud challenge, a Gateway establishment signature, per-uplink
+    session-bound signatures, and Cloud-signed challenges. Alpha.3 application
+    ACKs are unsigned. Proofs may
+    appear only in their declared fields; enrollment tokens and private keys
+    never enter payloads or logs.
+57. An alpha.3 application ACK exactly binds the verified session, stream epoch, contiguous
+    position, batch identity, business digest, and committed Cloud receipt and
+    must be recoverable from a production durable outbox before production use.
+    No such production evidence exists yet. MQTT PUBACK or an in-memory receipt
+    cannot authorize deletion from the edge spool.
+58. AetherContracts owns the gate definitions. This repository records only
+    local readiness and evidence; product overlay order or status cannot change
+    public conformance or authorize legacy cutover.
+59. CloudLink conformance and migration add no physical-control topic, direct
+    SHM write, or direct device-register operation.
+60. `contracts/cloudlink/v1` contains exact alpha.3 imports plus
+    non-authoritative AetherCloud overlays. Fixture evidence does not implement
+    production key lifecycle, signed ACK, or crash durability. Legacy remains
+    the default.
+61. Shared contract authority is the digest-pinned AetherContracts release.
+    AetherCloud and AetherIot keep the same closed consumer lock; product-local
+    manifests, wire profiles, authentication drafts, and gates cannot redefine
+    the public core.
+62. Complete contract distribution integrity and fixture execution are not
+    production state-machine, authentication, signed-ACK, real-Broker, or
+    crash-durability conformance.
+63. Contract consumption never follows `main`, `latest`, a floating tag, or a
+    version range and never falls back to a sibling checkout. Legacy remains
+    default, and contract adoption adds no physical-control operation.

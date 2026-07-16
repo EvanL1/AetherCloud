@@ -1,19 +1,27 @@
 import {
   InvalidDomainValueError,
   defineTelemetryBatch,
+  parseCloudLinkSessionEpoch,
+  parseCloudLinkSessionId,
   parseDeviceEventId,
   parseEdgeInstanceId,
   parseEdgePointId,
   parseGatewayId,
+  parseGatewayCredentialGeneration,
   parseProjectId,
   parseRetentionClass,
   parseSourceTimestampMs,
+  parseStreamEpoch,
+  parseStreamId,
+  parseStreamPosition,
   parseTelemetryQuality,
   parseTelemetryStreamEpoch,
   parseTelemetryStreamId,
   parseTelemetryStreamPosition,
   parseTenantId,
   parseThingModelRevision,
+  parseTopologyPublicationEpoch,
+  parseTopologySnapshotDigest,
   parseUtcInstant,
 } from "@aether-cloud/domain";
 import type {
@@ -25,6 +33,11 @@ import type {
   ThingModelReference,
   UtcInstant,
 } from "@aether-cloud/domain";
+
+import type {
+  CloudLinkDurableAcknowledgement,
+  CloudLinkDurableAcknowledgementIntent,
+} from "./cloudlink-durable-ack-repository.js";
 
 import {
   GET_TELEMETRY_HISTORY_QUERY,
@@ -40,6 +53,7 @@ import type {
   TelemetryPersistenceResult,
   TelemetryRepository,
 } from "./telemetry-repository.js";
+import { TelemetryStorageUnavailableError } from "./telemetry-repository.js";
 
 type TelemetryApplicationFailureCode =
   | "command-expired"
@@ -71,6 +85,7 @@ export interface IngestTelemetryBatchValue {
   readonly disposition: "duplicate" | "persisted";
   readonly durablyAcknowledged: true;
   readonly receipt: TelemetryIngestionReceipt;
+  readonly durableAcknowledgement?: CloudLinkDurableAcknowledgement;
 }
 
 export interface TelemetryHistoryView {
@@ -184,6 +199,85 @@ function decodeModel(input: unknown): ThingModelReference {
   };
 }
 
+function decodeOptionalModel(input: unknown): ThingModelReference | undefined {
+  return input === undefined ? undefined : decodeModel(input);
+}
+
+function decodeTopology(input: unknown) {
+  const record = requireRecord(input, "telemetry topology binding");
+  requireExactKeys(
+    record,
+    ["publicationEpoch", "snapshotDigest"],
+    "telemetry topology binding",
+  );
+  return {
+    publicationEpoch: parseTopologyPublicationEpoch(record.publicationEpoch),
+    snapshotDigest: parseTopologySnapshotDigest(record.snapshotDigest),
+  };
+}
+
+type DecodedDurableAcknowledgementIntent = Omit<
+  CloudLinkDurableAcknowledgementIntent,
+  "acknowledgedAt"
+>;
+
+function decodeDurableAcknowledgementIntent(
+  input: unknown,
+): DecodedDurableAcknowledgementIntent {
+  const record = requireRecord(input, "durable acknowledgement intent");
+  requireExactKeys(
+    record,
+    [
+      "acknowledgedPosition",
+      "acceptedTelemetryPosition",
+      "batchId",
+      "credentialGeneration",
+      "digest",
+      "sessionEpoch",
+      "sessionId",
+      "streamEpoch",
+      "streamId",
+    ],
+    "durable acknowledgement intent",
+  );
+  const digest = requireString(record.digest, "delivery digest", 71);
+  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) {
+    throw new TelemetryInputError(
+      "delivery digest must be an algorithm-qualified lowercase SHA-256 digest",
+    );
+  }
+  const batchId = requireString(record.batchId, "delivery batchId", 128);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(batchId)) {
+    throw new TelemetryInputError(
+      "delivery batchId must be a bounded identifier",
+    );
+  }
+  return {
+    sessionId: parseCloudLinkSessionId(record.sessionId),
+    sessionEpoch: parseCloudLinkSessionEpoch(record.sessionEpoch),
+    credentialGeneration: parseGatewayCredentialGeneration(
+      record.credentialGeneration,
+    ),
+    streamId: parseStreamId(record.streamId),
+    streamEpoch: parseStreamEpoch(record.streamEpoch),
+    acknowledgedPosition: parseStreamPosition(record.acknowledgedPosition),
+    acceptedTelemetryPosition: parseTelemetryStreamPosition(
+      record.acceptedTelemetryPosition,
+    ),
+    batchId,
+    digest,
+  };
+}
+
+function decodePointKind(input: unknown): "status" | "telemetry" {
+  if (!(input === "status" || input === "telemetry")) {
+    throw new TelemetryInputError(
+      "pointKind must be acquisition-owned telemetry or status",
+    );
+  }
+  return input;
+}
+
 function decodePointValue(
   input: unknown,
 ): Extract<TelemetryRecord, { kind: "point-sample" }>["value"] {
@@ -230,13 +324,15 @@ function decodeEventPayload(
 function decodeTelemetryRecord(input: unknown): TelemetryRecord {
   const record = requireRecord(input, "telemetry record");
   if (record.kind === "point-sample") {
+    const hasModel = record.model !== undefined;
     requireExactKeys(
       record,
       [
         "instanceId",
         "kind",
-        "model",
+        ...(hasModel ? ["model"] : []),
         "pointId",
+        "pointKind",
         "position",
         "quality",
         "sourceTimestampMs",
@@ -244,18 +340,21 @@ function decodeTelemetryRecord(input: unknown): TelemetryRecord {
       ],
       "point sample",
     );
+    const model = decodeOptionalModel(record.model);
     return {
       kind: "point-sample",
       position: parseTelemetryStreamPosition(record.position),
       sourceTimestampMs: parseSourceTimestampMs(record.sourceTimestampMs),
       instanceId: parseEdgeInstanceId(record.instanceId),
+      pointKind: decodePointKind(record.pointKind),
       pointId: parseEdgePointId(record.pointId),
       quality: parseTelemetryQuality(record.quality),
       value: decodePointValue(record.value),
-      model: decodeModel(record.model),
+      ...(model === undefined ? {} : { model }),
     };
   }
   if (record.kind === "device-event") {
+    const hasModel = record.model !== undefined;
     requireExactKeys(
       record,
       [
@@ -263,13 +362,14 @@ function decodeTelemetryRecord(input: unknown): TelemetryRecord {
         "eventType",
         "instanceId",
         "kind",
-        "model",
+        ...(hasModel ? ["model"] : []),
         "payload",
         "position",
         "sourceTimestampMs",
       ],
       "device event",
     );
+    const model = decodeOptionalModel(record.model);
     return {
       kind: "device-event",
       position: parseTelemetryStreamPosition(record.position),
@@ -278,7 +378,7 @@ function decodeTelemetryRecord(input: unknown): TelemetryRecord {
       eventType: requireString(record.eventType, "eventType", 128),
       instanceId: parseEdgeInstanceId(record.instanceId),
       payload: decodeEventPayload(record.payload),
-      model: decodeModel(record.model),
+      ...(model === undefined ? {} : { model }),
     };
   }
   throw new TelemetryInputError("telemetry record kind is unsupported");
@@ -286,15 +386,18 @@ function decodeTelemetryRecord(input: unknown): TelemetryRecord {
 
 function decodeIngestInput(input: unknown) {
   const record = requireRecord(input, "telemetry ingest input");
+  const hasDurableAcknowledgement = record.durableAcknowledgement !== undefined;
   requireExactKeys(
     record,
     [
       "credential",
+      ...(hasDurableAcknowledgement ? ["durableAcknowledgement"] : []),
       "records",
       "replay",
       "retentionClass",
       "streamEpoch",
       "streamId",
+      "topology",
     ],
     "telemetry ingest input",
   );
@@ -320,11 +423,67 @@ function decodeIngestInput(input: unknown) {
     batch: defineTelemetryBatch({
       streamId: parseTelemetryStreamId(record.streamId),
       streamEpoch: parseTelemetryStreamEpoch(record.streamEpoch),
+      topology: decodeTopology(record.topology),
       retentionClass: parseRetentionClass(record.retentionClass),
       replay: record.replay,
       records: record.records.map(decodeTelemetryRecord),
     }),
+    ...(hasDurableAcknowledgement
+      ? {
+          durableAcknowledgement: decodeDurableAcknowledgementIntent(
+            record.durableAcknowledgement,
+          ),
+        }
+      : {}),
   };
+}
+
+function durableAcknowledgementForPersistence(
+  decoded: Readonly<{
+    batch: ReturnType<typeof defineTelemetryBatch>;
+    durableAcknowledgement?: DecodedDurableAcknowledgementIntent;
+  }>,
+  binding: GatewayCredentialBinding,
+  acknowledgedAt: UtcInstant,
+): CloudLinkDurableAcknowledgementIntent | undefined {
+  const intent = decoded.durableAcknowledgement;
+  if (intent === undefined) return undefined;
+  if (
+    intent.credentialGeneration !== binding.generation ||
+    String(intent.streamId) !== decoded.batch.streamId ||
+    String(intent.streamEpoch) !== decoded.batch.streamEpoch ||
+    intent.acceptedTelemetryPosition !== decoded.batch.lastPosition
+  ) {
+    throw new TelemetryInputError(
+      "durable acknowledgement intent does not match the verified telemetry delivery",
+    );
+  }
+  return { ...intent, acknowledgedAt };
+}
+
+function durableAcknowledgementMatches(
+  acknowledgement: CloudLinkDurableAcknowledgement,
+  intent: CloudLinkDurableAcknowledgementIntent,
+  binding: GatewayCredentialBinding,
+): boolean {
+  return (
+    acknowledgement.outboxEventId.length >= 8 &&
+    acknowledgement.outboxEventId.length <= 128 &&
+    acknowledgement.tenantId === binding.tenantId &&
+    acknowledgement.projectId === binding.projectId &&
+    acknowledgement.gatewayId === binding.gatewayId &&
+    acknowledgement.sessionId === intent.sessionId &&
+    acknowledgement.sessionEpoch === intent.sessionEpoch &&
+    acknowledgement.credentialGeneration === intent.credentialGeneration &&
+    acknowledgement.streamId === intent.streamId &&
+    acknowledgement.streamEpoch === intent.streamEpoch &&
+    acknowledgement.acknowledgedPosition === intent.acknowledgedPosition &&
+    acknowledgement.batchId === intent.batchId &&
+    acknowledgement.digest === intent.digest &&
+    acknowledgement.receiptId.length >= 8 &&
+    acknowledgement.receiptId.length <= 128 &&
+    acknowledgement.acknowledgedAt <= intent.acknowledgedAt
+  );
 }
 
 function decodeQueryContext(input: unknown): QueryContext {
@@ -481,12 +640,23 @@ export class IngestTelemetryBatch {
         "telemetry digest adapter returned an invalid SHA-256 digest",
       );
     }
+    const durableAcknowledgement = decodeSafely(() =>
+      durableAcknowledgementForPersistence(
+        decoded.value.input,
+        verified.value,
+        now,
+      ),
+    );
+    if (!durableAcknowledgement.ok) return durableAcknowledgement;
     const persisted = await this.#repository.persist({
       requestId: decoded.value.context.requestId,
       binding: verified.value,
       batch: decoded.value.input.batch,
       payloadDigest,
       receivedAt: now,
+      ...(durableAcknowledgement.value === undefined
+        ? {}
+        : { durableAcknowledgement: durableAcknowledgement.value }),
     });
     if (
       persisted.outcome !== "persisted" &&
@@ -508,6 +678,24 @@ export class IngestTelemetryBatch {
         "telemetry repository returned a mismatched durable receipt",
       );
     }
+    if (
+      (durableAcknowledgement.value === undefined &&
+        persisted.durableAcknowledgement !== undefined) ||
+      (durableAcknowledgement.value !== undefined &&
+        persisted.durableAcknowledgement === undefined) ||
+      (durableAcknowledgement.value !== undefined &&
+        persisted.durableAcknowledgement !== undefined &&
+        !durableAcknowledgementMatches(
+          persisted.durableAcknowledgement,
+          durableAcknowledgement.value,
+          verified.value,
+        ))
+    ) {
+      return failure(
+        "invalid-telemetry-repository-result",
+        "telemetry repository returned a mismatched durable acknowledgement",
+      );
+    }
     return {
       ok: true,
       replayed: persisted.outcome === "duplicate",
@@ -515,6 +703,11 @@ export class IngestTelemetryBatch {
         disposition: persisted.outcome,
         durablyAcknowledged: true,
         receipt: persisted.receipt,
+        ...(persisted.durableAcknowledgement === undefined
+          ? {}
+          : {
+              durableAcknowledgement: persisted.durableAcknowledgement,
+            }),
       },
     };
   }
@@ -575,7 +768,18 @@ export class GetTelemetryHistory {
         `permission ${GET_TELEMETRY_HISTORY_QUERY.permission} is required`,
       );
     }
-    const records = await this.#repository.queryHistory(decoded.value.query);
+    let records: readonly PersistedTelemetryRecord[];
+    try {
+      records = await this.#repository.queryHistory(decoded.value.query);
+    } catch (error: unknown) {
+      if (error instanceof TelemetryStorageUnavailableError) {
+        return failure(
+          "telemetry-storage-unavailable",
+          "telemetry persistence is unavailable",
+        );
+      }
+      throw error;
+    }
     if (
       records.some(
         (record) =>

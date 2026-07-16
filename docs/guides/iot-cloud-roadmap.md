@@ -77,11 +77,19 @@ production database deployment, HTTP enrollment, CloudLink, or device control.
 ## Phase 2: CloudLink heartbeat and session
 
 **Current status.** The transport-neutral domain/application/memory foundation
-is implemented: active credential verification through a port, protocol
-selection, lossless epochs and cursors, old-session fencing, reconnect resume,
-heartbeat, and current-session query. The composition root, wire contract,
-production credential lifecycle, timeout scheduler, PostgreSQL inbox/cursors,
-durable audit, and backpressure remain planned, so Phase 2 is not complete.
+implements credential verification through a port, protocol selection, lossless
+epochs/cursors, fencing, resume, heartbeat, and session query. An experimental
+JSON/MQTT codec, broker adapter, application bridge, ingress lifecycle, Schemas,
+fixtures, and real-broker harness are also implemented. Production credential
+lifecycle, shared AetherIot conformance, timeout scheduler, PostgreSQL
+session/epoch state, durable data-loss facts, multi-instance ownership, and
+backpressure remain planned, so Phase 2 is not complete. The accepted-telemetry
+PostgreSQL inbox/cursor/receipt/ACK transaction and delivery use case are
+implemented, but they do not complete session durability. ADR-0015 fixes the release sequence:
+shared-Broker origin authentication, one joint wire profile, identical
+fixtures, a dual Edge/Cloud Broker harness, fault injection, crash-durable ACK
+persistence, then explicit legacy cutover. The target profile is not yet the
+implemented codec.
 
 **Observable value.** An operator sees authenticated connection freshness, and
 a Gateway reconnects without replaying already durable envelopes.
@@ -89,31 +97,50 @@ a Gateway reconnects without replaying already durable envelopes.
 **Model.** `CredentialBinding`, `SessionEpoch`, `ProtocolVersion`,
 `StreamCursor`, `HeartbeatObservation`, `IngressInbox`, and flow-control credit.
 
-**API and protocol.** Add the first versioned CloudLink handshake, negotiation,
-heartbeat, resume, envelope, and acknowledgement schema only after review. Add
-read-only session queries through application use cases.
+**API and protocol.** The provisional experimental core binding implements
+session hello/accepted, heartbeat/ACK, Runtime Manifest, Point telemetry,
+durable ACK, replay request, and data-loss wire shapes. Alpha.3 ACKs are
+unsigned. Production challenge/per-uplink authentication remains blocked; a
+future Cloud-signed ACK requires a new protocol version. Durable data-loss
+persistence, multi-sample Cloud indexing, and credit messages require later
+application work. Read-only session queries already use application use cases.
 
-**Persistence.** PostgreSQL session, epoch, inbox, and cursor adapter; socket
-state remains local to an independent CloudLink composition root.
+**Persistence.** The accepted-telemetry PostgreSQL inbox, cursor, receipt, Audit,
+integration Outbox, and exact ACK outbox are implemented. PostgreSQL session,
+epoch, data-loss, and multi-instance ownership remain planned; socket state
+remains local to an independent CloudLink composition root.
 
-**Operational observability.** Add composition-root-owned no-op/OpenTelemetry
-observer adapters, optional W3C Trace Context, active-session and handshake
-metrics, bounded export, and exporter failure isolation. No Collector is needed
-by default.
+**Operational observability.** A neutral failure-isolated ingress observer is
+implemented. Wire it to the existing no-op/OpenTelemetry runtime with optional
+W3C Trace Context, active-session and handshake metrics, and bounded export. No
+Collector is needed by default.
 
 **Security.** Credential verifier port, revocation check, new-session fencing,
-protocol allow-list, bounded message/window limits, safe int64 representation.
+protocol allow-list, bounded message/window limits, canonical uint64 strings,
+authenticated per-Gateway Broker ACLs, and optional verified out-of-band
+principal metadata from reviewed connector/Broker adapters. The current hello
+proof is structural only. Generic shared-Broker mode requires a jointly frozen
+establishment signature and a session-bound Gateway signature on every uplink;
+trusted per-publish Broker attestation is the reviewed alternative. Topic or
+payload identity never supplies authorization. Exact signing projections, key
+rotation, and revocation remain gates.
 
-**Tests.** Duplicate, conflicting duplicate, gap, reorder window, old epoch,
-simultaneous connections, crash before/after durable acknowledgement,
-backpressure, heartbeat timeout, reconnect resume, missing trace context,
-forbidden baggage authorization, redaction, and exporter loss.
+**Tests.** Both repositories first close every pending AetherContracts import
+and execute the complete identical valid/invalid fixture set. One real
+Broker then runs the Edge harness and Cloud ingress while injecting disconnect,
+ACK loss, Edge/Cloud process restart, duplicate delivery, conflicting digest,
+and data loss. Unit coverage additionally includes gap, reorder window, old
+epoch, simultaneous connections, backpressure, heartbeat timeout, missing
+trace context, forbidden baggage authorization, redaction, and exporter loss.
 
-**Done when.** The CloudLink root runs independently, an authenticated fixture
-resumes from the durable cursor, and no test requires a real edge device.
+**Done when.** The independent CloudLink root and AetherIot harness resume from
+the PostgreSQL durable cursor, a pre-commit crash emits no ACK, a post-commit
+crash republishes one stable identical ACK, and every ordered interoperability gate
+passes. The external-service-free default suite remains available separately.
 
-**Not included.** Telemetry business schemas, artifact delivery, arbitrary RPC,
-or physical commands.
+**Not included.** Artifact delivery, arbitrary RPC, physical commands, direct
+SHM writes, or device-register writes. Legacy remains the default until the
+phase is complete.
 
 ## Phase 3: Runtime manifest and capability catalog
 
@@ -159,9 +186,13 @@ Entity/Relation/Attribute store.
 **Current status.** The protocol-neutral domain/application slice, canonical
 digest, memory inbox/history/outbox/audit adapter, durable receipt, duplicate
 and conflicting replay handling, gap/coalescing behavior, quota, scoped history
-query, and OpenTelemetry ingestion decorator are implemented. PostgreSQL,
-CloudLink wire, public HTTP, production audit/outbox, downsampling, and export
-remain planned, so the production phase is partial.
+query, OpenTelemetry ingestion decorator, edge-native Point identity, topology
+binding, and experimental CloudLink MQTT mapping are implemented. PostgreSQL,
+accepted-fact/history/cursor storage, Audit/integration Outbox, exact ACK outbox,
+and a bounded delivery use case are also implemented and PostgreSQL 18 verified.
+Public HTTP, production database/worker composition, durable data-loss,
+multi-sample mapping, downsampling, and export remain planned, so the production
+phase is partial.
 
 **Observable value.** Tenants query replay-safe Point and device-event history
 without confusing it with authoritative edge live state.
@@ -170,13 +201,16 @@ without confusing it with authoritative edge live state.
 `StreamEpoch`, lossless `StreamPosition`, `IngestionReceipt`, `RetentionClass`,
 and gap marker.
 
-**API and protocol.** Protocol-neutral ingest command and history/cursor queries
-first; a versioned CloudLink envelope only after review with AetherIot. Durable
-ack follows application acceptance.
+**API and protocol.** Protocol-neutral ingest and history queries plus an
+experimental versioned MQTT envelope are implemented. The envelope remains a
+pre-release candidate. Durable ACK follows application acceptance; the bridge
+can use the exact PostgreSQL-persisted projection, while authentication and
+production composition remain gated.
 
-**Persistence.** PostgreSQL inbox, cursor, metadata, policies, initial bounded
-history, audit, and outbox; raw/cold batches in object storage when justified;
-a replaceable history-store port.
+**Persistence.** PostgreSQL inbox, cursor, metadata, quota, initial bounded
+history, Audit, integration Outbox, and exact ACK outbox are implemented;
+raw/cold batches may move to object storage when justified through a replaceable
+history-store port.
 
 **Security.** Credential-derived Tenant/Gateway scope, decompression and batch
 limits, canonical int64 encoding, quota, retention, payload decoding, and
@@ -191,7 +225,8 @@ fact or event; history exposes source/ingest time, position, quality, and known
 gaps; no code presents it as live authority.
 
 **Not included.** Cloud live-state authority, cloud deterministic rules,
-high-cardinality Point metrics, or a fabricated CloudLink schema.
+high-cardinality Point metrics, or a claim that the experimental schema is a
+released cross-repository contract.
 
 ## Phase 5: Alarm projection
 

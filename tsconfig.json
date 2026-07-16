@@ -22,7 +22,9 @@
     "adapters/**/*.ts",
     "apps/**/*.ts",
     "packages/**/*.ts",
+    "scripts/**/*.ts",
     "vitest.config.ts",
+    "vitest.mqtt.config.ts",
     "vitest.opentofu.config.ts",
     "vitest.postgres.config.ts"
   ]

@@ -1,7 +1,7 @@
 ---
 title: PostgreSQL persistence and multi-cloud cells
-description: Place portable transactional authority in one control-plane cell while evolving telemetry and provider database profiles independently
-updated: 2026-07-15
+description: Place Gateway and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -95,6 +95,31 @@ opens a production database, runs migrations, exposes Gateway HTTP routes, or
 delivers the Outbox. Production roles, credentials, pool sizing, timeouts,
 backup/restore testing, managed-provider profiles, and continuously provisioned
 integration infrastructure remain planned.
+
+## Implemented telemetry and CloudLink ACK slice
+
+`PostgresTelemetryRepository` implements the first crash-durable telemetry
+acceptance slice. One Tenant-scoped transaction writes the ingress idempotency
+identity, batch receipt, stream and contiguous cursor state, accepted records,
+required Audit event, integration Outbox event, and the exact CloudLink durable
+ACK outbox row. Duplicate replay returns and requeues the same stored ACK rather
+than inserting a second fact.
+
+The adapter uses parameterized SQL, lossless `numeric(20,0)` protocol
+positions, composite Tenant keys and foreign keys, forced Row-Level Security,
+bounded reorder and quota checks, and a lease-based ACK delivery repository.
+The application-owned delivery use case validates claimed adapter output,
+publishes sequentially, records completion only after publish succeeds, and
+releases failures with a sanitized code.
+
+The opt-in PostgreSQL 18 tests use a non-superuser/non-`BYPASSRLS` application
+role and inject failures on both sides of commit. A pre-commit failure leaves no
+telemetry fact and no ACK. A post-commit uncertain result leaves one committed
+fact, and a worker later publishes the identical ACK; replay does not create a
+second fact. This evidence covers accepted telemetry only. Production database
+and worker composition, CloudLink session/epoch persistence, data-loss facts,
+multi-sample mapping, and a full production crash-durable release gate remain
+planned.
 
 Read [ADR-0013](../adr/0013-postgresql-control-plane-persistence.md) for the
 decision and [Gateway identity and enrollment](gateway-identity-and-enrollment.md)

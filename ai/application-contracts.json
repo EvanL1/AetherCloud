@@ -128,13 +128,18 @@
       "audit": "required",
       "authorization": "gateway-credential",
       "status": "partial",
-      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "experimental-cloudlink-mqtt"
+      ],
       "missing_layers": [
         "production-credential-binding",
         "postgresql",
         "durable-audit",
-        "cloudlink-wire",
-        "cloudlink-composition-root"
+        "joint-aetheriot-conformance",
+        "production-cloudlink-composition"
       ]
     },
     {
@@ -148,13 +153,18 @@
       "audit": "required",
       "authorization": "gateway-credential",
       "status": "partial",
-      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "experimental-cloudlink-mqtt"
+      ],
       "missing_layers": [
         "production-credential-binding",
         "postgresql",
         "durable-audit",
-        "cloudlink-wire",
-        "cloudlink-composition-root"
+        "joint-aetheriot-conformance",
+        "production-cloudlink-composition"
       ]
     },
     {
@@ -176,12 +186,17 @@
       "audit": "required",
       "authorization": "gateway-credential",
       "status": "partial",
-      "implemented_layers": ["domain", "application", "memory-adapter"],
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "experimental-cloudlink-mqtt"
+      ],
       "missing_layers": [
         "postgresql",
         "durable-audit",
         "outbox",
-        "cloudlink-wire"
+        "joint-aetheriot-conformance"
       ]
     },
     {
@@ -207,13 +222,14 @@
         "domain",
         "application",
         "memory-inbox-history-outbox-audit",
-        "opentelemetry-decorator"
+        "opentelemetry-decorator",
+        "experimental-cloudlink-mqtt"
       ],
       "missing_layers": [
         "postgresql",
         "durable-audit",
-        "cloudlink-wire",
-        "production-composition-root"
+        "joint-aetheriot-conformance",
+        "production-cloudlink-composition"
       ]
     },
     {
