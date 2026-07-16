@@ -1,7 +1,7 @@
 ---
 title: "ADR-0007: Durable IoT telemetry ingestion"
 description: Accept replayed edge telemetry atomically and acknowledge only after durable business acceptance
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -9,9 +9,15 @@ status: normative
 
 ## Status
 
-Accepted on 2026-07-14. The protocol-neutral domain/application contract and
-in-memory conformance adapter are implemented. No production database,
-CloudLink wire schema, or public query transport is implemented yet.
+Accepted on 2026-07-14. The protocol-neutral domain/application contract,
+in-memory conformance adapter, experimental CloudLink MQTT point-batch mapping,
+and PostgreSQL telemetry repository/migration are implemented. The PostgreSQL
+transaction persists accepted facts, replay identity, cursor, Audit,
+integration Outbox, and the exact durable ACK outbox; PostgreSQL 18 fault tests
+cover rollback before commit and identical ACK recovery after an uncertain
+commit. Public query transport, production database/worker composition,
+multi-sample mapping, data-loss persistence, production authentication, and any
+future signed-ACK profile remain incomplete.
 
 ## Context
 
@@ -80,9 +86,11 @@ and credentials are excluded from every telemetry record and diagnostic signal.
 ## Compatibility and migration
 
 AetherIot has a runtime manifest, point model, local durable outbox, and a
-compatibility MQTT uplink, but no mutually implemented CloudLink telemetry wire
-schema. The future wire contract must be reviewed against both repositories
-and versioned; the legacy MQTT payload is not silently adopted as CloudLink v1.
+compatibility MQTT uplink, but no mutually accepted CloudLink telemetry wire
+schema. The experimental MQTT contract must be executed unchanged against both
+repositories before release; the legacy MQTT payload is not silently adopted as
+CloudLink v1. Edge-native Points preserve acquisition kind and topology
+publication evidence without fabricating a Thing Model revision.
 
 ## Consequences
 
@@ -91,5 +99,6 @@ and versioned; the legacy MQTT payload is not silently adopted as CloudLink v1.
 - Cursor and digest indexes become production correctness requirements.
 - Missing history is explicit through gaps rather than concealed by a latest
   value.
-- The first memory adapter proves semantics but does not satisfy production
-  durability.
+- The memory adapter proves semantics but does not satisfy production
+  durability. The PostgreSQL telemetry slice proves its bounded transaction and
+  recovery contract, not the still-open full CloudLink production gate.

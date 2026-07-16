@@ -1,6 +1,8 @@
 import type {
   CloudLinkSession,
+  CloudLinkSessionEpoch,
   CloudLinkSessionId,
+  CloudLinkStreamCursor,
   GatewayCredentialBinding,
   GatewayId,
   ProjectId,
@@ -57,6 +59,19 @@ export type CloudLinkSessionReplaceResult =
   | "replaced"
   | "version-conflict";
 
+export interface RecordCloudLinkDurableCursorRepositoryInput {
+  readonly binding: GatewayCredentialBinding;
+  readonly sessionId: CloudLinkSessionId;
+  readonly sessionEpoch: CloudLinkSessionEpoch;
+  readonly cursor: CloudLinkStreamCursor;
+}
+
+export type RecordCloudLinkDurableCursorRepositoryResult =
+  | "not-found"
+  | "recorded"
+  | "replayed"
+  | "stale-session";
+
 export interface CloudLinkSessionRepository {
   open(
     input: OpenCloudLinkSessionRepositoryInput,
@@ -73,6 +88,9 @@ export interface CloudLinkSessionRepository {
     session: CloudLinkSession,
     expectedRevision: number,
   ): Promise<CloudLinkSessionReplaceResult>;
+  recordDurableCursor(
+    input: RecordCloudLinkDurableCursorRepositoryInput,
+  ): Promise<RecordCloudLinkDurableCursorRepositoryResult>;
 }
 
 export interface CloudLinkSessionIdGenerator {

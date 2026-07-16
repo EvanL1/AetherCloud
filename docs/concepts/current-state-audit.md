@@ -1,21 +1,22 @@
 ---
 title: Current implementation audit
-description: Distinguish executable AetherCloud layers from reviewed contracts and missing production surfaces
-updated: 2026-07-15
+description: Distinguish executable AetherCloud layers, Broker evidence, and the PostgreSQL telemetry ACK slice from missing production surfaces
+updated: 2026-07-16
 status: mixed
 ---
 
 # Current implementation audit
 
-This audit is evidence-based as of 2026-07-15. `Implemented` below always names
+This audit is evidence-based as of 2026-07-16. `Implemented` below always names
 the executable layer. It does not imply a public API, durable production
 adapter, or complete AetherIot integration unless those layers are named.
 
 ## Repository baseline
 
-The repository is on `main`, with the bootstrap baseline recorded at commit
-`d698a97`. Existing tracked and untracked workspace changes remain user-owned
-project state and are not permission to reset, replace, or delete them.
+The repository is on `main`. The pre-change HEAD for this audit is `d731ecb`;
+the earlier bootstrap baseline is `d698a97`. Existing tracked and untracked
+workspace changes remain user-owned project state and are not permission to
+reset, replace, or delete them.
 
 The workspace uses Node.js 24, pnpm 11, TypeScript 5.9, ESM, strict type
 checking, ESLint, Prettier, Vitest, an 80 percent coverage gate, and a Node test
@@ -28,34 +29,37 @@ documentation contract tests before this capability expansion began.
 
 ## Executable product layers
 
-| Capability                                 | Executable evidence                                                                                                  | Honest status                                                                                                                                                                                               |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edge/cloud/provider authority values       | `packages/domain/src/authority.ts` and its tests                                                                     | Implemented domain value, not an authorization service                                                                                                                                                      |
-| Provider catalog and region discovery      | `packages/domain`, `packages/application/src/discover-provider-regions.ts`, provider conformance, and memory adapter | Domain/application/test-adapter implemented; real provider and HTTP planned                                                                                                                                 |
-| Deployment Stack and governed Plan         | Domain/application Plan modules, infrastructure conformance, memory adapter, and `adapters/infrastructure/opentofu`  | Real local OpenTofu Plan worker implemented; production remote State, durable encrypted artifacts, audit, and HTTP planned                                                                                  |
-| Gateway registration and enrollment claim  | Gateway domain/application modules plus `adapters/fleet/memory` and `adapters/fleet/postgres`                        | Domain/application, memory conformance, PostgreSQL SQL/migration/driver adapter, and atomic Gateway/Audit/Outbox write implemented; production DB composition, identity binding, CA/KMS, and HTTP planned   |
-| CloudLink session and heartbeat foundation | CloudLink domain/application modules and `adapters/cloudlink/memory`                                                 | Credential-authenticated use cases, epoch fencing, cursor resume, and memory adapter implemented; wire/root/PostgreSQL planned                                                                              |
-| Runtime Manifest and capability foundation | Runtime domain/application modules and `adapters/runtime/memory`                                                     | AetherIot v1 checksum, monotonic history, report/query, and memory adapter implemented; wire/PostgreSQL/HTTP planned                                                                                        |
-| IoT telemetry ingestion and history        | Telemetry domain/application modules and `adapters/telemetry/memory`                                                 | Atomic replay/gap/cursor/history semantics implemented with a memory conformance adapter; production durability and wire planned                                                                            |
-| Alarm fact and workflow projection         | Alarm domain/application modules and `adapters/alarm/memory`                                                         | Edge-fact ordering and cloud acknowledgement implemented with memory projection; production persistence and wire planned                                                                                    |
-| Operational OpenTelemetry foundation       | `adapters/observability/opentelemetry`                                                                               | No-op, in-memory, OTLP HTTP, bounded queue, W3C extraction, and ingestion decorator implemented; broad root wiring planned                                                                                  |
-| Artifact Registry foundation               | Artifact domain/application modules and `adapters/artifacts/memory`                                                  | Immutable lifecycle, digest/content/signature checks, channel conflict, query, and atomic memory audit/outbox implemented; production stores/HTTP planned                                                   |
-| Desired/Reported/Applied deployment        | Edge deployment domain/application modules and `adapters/deployment/memory`                                          | Published-Artifact Desired intent, report/applied separation, pause/resume/cancel/rollback/unknown, query, and atomic memory audit/outbox implemented; scheduler/wire/PostgreSQL/HTTP planned               |
-| Governed capability Jobs and Receipts      | Governed Job domain/application modules and `adapters/jobs/memory`                                                   | Capability-gated creation, confirmation, queue/offer, unknown/cancel intent, ordered authenticated Receipts, query, and atomic memory audit/outbox implemented; delivery/wire/PostgreSQL/HTTP/MCP planned   |
-| Audit search                               | Audit domain/application modules and `adapters/audit/memory`                                                         | Tenant/Project-scoped append-only values, bounded cursor query, and memory adapter implemented; PostgreSQL durability planned                                                                               |
-| Webhook subscriptions and delivery         | Integration domain/application modules and `adapters/integration/memory`                                             | Stable destination references, allowlists, bounded retry/dead-letter/redrive, and atomic memory evidence implemented; production sender, secrets, workers, and PostgreSQL planned                           |
-| Data export                                | Data Export domain/application modules and `adapters/integration/memory`                                             | Governed asynchronous request/outcome/query and immutable object-result metadata implemented; production object storage, worker, download, and PostgreSQL planned                                           |
-| MCP application interface                  | `apps/mcp/src/mcp-interface.ts` and behavior tests                                                                   | Capability/Audit resources plus Data Export and Job tools delegate to application use cases with full governance metadata; MCP SDK transport/root, production identity, rate limit, and persistence planned |
-| API process                                | `apps/api/src/app.ts` and `apps/api/test/app.test.ts`                                                                | Public health/platform plus authenticated audit JSON and finite resumable SSE snapshot routes implemented; production identity and durable audit adapter planned                                            |
-| Agent documentation contract               | `llms.txt`, manifest, Skill, invariants, ADRs, and Node tests                                                        | Implemented repository interface                                                                                                                                                                            |
+| Capability                                 | Executable evidence                                                                                                  | Honest status                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge/cloud/provider authority values       | `packages/domain/src/authority.ts` and its tests                                                                     | Implemented domain value, not an authorization service                                                                                                                                                                                                                                                                                                  |
+| Provider catalog and region discovery      | `packages/domain`, `packages/application/src/discover-provider-regions.ts`, provider conformance, and memory adapter | Domain/application/test-adapter implemented; real provider and HTTP planned                                                                                                                                                                                                                                                                             |
+| Deployment Stack and governed Plan         | Domain/application Plan modules, infrastructure conformance, memory adapter, and `adapters/infrastructure/opentofu`  | Real local OpenTofu Plan worker implemented; production remote State, durable encrypted artifacts, audit, and HTTP planned                                                                                                                                                                                                                              |
+| Gateway registration and enrollment claim  | Gateway domain/application modules plus `adapters/fleet/memory` and `adapters/fleet/postgres`                        | Domain/application, memory conformance, PostgreSQL SQL/migration/driver adapter, and atomic Gateway/Audit/Outbox write implemented; production DB composition, identity binding, CA/KMS, and HTTP planned                                                                                                                                               |
+| CloudLink session and heartbeat foundation | CloudLink domain/application modules and `adapters/cloudlink/memory`                                                 | Credential-authenticated use cases, epoch fencing, cursor resume, and memory adapter implemented; PostgreSQL planned                                                                                                                                                                                                                                    |
+| Experimental CloudLink MQTT ingress        | `adapters/cloudlink/mqtt`, `apps/cloudlink`, `contracts/cloudlink/v1`, and opt-in dual Broker test                   | Strict alpha.3 codec and failure classes, MQTT.js ingress, application bridge, real Mosquitto/AWS evidence, and alpha fault matrix implemented; bridge accepts an exact persisted telemetry ACK, while production shared-Broker authentication, multi-sample mapping, durable data-loss persistence, session durability, and composition remain planned |
+| Runtime Manifest and capability foundation | Runtime domain/application modules and `adapters/runtime/memory`                                                     | AetherIot v1 checksum, monotonic history, report/query, memory adapter, and experimental MQTT mapping implemented; PostgreSQL/HTTP planned                                                                                                                                                                                                              |
+| IoT telemetry ingestion and history        | Telemetry domain/application modules plus `adapters/telemetry/memory` and `adapters/telemetry/postgres`              | Atomic replay/gap/cursor/history semantics, PostgreSQL receipt/facts/Audit/integration-Outbox/exact-ACK transaction, leased delivery use case, forced RLS, and PostgreSQL 18 crash-boundary tests implemented; public HTTP, production composition, data-loss persistence, and analytics remain planned                                                 |
+| Alarm fact and workflow projection         | Alarm domain/application modules and `adapters/alarm/memory`                                                         | Edge-fact ordering and cloud acknowledgement implemented with memory projection; production persistence and wire planned                                                                                                                                                                                                                                |
+| Operational OpenTelemetry foundation       | `adapters/observability/opentelemetry`                                                                               | No-op, in-memory, OTLP HTTP, bounded queue, W3C extraction, and ingestion decorator implemented; broad root wiring planned                                                                                                                                                                                                                              |
+| Artifact Registry foundation               | Artifact domain/application modules and `adapters/artifacts/memory`                                                  | Immutable lifecycle, digest/content/signature checks, channel conflict, query, and atomic memory audit/outbox implemented; production stores/HTTP planned                                                                                                                                                                                               |
+| Desired/Reported/Applied deployment        | Edge deployment domain/application modules and `adapters/deployment/memory`                                          | Published-Artifact Desired intent, report/applied separation, pause/resume/cancel/rollback/unknown, query, and atomic memory audit/outbox implemented; scheduler/wire/PostgreSQL/HTTP planned                                                                                                                                                           |
+| Governed capability Jobs and Receipts      | Governed Job domain/application modules and `adapters/jobs/memory`                                                   | Capability-gated creation, confirmation, queue/offer, unknown/cancel intent, ordered authenticated Receipts, query, and atomic memory audit/outbox implemented; delivery/wire/PostgreSQL/HTTP/MCP planned                                                                                                                                               |
+| Audit search                               | Audit domain/application modules and `adapters/audit/memory`                                                         | Tenant/Project-scoped append-only values, bounded cursor query, and memory adapter implemented; PostgreSQL durability planned                                                                                                                                                                                                                           |
+| Webhook subscriptions and delivery         | Integration domain/application modules and `adapters/integration/memory`                                             | Stable destination references, allowlists, bounded retry/dead-letter/redrive, and atomic memory evidence implemented; production sender, secrets, workers, and PostgreSQL planned                                                                                                                                                                       |
+| Data export                                | Data Export domain/application modules and `adapters/integration/memory`                                             | Governed asynchronous request/outcome/query and immutable object-result metadata implemented; production object storage, worker, download, and PostgreSQL planned                                                                                                                                                                                       |
+| MCP application interface                  | `apps/mcp/src/mcp-interface.ts` and behavior tests                                                                   | Capability/Audit resources plus Data Export and Job tools delegate to application use cases with full governance metadata; MCP SDK transport/root, production identity, rate limit, and persistence planned                                                                                                                                             |
+| API process                                | `apps/api/src/app.ts` and `apps/api/test/app.test.ts`                                                                | Public health/platform plus authenticated audit JSON and finite resumable SSE snapshot routes implemented; production identity and durable audit adapter planned                                                                                                                                                                                        |
+| Agent documentation contract               | `llms.txt`, manifest, Skill, invariants, ADRs, and Node tests                                                        | Implemented repository interface                                                                                                                                                                                                                                                                                                                        |
 
 The infrastructure engine port is deliberately Plan-only. No executable Apply,
 Destroy, Import, or State-repair operation exists.
 
-The PostgreSQL Gateway adapter is a real SQL/driver boundary with scripted
-transaction/migration tests and an opt-in PostgreSQL 18 integration test using
-a constrained application role. It is not evidence of a running managed
-database, production migration orchestration, credentials, or backup/restore.
+The PostgreSQL Gateway and telemetry adapters are real SQL/driver boundaries
+with scripted transaction/migration tests and opt-in PostgreSQL 18 integration
+tests using a constrained application role. The telemetry test proves no ACK
+before commit and identical ACK recovery after an uncertain commit. This is not
+evidence of a running managed database, production migration orchestration,
+credentials, worker deployment, or backup/restore.
 
 ## Reviewed contracts without executable product surfaces
 
@@ -67,14 +71,21 @@ domain/application implementation at this audit point:
 - production Gateway credentials, revocation, recovery, CA/KMS, durable
   credential binding, database composition, and migration execution; the
   Gateway aggregate SQL adapter covers only registration and claim state
-- CloudLink process, wire schema, PostgreSQL session/inbox/outbox/cursor,
-  production backpressure, and actual edge integration; the transport-neutral
-  session, heartbeat, fencing, and memory resume foundation is executable
-- PostgreSQL Runtime Manifest history, public fleet query, CloudLink manifest
-  envelope, durable audit/outbox, and Instance/Point catalog; the bounded v1
-  report/query foundation is executable
-- PostgreSQL telemetry inbox/history/cursor, production durable acknowledgement,
-  CloudLink telemetry wire adapter, downsampling, cold export, and public API
+- production CloudLink process configuration, PostgreSQL
+  session/inbox/outbox/cursor, multi-instance ownership, backpressure, and actual
+  edge integration; the transport-neutral session foundation and experimental
+  MQTT codec/bridge/ingress and public alpha.3 fixture decoding are
+  executable, while production credential lifecycle and Broker ACL evidence,
+  full crash-durable gate, multi-sample batch indexing, data-loss persistence,
+  and production process-crash wiring remain planned gates; the telemetry ACK
+  transaction/worker and opt-in dual harness/fault suite are executable evidence
+- PostgreSQL Runtime Manifest history, public fleet query, durable audit/outbox,
+  and Instance/Point catalog; the bounded v1 report/query and experimental MQTT
+  envelope are executable
+- production PostgreSQL telemetry composition and migrations, multi-instance
+  ACK worker operation, multi-sample wire/application mapping, durable data-loss
+  facts, downsampling, cold export, and public API; the PostgreSQL telemetry
+  repository/ACK transaction and shared alpha.3 fixture execution are implemented
 - PostgreSQL alarm facts/projection/workflow, CloudLink alarm wire adapter,
   assignment/comment/search, and public API
 - PostgreSQL artifact metadata, production object storage/signature verifier,
@@ -111,8 +122,15 @@ alarm stream remains authoritative for alarm facts.
 AetherIot also has a compatibility MQTT uplink and instance export endpoint.
 Those payloads do not define AetherCloud CloudLink session epochs, per-stream
 durable cursors, digest-conflict behavior, or cloud persistence acknowledgement.
-No mutually implemented AetherCloud CloudLink wire schema was found. Therefore
-the existing MQTT payloads are reference evidence, not a CloudLink v1 contract.
+The new AetherCloud JSON/MQTT implementation is an experimental consumer of the
+public alpha.3 release. Therefore the existing legacy MQTT payloads remain
+reference evidence and are not silently treated as CloudLink v1.
+
+Both products pin and execute the complete public alpha.3 fixture manifest, and
+the opt-in real Mosquitto harness records dual Edge/Cloud alpha fault evidence.
+Authentication remains an experimental proposal and ACKs remain unsigned. A
+crash-durable PostgreSQL ACK store/outbox exists for accepted telemetry, but the
+full session/credential/loss-marker production path and composition do not.
 
 ## Material gaps and design corrections
 
@@ -123,6 +141,8 @@ catalog for capability governance and implementation layers. ADR-0007 and
 ADR-0008 add those decisions without changing the edge-first authority of
 ADR-0001. ADR-0012 adds the durable audit/outbound transaction boundary after
 the audit HTTP/SSE and integration state-machine foundations became executable.
+ADR-0015 prevents CloudLink transport progress from bypassing shared-Broker
+origin authentication, common bytes, fault injection, or crash durability.
 
 Production exposure of any mutating use case still requires one transaction for
 aggregate state, required audit, and outbox delivery. Memory adapters are
@@ -130,19 +150,26 @@ conformance tools and never satisfy that production durability gate.
 
 ## Verification evidence
 
-The completed foundation was verified on 2026-07-15 with the repository's
+The completed foundation was verified on 2026-07-16 with the repository's
 default external-service-free path:
 
-- `pnpm check`: 365 Vitest behavior tests and 13 agent-documentation contract
+- `pnpm check`: 443 Vitest behavior tests and 18 Node contract
   tests passed; TypeScript, ESLint, and Prettier checks passed
-- `pnpm test:coverage`: 87.6% statements, 80.17% branches, 97.27% functions,
-  and 89.27% lines
-- `pnpm test:postgres-integration`: the Gateway migration and
-  register/issue/claim transaction passed against PostgreSQL 18 with a
-  non-superuser, non-`BYPASSRLS` application role
+- `pnpm test:coverage`: 87.40% statements, 80.42% branches, 96.86% functions,
+  and 88.97% lines
+- `pnpm test:mqtt-integration`: the opt-in MQTT.js transport test exchanged an
+  isolated QoS 1, non-retained message through Eclipse Mosquitto 2
+- `pnpm test:postgres-integration`: the Gateway registration/claim flow and the
+  telemetry commit/replay/crash-boundary cases passed against PostgreSQL 18 with
+  a non-superuser, non-`BYPASSRLS` application role
+- `pnpm test:cloudlink-alpha-harness`: the local Mosquitto/AetherIot/AetherCloud
+  dual-process ACK-loss, restart, replay, conflict, gap, expiry, partial-result,
+  and data-loss matrix passed; its composition intentionally still reports no
+  production crash-durable store
 - `pnpm audit --prod`: no known production dependency vulnerabilities
 
 These results cover executable inner layers and memory conformance adapters;
-the PostgreSQL result covers only the Gateway Identity slice. They are not
-evidence that other planned PostgreSQL adapters, object-store integration,
-CloudLink wire, workers, or production identity integration exist.
+the PostgreSQL result covers the Gateway Identity and accepted-telemetry ACK
+slices. They are not evidence that other planned PostgreSQL adapters,
+object-store integration, full production CloudLink authentication/durability,
+deployed workers, or production identity integration exist.

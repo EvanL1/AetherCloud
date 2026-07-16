@@ -19,7 +19,7 @@
     {
       "path": "docs/concepts/persistence-and-multi-cloud-cells.md",
       "title": "PostgreSQL persistence and multi-cloud cells",
-      "description": "Place portable transactional authority in one control-plane cell while evolving telemetry and provider database profiles independently",
+      "description": "Place Gateway and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently",
       "status": "mixed",
       "audience": ["developer", "agent", "operator"]
     },
@@ -33,7 +33,7 @@
     {
       "path": "docs/concepts/current-state-audit.md",
       "title": "Current implementation audit",
-      "description": "Distinguish executable AetherCloud layers from reviewed contracts and missing production surfaces",
+      "description": "Distinguish executable AetherCloud layers, Broker evidence, and the PostgreSQL telemetry ACK slice from missing production surfaces",
       "status": "mixed",
       "audience": ["developer", "agent", "operator"]
     },
@@ -61,7 +61,7 @@
     {
       "path": "docs/concepts/iot-telemetry.md",
       "title": "IoT business telemetry",
-      "description": "Define replay-safe Gateway telemetry ingestion without replacing edge live-state authority",
+      "description": "Document replay-safe PostgreSQL telemetry acceptance and exact CloudLink ACK delivery without replacing edge live-state authority",
       "status": "mixed",
       "audience": ["developer", "agent", "operator"]
     },
@@ -160,6 +160,13 @@
       "path": "docs/reference/application-contracts.md",
       "title": "Application contract catalog",
       "description": "Discover capability governance, errors, events, HTTP operations, and implementation layers from one machine-readable catalog",
+      "status": "mixed",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
+      "path": "docs/reference/cloudlink-mqtt-v1.md",
+      "title": "Pre-release CloudLink MQTT v1",
+      "description": "Review alpha.3 Broker evidence and the PostgreSQL telemetry ACK slice without overstating full CloudLink authentication or crash durability",
       "status": "mixed",
       "audience": ["developer", "agent", "operator"]
     },
@@ -265,6 +272,27 @@
       "path": "docs/adr/0013-postgresql-control-plane-persistence.md",
       "title": "ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells",
       "description": "Use PostgreSQL as the portable transactional authority while provider profiles place independent control-plane cells",
+      "status": "normative",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
+      "path": "docs/adr/0014-cloudlink-mqtt-transport-binding.md",
+      "title": "ADR-0014: Experimental CloudLink MQTT transport binding",
+      "description": "Bind the provisional CloudLink candidate to operator-selected MQTT without weakening identity or durable acknowledgement boundaries",
+      "status": "normative",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
+      "path": "docs/adr/0015-cloudlink-interoperability-release-gates.md",
+      "title": "ADR-0015: CloudLink interoperability release gates",
+      "description": "Gate a pinned public core on shared-Broker identity, complete fixtures, dual-harness fault injection, and crash-durable acknowledgements before legacy cutover",
+      "status": "normative",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
+      "path": "docs/adr/0016-pinned-aethercontracts-consumption.md",
+      "title": "ADR-0016: Pinned AetherContracts consumption",
+      "description": "Consume one digest-pinned public contract release while keeping product codecs local and conformance claims evidence-based",
       "status": "normative",
       "audience": ["developer", "agent", "operator"]
     },

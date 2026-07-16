@@ -1,7 +1,7 @@
 ---
 title: "ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells"
 description: Use PostgreSQL as the portable transactional authority while provider profiles place independent control-plane cells
-updated: 2026-07-15
+updated: 2026-07-16
 status: normative
 ---
 
@@ -9,11 +9,12 @@ status: normative
 
 ## Status
 
-Accepted on 2026-07-15. The first Gateway Identity PostgreSQL adapter,
-migration, Node PostgreSQL pool boundary, transactional Audit/Outbox write, and
-`managed-postgresql` provider capability are implemented. Production migration
-execution, database credentials, backup/restore, provider-specific database
-profiles, and PostgreSQL adapters for the remaining contexts are planned.
+Accepted on 2026-07-15. Gateway Identity and telemetry PostgreSQL adapters,
+migrations, the Node PostgreSQL pool boundary, transactional Audit/Outbox
+writes, the exact telemetry ACK outbox, and the `managed-postgresql` provider
+capability are implemented. Production migration execution, database/worker
+composition, credentials, backup/restore, provider-specific database profiles,
+and PostgreSQL adapters for the remaining contexts are planned.
 
 ## Context
 
@@ -64,7 +65,7 @@ by itself, require one globally writable database.
 10. Kafka, Redis, and a globally distributed SQL database require separate
     measured need and an ADR. They are not implied by multi-cloud support.
 
-## First executable slice
+## Executable persistence slices
 
 `adapters/fleet/postgres` implements the Gateway Identity repository against
 parameterized PostgreSQL SQL. Each operation starts a transaction, sets
@@ -76,12 +77,22 @@ The migration stores explicit enrollment columns and state-shape constraints;
 it does not serialize the aggregate into an opaque JSON document. Raw
 enrollment tokens are absent from aggregate, Audit, and Outbox records.
 
-Default tests use a scripted PostgreSQL boundary and inspect the migration, so
-they require no external database. An opt-in integration test also applies the
-migration to PostgreSQL 18, uses a non-superuser/non-`BYPASSRLS` application
-role, and runs the full registration/issue/claim flow. This proves application
-and adapter behavior but does not claim that production credentials, migration
-orchestration, backups, or a managed database deployment exist.
+`adapters/telemetry/postgres` implements replay-safe telemetry acceptance and
+bounded history. The same transaction writes stream/cursor state, idempotency
+and batch receipts, accepted records, Audit, integration Outbox, and the exact
+CloudLink ACK outbox. A bounded lease repository plus an application-owned
+delivery use case use `FOR UPDATE SKIP LOCKED`, validate claimed scope, and mark
+delivery only after publish succeeds. Replay reuses the stored receipt and ACK
+identity.
+
+Default tests use scripted PostgreSQL boundaries and inspect migrations, so
+they require no external database. Opt-in integration tests apply both slices
+to PostgreSQL 18 with a non-superuser/non-`BYPASSRLS` application role. They run
+the Gateway registration/issue/claim flow and telemetry pre-commit rollback,
+post-commit uncertainty, exact ACK claim, and duplicate replay cases. This
+proves application and adapter behavior but does not claim that production
+credentials, migration orchestration, workers, backups, or a managed database
+deployment exist.
 
 ## Consequences
 

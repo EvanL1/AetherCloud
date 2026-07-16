@@ -13,6 +13,7 @@ import {
   parseGatewayId,
   parseProjectId,
   parseProtocolVersion,
+  parseStreamEpoch,
   parseStreamId,
   parseStreamPosition,
   parseTenantId,
@@ -52,6 +53,7 @@ function activeSession() {
     resumeCursors: [
       {
         streamId: parseStreamId("telemetry"),
+        streamEpoch: parseStreamEpoch("9"),
         position: parseStreamPosition("18446744073709551615"),
       },
     ],
@@ -85,7 +87,11 @@ describe("CloudLink session domain", () => {
       protocolVersion: "1.0",
       revision: 3,
       resumeCursors: [
-        { streamId: "telemetry", position: "18446744073709551615" },
+        {
+          streamId: "telemetry",
+          streamEpoch: "9",
+          position: "18446744073709551615",
+        },
       ],
     });
     expect(Object.isFrozen(session)).toBe(true);
@@ -105,10 +111,12 @@ describe("CloudLink session domain", () => {
       resumeCursors: [
         {
           streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("1"),
           position: parseStreamPosition("1"),
         },
         {
           streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("1"),
           position: parseStreamPosition("2"),
         },
       ],

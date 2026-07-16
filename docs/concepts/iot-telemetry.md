@@ -1,18 +1,22 @@
 ---
 title: IoT business telemetry
-description: Define replay-safe Gateway telemetry ingestion without replacing edge live-state authority
-updated: 2026-07-14
+description: Document replay-safe PostgreSQL telemetry acceptance and exact CloudLink ACK delivery without replacing edge live-state authority
+updated: 2026-07-16
 status: mixed
 ---
 
 # IoT business telemetry
 
 The protocol-neutral domain, application ingest/history use cases, canonical
-batch digest, and in-memory inbox/history/outbox/audit conformance adapter are
-implemented. They prove atomic acceptance, durable-receipt timing, replay,
-conflict, gap, reorder, quota, and Tenant isolation semantics. PostgreSQL,
-public HTTP history, a CloudLink envelope, and production durable audit/outbox
-remain planned; the memory receipt is not a production durability claim.
+batch digest, in-memory conformance adapter, experimental CloudLink MQTT
+point-batch mapping, and PostgreSQL telemetry adapter are implemented. The
+PostgreSQL slice atomically stores replay identity, stream/cursor state,
+accepted business facts, Audit, the integration Outbox, and an exact durable
+ACK outbox. It proves pre-commit rollback and post-commit identical-ACK recovery
+against PostgreSQL 18. Public HTTP history, production database composition,
+joint production authentication, multi-sample mapping, and durable data-loss
+persistence remain planned; the memory adapter is not a production durability
+claim.
 
 IoT business telemetry is Tenant-owned product data. It is not OpenTelemetry
 operational data. An AetherIot runtime remains authoritative for the current
@@ -29,8 +33,13 @@ The first slice uses explicit resources rather than a generic entity table:
   string at JSON boundaries and represented losslessly in TypeScript.
 - `TelemetryBatch` is the atomic ingestion unit and owns a bounded ordered list
   of records.
-- `PointSample` carries an Instance/Point identity, source time, typed value,
-  and source quality.
+- `PointSample` carries an Instance/acquisition-Point identity, source time,
+  typed value, and source quality. Only `telemetry` and `status` Point kinds are
+  accepted; command/action kinds cannot become a control backdoor.
+- `TelemetryTopologyBinding` preserves the edge publication epoch and an
+  algorithm-qualified topology snapshot digest for each batch.
+- A Thing Model reference is optional and must come from commissioned evidence;
+  AetherCloud does not invent one for an edge-native Point.
 - `DeviceEvent` carries a versioned event type, source time, and bounded typed
   payload.
 - `IngestionReceipt` records the batch identity, digest, durable cursor,
@@ -101,6 +110,14 @@ Gateway safely replays the batch. A crash after commit returns the same receipt
 on replay. A storage timeout with an unknown commit result must be resolved by
 the idempotency identity before any new acceptance is attempted.
 
+The implemented PostgreSQL path stores the exact alpha.3 ACK projection in the
+same transaction. A bounded delivery worker leases pending rows with
+`FOR UPDATE SKIP LOCKED`, publishes sequentially, marks delivery only after a
+successful publish, and releases failures for bounded retry. Replay requeues
+the same event ID, receipt ID, persisted time, stream position, batch ID, and
+digest; it never invents a second business fact. The application validates all
+claimed rows at the adapter boundary before publishing them.
+
 ## Time and freshness
 
 Every record keeps at least:
@@ -118,9 +135,11 @@ history but cannot silently roll a latest projection backward.
 
 ## Storage responsibilities
 
-PostgreSQL initially owns stream metadata, durable inbox identities, contiguous
-cursors, gap state, retention policy, audit, and transactional outbox. It may
-also implement the first bounded history adapter.
+`PostgresTelemetryRepository` now owns the first bounded implementation of
+stream metadata, durable inbox identities, contiguous cursors, gap state,
+retention policy, bounded history, Audit, integration Outbox, and CloudLink ACK
+outbox. Tenant-scoped keys and forced Row-Level Security are defense in depth;
+the normal application role remains non-superuser and non-`BYPASSRLS`.
 
 Object storage owns content-addressed raw/cold batches and exports when their
 size justifies it. A future time-series or analytics adapter owns large history,
@@ -144,13 +163,19 @@ payloads, errors, logs, traces, or audit details.
 
 ## Application surface and status
 
-- Command `telemetry.batch.ingest`: domain/application/memory adapter implemented.
-- Query `telemetry.history.query`: application/memory adapter implemented.
-- Event `telemetry.batch-accepted.v1`: memory outbox behavior implemented;
-  PostgreSQL transactional outbox planned.
+- Command `telemetry.batch.ingest`: domain/application, memory, and PostgreSQL
+  adapters implemented.
+- Query `telemetry.history.query`: application, memory, and bounded PostgreSQL
+  adapters implemented.
+- Event `telemetry.batch-accepted.v1`: memory and PostgreSQL transactional
+  Outbox behavior implemented.
+- Exact CloudLink durable ACK outbox and bounded delivery use case: implemented
+  for accepted telemetry; production worker composition is planned.
 - Stream cursor, gap, lag, and retention-state query: planned.
-- CloudLink adapter: planned until a reviewed wire envelope exists in both
-  repositories.
+- CloudLink MQTT adapter: experimental codec/bridge/ingress and the shared
+  alpha.3 AetherIot fixture manifest implemented; the bridge consumes the
+  persisted ACK projection, while production database/worker composition and
+  session persistence remain planned.
 - HTTP history adapter: planned.
 
 Read [ADR-0007](../adr/0007-durable-iot-telemetry.md) for the durable-ingestion

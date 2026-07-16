@@ -11,8 +11,10 @@ OpenTelemetry is the vendor-neutral instrumentation and export boundary for
 AetherCloud processes. A no-op default, validated environment opt-in, OTLP HTTP
 trace/metric exporters, in-memory exporters, W3C Trace Context extraction,
 bounded span processor, low-cardinality telemetry-ingestion decorator, and
-failure-isolation tests are implemented. Collector deployment and broad HTTP,
-CloudLink, database, worker, and webhook instrumentation remain planned.
+failure-isolation tests are implemented. The experimental CloudLink MQTT ingress
+also exposes a neutral bounded observer, but OpenTelemetry wiring for its
+handshake/session/reconnect/ACK signals remains planned. Collector deployment
+and broad HTTP, database, worker, and webhook instrumentation remain planned.
 
 Operational observability answers whether AetherCloud components are healthy
 and where time or failures occur. It is not IoT business telemetry, a durable

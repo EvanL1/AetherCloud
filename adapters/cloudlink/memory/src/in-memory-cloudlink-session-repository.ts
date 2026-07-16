@@ -4,6 +4,8 @@ import type {
   CloudLinkSessionScope,
   OpenCloudLinkSessionRepositoryInput,
   OpenCloudLinkSessionRepositoryResult,
+  RecordCloudLinkDurableCursorRepositoryInput,
+  RecordCloudLinkDurableCursorRepositoryResult,
 } from "@aether-cloud/application";
 import {
   activateCloudLinkSession,
@@ -18,6 +20,7 @@ import type {
   GatewayCredentialBinding,
   GatewayId,
   ProtocolVersion,
+  StreamEpoch,
   StreamId,
   StreamPosition,
 } from "@aether-cloud/domain";
@@ -27,6 +30,12 @@ interface StoredOpenRequest {
   readonly protocolVersion: ProtocolVersion;
   readonly sessionId: CloudLinkSessionId;
 }
+
+type StoredCursor = Readonly<{
+  streamId: StreamId;
+  streamEpoch: StreamEpoch;
+  position: StreamPosition;
+}>;
 
 function gatewayKey(
   scope: CloudLinkSessionScope,
@@ -61,7 +70,7 @@ export class InMemoryCloudLinkSessionRepository implements CloudLinkSessionRepos
   readonly #currentSessions = new Map<string, CloudLinkSessionId>();
   readonly #nextEpochs = new Map<string, bigint>();
   readonly #openRequests = new Map<string, StoredOpenRequest>();
-  readonly #durableCursors = new Map<string, Map<StreamId, StreamPosition>>();
+  readonly #durableCursors = new Map<string, Map<string, StoredCursor>>();
 
   open(
     input: OpenCloudLinkSessionRepositoryInput,
@@ -111,9 +120,15 @@ export class InMemoryCloudLinkSessionRepository implements CloudLinkSessionRepos
     if (!negotiated.ok) {
       throw new Error(negotiated.failure.message);
     }
-    const cursors = [...(this.#durableCursors.get(key)?.entries() ?? [])]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([streamId, position]) => ({ streamId, position }));
+    const cursors = [...(this.#durableCursors.get(key)?.values() ?? [])].sort(
+      (left, right) => {
+        const streamOrder = left.streamId.localeCompare(right.streamId);
+        if (streamOrder !== 0) return streamOrder;
+        if (BigInt(left.streamEpoch) < BigInt(right.streamEpoch)) return -1;
+        if (BigInt(left.streamEpoch) > BigInt(right.streamEpoch)) return 1;
+        return 0;
+      },
+    );
     const activated = activateCloudLinkSession(negotiated.value, {
       activatedAt: input.openedAt,
       resumeCursors: cursors,
@@ -184,17 +199,32 @@ export class InMemoryCloudLinkSessionRepository implements CloudLinkSessionRepos
   }
 
   recordDurableCursor(
-    binding: GatewayCredentialBinding,
-    streamId: StreamId,
-    position: StreamPosition,
-  ): void {
-    const key = gatewayKey(binding, binding.gatewayId);
-    const cursors: Map<StreamId, StreamPosition> =
-      this.#durableCursors.get(key) ?? new Map<StreamId, StreamPosition>();
-    const current = cursors.get(streamId);
-    if (current === undefined || BigInt(position) > BigInt(current)) {
-      cursors.set(streamId, position);
+    input: RecordCloudLinkDurableCursorRepositoryInput,
+  ): Promise<RecordCloudLinkDurableCursorRepositoryResult> {
+    const session = this.#sessions.get(sessionKey(input.sessionId));
+    if (
+      session === undefined ||
+      session.tenantId !== input.binding.tenantId ||
+      session.projectId !== input.binding.projectId ||
+      session.gatewayId !== input.binding.gatewayId ||
+      session.credentialGeneration !== input.binding.generation
+    ) {
+      return Promise.resolve("not-found");
     }
+    if (session.state !== "active" || session.epoch !== input.sessionEpoch) {
+      return Promise.resolve("stale-session");
+    }
+    const key = gatewayKey(input.binding, input.binding.gatewayId);
+    const cursors: Map<string, StoredCursor> =
+      this.#durableCursors.get(key) ?? new Map<string, StoredCursor>();
+    const { streamId, streamEpoch, position } = input.cursor;
+    const cursorKey = `${streamId}:${streamEpoch}`;
+    const current = cursors.get(cursorKey);
+    if (current !== undefined && BigInt(position) <= BigInt(current.position)) {
+      return Promise.resolve("replayed");
+    }
+    cursors.set(cursorKey, Object.freeze({ streamId, streamEpoch, position }));
     this.#durableCursors.set(key, cursors);
+    return Promise.resolve("recorded");
   }
 }

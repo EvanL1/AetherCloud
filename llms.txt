@@ -19,18 +19,18 @@ answers the task, then follow its links for deeper context.
 ## Concepts
 
 - [Architecture](docs/concepts/architecture.md): Understand the modular-monolith processes, dependency direction, and evolution rules
-- [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md): Use the implemented Gateway SQL adapter and portable cell boundary without implying a deployed production database or global active-active writes
+- [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md): Use the implemented Gateway and telemetry SQL slices without implying deployed production composition or global active-active writes
 - [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md): Use the partial audit HTTP/SSE and integration workflow foundations without implying production durability, sending, or export retrieval
-- [Current implementation audit](docs/concepts/current-state-audit.md): Distinguish executable layers from reviewed contracts and missing production surfaces
+- [Current implementation audit](docs/concepts/current-state-audit.md): Distinguish executable layers, Broker evidence, and the PostgreSQL telemetry ACK slice from missing production surfaces
 - [IoT Cloud capability map](docs/concepts/iot-cloud-capability-map.md): Audit implemented and planned IoT capabilities by bounded context, authority, storage, edge interaction, risk, and phase
-- [IoT business telemetry](docs/concepts/iot-telemetry.md): Use the partial replay-safe ingest/history foundation while CloudLink, PostgreSQL, public API, and analytics layers remain planned
+- [IoT business telemetry](docs/concepts/iot-telemetry.md): Use replay-safe PostgreSQL acceptance, bounded history, and exact ACK delivery while public API, analytics, and production composition remain planned
 - [Artifact registry and immutable publication](docs/concepts/artifact-registry.md): Use the partial signed content-addressed publication foundation without implying deployment or edge application
 - [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md): Use the partial single-target rollout foundation without treating dispatch, timeout, or connection as Applied evidence
 - [Governed capability Jobs](docs/concepts/governed-capability-jobs.md): Use the partial capability-gated Job and ordered Receipt foundation without implying arbitrary RPC or remote execution
 - [Operational observability](docs/concepts/operational-observability.md): Use the optional OpenTelemetry adapter foundation without replacing IoT telemetry or durable audit
 - [MCP application interface](docs/concepts/mcp-application-interface.md): Use the implemented transport-neutral resources/tools while treating the MCP wire server, production identity, and persistence as planned
 - [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md): Use the implemented registration and claim foundation without implying production certificates or HTTP routes
-- [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md): Use the partial session, heartbeat, and Runtime Manifest foundations while keeping wire, process, and durable delivery behavior planned
+- [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md): Use the partial session, heartbeat, Runtime Manifest, and experimental MQTT ingress while production process and durable delivery remain planned
 - [Multi-cloud fusion](docs/concepts/multi-cloud-fusion.md): Unify cloud lifecycle and policy without erasing provider capabilities or sharing one global state
 - [Edge, AetherCloud, and provider authority](docs/concepts/edge-cloud-boundary.md): Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers
 - [Resource model](docs/concepts/resource-model.md): Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently
@@ -40,6 +40,7 @@ answers the task, then follow its links for deeper context.
 
 - [HTTP API](docs/reference/http-api.md): Call the implemented HTTP endpoints and distinguish them from planned versioned APIs
 - [Application contract catalog](docs/reference/application-contracts.md): Read machine-readable capability governance, errors, events, HTTP operations, and layer status
+- [Pre-release CloudLink MQTT v1](docs/reference/cloudlink-mqtt-v1.md): Review local/AWS Broker evidence and the PostgreSQL telemetry ACK slice while preserving unresolved authentication and full durability gates
 - [Repository layout](docs/reference/repository-layout.md): Place code in the correct application, domain, adapter, or composition-root package
 - [Terminology](docs/reference/terminology.md): Resolve AetherCloud terms before naming contracts or database records
 - [IoT Cloud vertical-slice roadmap](docs/guides/iot-cloud-roadmap.md): Deliver independently testable Gateway, CloudLink, telemetry, artifact, deployment, Job, operations, and MCP slices
@@ -51,11 +52,14 @@ answers the task, then follow its links for deeper context.
 - [ADR-0003: Agent-ready documentation](docs/adr/0003-agent-ready-documentation.md): Treat LLM-readable documentation as a tested product interface
 - [ADR-0004: Capability-driven multi-cloud fusion](docs/adr/0004-multi-cloud-fusion.md): Use OpenTofu by default, preserve provider modules, and isolate infrastructure state by deployment stack
 - [ADR-0005: Gateway identity and enrollment](docs/adr/0005-gateway-identity-and-enrollment.md): Separate registration, bootstrap claims, credential binding, revocation, and recovery
-- [ADR-0006: CloudLink sessions and durable delivery](docs/adr/0006-cloudlink-durable-delivery.md): Fence sessions and acknowledge cloud-edge data only after durable acceptance
-- [ADR-0007: Durable IoT telemetry ingestion](docs/adr/0007-durable-iot-telemetry.md): Accept replayed batches atomically and acknowledge only durable business facts
+- [ADR-0006: CloudLink sessions and durable delivery](docs/adr/0006-cloudlink-durable-delivery.md): Fence sessions and deliver exact telemetry ACKs only after durable acceptance
+- [ADR-0007: Durable IoT telemetry ingestion](docs/adr/0007-durable-iot-telemetry.md): Accept replayed batches atomically in PostgreSQL and recover the identical durable ACK
 - [ADR-0008: OpenTelemetry operational observability](docs/adr/0008-operational-observability.md): Keep traces and metrics outside IoT data authority and audit
 - [ADR-0009: Immutable artifact publication](docs/adr/0009-immutable-artifact-publication.md): Keep immutable revision content separate from channels, deployment intent, and edge application evidence
 - [ADR-0010: Desired, Reported, and Applied deployment](docs/adr/0010-desired-reported-applied-deployment.md): Preserve cloud intent, edge observation, applied evidence, and unknown as separate facts
 - [ADR-0011: Governed capability Jobs and Receipts](docs/adr/0011-governed-capability-jobs.md): Deny undeclared capabilities and preserve uncertainty, cancellation intent, ordered Receipts, and edge outcomes
 - [ADR-0012: Durable audit and outbound integrations](docs/adr/0012-durable-audit-and-outbound-integrations.md): Separate committed outcomes from audit streams, outbound attempts, dead letters, and immutable exports
-- [ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells](docs/adr/0013-postgresql-control-plane-persistence.md): Use PostgreSQL as portable cell authority while keeping provider profiles, telemetry analytics, and failover explicit
+- [ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells](docs/adr/0013-postgresql-control-plane-persistence.md): Use PostgreSQL Gateway and telemetry slices as portable cell authority while keeping analytics, provider profiles, and failover explicit
+- [ADR-0014: Experimental CloudLink MQTT transport binding](docs/adr/0014-cloudlink-mqtt-transport-binding.md): Use an operator-selected broker without trusting MQTT topic identity or weakening application acknowledgements
+- [ADR-0015: CloudLink interoperability release gates](docs/adr/0015-cloudlink-interoperability-release-gates.md): Record alpha.3 Broker and telemetry ACK evidence while keeping full authentication, durability, and legacy cutover gated
+- [ADR-0016: Pinned AetherContracts consumption](docs/adr/0016-pinned-aethercontracts-consumption.md): Consume one exact public release offline while separating distribution integrity from codec and interoperability conformance

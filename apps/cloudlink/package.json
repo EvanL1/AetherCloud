@@ -1,0 +1,19 @@
+{
+  "name": "@aether-cloud/cloudlink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/cloudlink-mqtt-adapter": "workspace:*",
+    "@aether-cloud/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@aether-cloud/cloudlink-memory-adapter": "workspace:*",
+    "@aether-cloud/runtime-memory-adapter": "workspace:*",
+    "@aether-cloud/telemetry-memory-adapter": "workspace:*"
+  }
+}

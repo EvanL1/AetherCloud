@@ -240,11 +240,13 @@ export type {
 export {
   GetCurrentCloudLinkSession,
   OpenCloudLinkSession,
+  RecordCloudLinkDurableCursor,
   RecordCloudLinkHeartbeat,
 } from "./cloudlink-session.js";
 export type {
   CloudLinkApplicationFailure,
   CloudLinkApplicationResult,
+  CloudLinkDurableCursorView,
   CloudLinkQueryResult,
   CloudLinkSessionView,
 } from "./cloudlink-session.js";
@@ -258,7 +260,27 @@ export type {
   GatewayCredentialVerifier,
   OpenCloudLinkSessionRepositoryInput,
   OpenCloudLinkSessionRepositoryResult,
+  RecordCloudLinkDurableCursorRepositoryInput,
+  RecordCloudLinkDurableCursorRepositoryResult,
 } from "./cloudlink-session-repository.js";
+export { DeliverCloudLinkDurableAcknowledgements } from "./cloudlink-durable-ack.js";
+export type {
+  CloudLinkDurableAckDeliveryInput,
+  CloudLinkDurableAckDeliveryResult,
+} from "./cloudlink-durable-ack.js";
+export type {
+  CloudLinkDurableAcknowledgement,
+  CloudLinkDurableAcknowledgementIntent,
+  CloudLinkDurableAckClaimResult,
+  CloudLinkDurableAckCompletionInput,
+  CloudLinkDurableAckCompletionResult,
+  CloudLinkDurableAckDeliveryRepository,
+  CloudLinkDurableAckLeaseInput,
+  CloudLinkDurableAckPublisher,
+  CloudLinkDurableAckPublishResult,
+  CloudLinkDurableAckRetryInput,
+  CloudLinkDurableAckRetryResult,
+} from "./cloudlink-durable-ack-repository.js";
 export {
   GetGatewayRuntimeManifest,
   ReportGatewayRuntimeManifest,
@@ -292,6 +314,7 @@ export type {
   TelemetryPersistenceResult,
   TelemetryRepository,
 } from "./telemetry-repository.js";
+export { TelemetryStorageUnavailableError } from "./telemetry-repository.js";
 export {
   AcknowledgeAlarm,
   GetAlarmProjection,

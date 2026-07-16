@@ -12,8 +12,17 @@ import type {
   UtcInstant,
 } from "@aether-cloud/domain";
 
+import type {
+  CloudLinkDurableAcknowledgement,
+  CloudLinkDurableAcknowledgementIntent,
+} from "./cloudlink-durable-ack-repository.js";
+
 export interface TelemetryBatchDigestor {
   digest(batch: TelemetryBatch): Promise<string>;
+}
+
+export class TelemetryStorageUnavailableError extends Error {
+  override readonly name = "TelemetryStorageUnavailableError";
 }
 
 export interface TelemetryPersistenceInput {
@@ -22,12 +31,14 @@ export interface TelemetryPersistenceInput {
   readonly batch: TelemetryBatch;
   readonly payloadDigest: string;
   readonly receivedAt: UtcInstant;
+  readonly durableAcknowledgement?: CloudLinkDurableAcknowledgementIntent;
 }
 
 export type TelemetryPersistenceResult =
   | Readonly<{
       outcome: "duplicate" | "persisted";
       receipt: TelemetryIngestionReceipt;
+      durableAcknowledgement?: CloudLinkDurableAcknowledgement;
     }>
   | Readonly<{
       outcome:

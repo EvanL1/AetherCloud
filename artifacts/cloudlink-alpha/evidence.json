@@ -1,0 +1,159 @@
+{
+  "schema": "aether.cloudlink.dual-harness-evidence.v1alpha1",
+  "generated_at": "2026-07-16T02:55:05.543Z",
+  "result": "passed",
+  "command": "pnpm test:cloudlink-dual",
+  "topology": {
+    "broker": "mosquitto MQTT 3.1.1",
+    "edge": "AetherIot aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
+    "cloud": "AetherCloud node-mqtt adapter + CloudLink ingress + application use cases",
+    "unique_topic_prefix": "aether-dual/e0c97dbbb5e6489f866b36ff2c78da03",
+    "broker_restarts": 1,
+    "edge_process_restarts": 1,
+    "cloud_process_restarts": 1
+  },
+  "contract": {
+    "release": "0.1.0-alpha.3",
+    "commit": "c5aad674f0844138e778963118e786e430ffb365",
+    "tag_object": "2a7539284e65d43fb3b81abf74009c63e1a28d33",
+    "bundle_name": "AetherContracts-0.1.0-alpha.3.tar.gz",
+    "bundle_size": 115663,
+    "bundle_sha256": "0946391d015f00579751c007a6b7925d003455a731d2f6ae295d706ddcb5dfb2",
+    "manifest_sha256": "36a1c0cb2a6aa2a96ad8319cd1bc8ebe3cfe7784c5794a65e2008503d72ea4f3",
+    "fixture_manifest_sha256": "5070c3e3e53024437ba6a0ab0a677d5352037fa252749e2dbe25b036893b1d72",
+    "consumer_scope": "cloudlink-alpha3",
+    "imported": 53,
+    "pending": 0
+  },
+  "repositories": {
+    "AetherContracts": {
+      "branch": "main",
+      "head": "c5aad674f0844138e778963118e786e430ffb365"
+    },
+    "AetherCloud": {
+      "branch": "main",
+      "head": "d731ecbdd4093c8034d680e023f2ce106afbabde"
+    },
+    "AetherIot": {
+      "branch": "main",
+      "head": "26937ac57c8c5cb6c0865ab27efaca71a0a22acc"
+    }
+  },
+  "observations": {
+    "cloud_ingress_results": 14,
+    "cloud_application_commands": 14,
+    "cloud_downlinks": 9,
+    "telemetry_application_acks": 3,
+    "manifest_resume_cursor_observed": true,
+    "final_edge_cursor": 1,
+    "final_edge_pending_records": 0,
+    "application_ack_signed": false,
+    "production_crash_durable_store": false,
+    "authentication_gate": "proposal"
+  },
+  "scenarios": [
+    {
+      "scenario": "broker-disconnect-reconnect",
+      "capability": "implemented",
+      "expected": "both real MQTT transports reconnect and subscriptions recover",
+      "observed": "Mosquitto restarted 1 time; Edge continued through a new connection",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "application-ack-loss",
+      "capability": "implemented",
+      "expected": "MQTT PUBACK does not delete the spool; identical business identity is replayed",
+      "observed": "one pending FileCloudLinkSpool record survived, then replay received the stable ACK",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "server-authoritative-resume-cursor",
+      "capability": "implemented",
+      "expected": "Cloud returns the durable stream/epoch/position tuple it owns",
+      "observed": "second Edge process received manifest/1/1 while telemetry/1/1 still replayed after its lost ACK",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "edge-process-restart",
+      "capability": "implemented",
+      "expected": "a second Edge OS process recovers the retained record",
+      "observed": "phase two reopened the phase-one journal with pending_records=1",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "cloud-ingress-process-restart",
+      "capability": "planned/blocked",
+      "expected": "without a production durable store, continuity is unknown and must not be claimed",
+      "observed": "new Cloud process rolled session epoch back and re-accepted the replay as unknown",
+      "result": "expected-honest-unknown",
+      "failure_code": "CLOUD_CRASH_DURABILITY_UNAVAILABLE"
+    },
+    {
+      "scenario": "mqtt-duplicate-delivery",
+      "capability": "implemented",
+      "expected": "repeated QoS 1 payload does not create a second business fact",
+      "observed": "same position/batch/digest returned the same logical receipt",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "same-position-same-digest-replay",
+      "capability": "implemented",
+      "expected": "idempotent replay",
+      "observed": "application repository reported replay and emitted an unsigned application ACK",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "same-position-conflicting-binding",
+      "capability": "implemented",
+      "expected": "no receipt and no ACK",
+      "observed": "application rejected the conflicting replay; Edge timed out waiting for ACK",
+      "result": "passed",
+      "failure_code": "DIGEST_CONFLICT"
+    },
+    {
+      "scenario": "data-loss-range",
+      "capability": "experimental",
+      "expected": "loss is an explicit application fact, never a silent cursor jump",
+      "observed": "record-data-loss command persisted one fact and emitted its application ACK",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "out-of-order",
+      "capability": "implemented",
+      "expected": "gap is retained but cumulative ACK is withheld",
+      "observed": "repository returned a gap receipt and Edge received no ACK",
+      "result": "passed",
+      "failure_code": "CURSOR_GAP"
+    },
+    {
+      "scenario": "expiry-equality",
+      "capability": "implemented",
+      "expected": "evaluation_time >= expires_at is rejected before application persistence",
+      "observed": "ingress returned message-expired and published no ACK",
+      "result": "passed",
+      "failure_code": "MESSAGE_EXPIRED"
+    },
+    {
+      "scenario": "partial-success",
+      "capability": "implemented",
+      "expected": "non-durable/buffered application result never creates an ACK",
+      "observed": "durablyAcknowledged=false and Edge received no ACK",
+      "result": "passed",
+      "failure_code": "APPLICATION_NOT_DURABLE"
+    }
+  ],
+  "safety": {
+    "legacy_default": true,
+    "physical_control": "forbidden",
+    "physical_control_messages": 0,
+    "mqtt_puback_is_application_ack": false,
+    "edge_safety_authority_preserved": true
+  }
+}

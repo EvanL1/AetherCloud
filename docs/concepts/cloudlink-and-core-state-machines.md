@@ -8,9 +8,15 @@ status: mixed
 # CloudLink and core state machines
 
 This page mixes executable inner-layer foundations with planned end-to-end
-behavior. It does not define available Protobuf messages or claim that a
-CloudLink process exists. Versioned wire schemas must be added with conformance
-fixtures before a transport is implemented.
+behavior. An experimental JSON/MQTT v1 codec, application bridge, independently
+startable ingress lifecycle, Schemas, fixtures, and real-broker harness now
+exist, and the public AetherContracts alpha.3 release is the sole shared
+authority. The opt-in real Mosquitto dual harness and fault matrix are
+executable alpha evidence. They do not constitute a production process;
+production authentication and PostgreSQL durability remain gates.
+ADR-0015 additionally orders authentication, one wire profile, shared fixtures,
+a dual real-Broker harness, fault injection, crash-durable persistence, and
+legacy cutover so later evidence cannot bypass an earlier safety gate.
 
 ## CloudLink responsibility
 
@@ -64,9 +70,20 @@ claimed -> credential-pending -> active <-> suspended -> revoked
 The domain/application/memory foundation implements credential verification,
 server-preference protocol negotiation, monotonic session epochs, old-session
 fencing, lossless per-stream resume cursors, authenticated heartbeat, and a
-Tenant-scoped current-session query. PostgreSQL, socket ownership, timeout
-scheduling, credit flow control, durable inbox/outbox, wire decoding, and the
-composition root remain planned.
+Tenant-scoped current-session query. The experimental MQTT layer adds strict
+wire decoding, topic/session binding, non-retained QoS-1 enforcement, an
+application bridge, and lifecycle composition. PostgreSQL, multi-instance
+socket ownership, timeout scheduling, credit flow control, durable inbox/outbox,
+and production configuration remain planned.
+
+The implemented structural signature evidence is not sufficient shared-Broker
+production authentication. Alpha.3 first uses a signed Cloud challenge and a
+Gateway signature, then binds every generic-Broker uplink to that session with a
+Gateway signature. A Broker-specific adapter may instead provide verified
+out-of-band publisher attestation for every publish. Payload-supplied
+attestation, topic identity, or one successful hello cannot authenticate later
+messages. Cloud challenges use the proposal signature transcript; alpha.3
+durable application ACKs are explicitly unsigned.
 
 ```text
 authenticating -> negotiating -> resuming -> active -> draining -> closed
@@ -104,9 +121,9 @@ newer generation -> accepted-latest
 
 Late observations remain queryable history but cannot move the latest
 capability projection backward. A capability report is compatibility evidence,
-not authorization to invoke an edge method. The CloudLink envelope,
-PostgreSQL projection, public query transport, durable audit, and outbox remain
-planned.
+not authorization to invoke an edge method. The experimental CloudLink MQTT
+report envelope is implemented. PostgreSQL projection, public query transport,
+durable audit, and outbox remain planned.
 
 ## Artifact publication
 

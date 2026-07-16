@@ -19,6 +19,7 @@ declare const gatewayCredentialGenerationBrand: unique symbol;
 declare const cloudLinkSessionEpochBrand: unique symbol;
 declare const protocolVersionBrand: unique symbol;
 declare const streamIdBrand: unique symbol;
+declare const streamEpochBrand: unique symbol;
 declare const streamPositionBrand: unique symbol;
 
 export type CloudLinkSessionId = string & {
@@ -34,6 +35,7 @@ export type ProtocolVersion = string & {
   readonly [protocolVersionBrand]: true;
 };
 export type StreamId = string & { readonly [streamIdBrand]: true };
+export type StreamEpoch = string & { readonly [streamEpochBrand]: true };
 export type StreamPosition = string & {
   readonly [streamPositionBrand]: true;
 };
@@ -50,6 +52,7 @@ export interface GatewayCredentialBinding {
 
 export interface CloudLinkStreamCursor {
   readonly streamId: StreamId;
+  readonly streamEpoch: StreamEpoch;
   readonly position: StreamPosition;
 }
 
@@ -152,6 +155,17 @@ export function parseStreamId(input: unknown): StreamId {
   return input as StreamId;
 }
 
+export function parseStreamEpoch(input: unknown): StreamEpoch {
+  const value = parseUint64(input, "streamEpoch");
+  if (value === "0") {
+    throw new InvalidDomainValueError(
+      "streamEpoch",
+      "streamEpoch must be a positive unsigned 64-bit decimal string",
+    );
+  }
+  return value as StreamEpoch;
+}
+
 export function parseStreamPosition(input: unknown): StreamPosition {
   return parseUint64(input, "streamPosition") as StreamPosition;
 }
@@ -232,13 +246,15 @@ export function activateCloudLinkSession(
       "CloudLink activation cannot precede connection opening",
     );
   }
-  const streamIds = new Set(
-    input.resumeCursors.map((cursor) => cursor.streamId),
+  const streamEpochs = new Set(
+    input.resumeCursors.map(
+      (cursor) => `${cursor.streamId}:${cursor.streamEpoch}`,
+    ),
   );
-  if (streamIds.size !== input.resumeCursors.length) {
+  if (streamEpochs.size !== input.resumeCursors.length) {
     return transitionFailure(
       "duplicate-cloudlink-stream",
-      "CloudLink resume cursors must contain unique stream identities",
+      "CloudLink resume cursors must contain unique stream/epoch identities",
     );
   }
   return {

@@ -10,6 +10,8 @@ import {
   parseTelemetryStreamId,
   parseTelemetryStreamPosition,
   parseThingModelRevision,
+  parseTopologyPublicationEpoch,
+  parseTopologySnapshotDigest,
 } from "../src/index.js";
 
 const model = {
@@ -17,16 +19,23 @@ const model = {
   revision: parseThingModelRevision("7"),
 } as const;
 
+function topology() {
+  return {
+    publicationEpoch: parseTopologyPublicationEpoch("11"),
+    snapshotDigest: parseTopologySnapshotDigest("fx64:0123456789abcdef"),
+  };
+}
+
 function point(position: string) {
   return {
     kind: "point-sample" as const,
     position: parseTelemetryStreamPosition(position),
     sourceTimestampMs: parseSourceTimestampMs("1784016000000"),
     instanceId: parseEdgeInstanceId("42"),
+    pointKind: "telemetry" as const,
     pointId: parseEdgePointId("7"),
     quality: "good" as const,
     value: { type: "float64" as const, value: 21.5 },
-    model,
   };
 }
 
@@ -61,6 +70,7 @@ describe("IoT telemetry domain", () => {
     const batch = defineTelemetryBatch({
       streamId: parseTelemetryStreamId("business-telemetry"),
       streamEpoch: parseTelemetryStreamEpoch("3"),
+      topology: topology(),
       retentionClass: "standard-30d",
       replay: false,
       records: [point("10"), event("11")],
@@ -68,6 +78,10 @@ describe("IoT telemetry domain", () => {
 
     expect(batch).toMatchObject({
       batchIdentity: "business-telemetry:3:10",
+      topology: {
+        publicationEpoch: "11",
+        snapshotDigest: "fx64:0123456789abcdef",
+      },
       firstPosition: "10",
       lastPosition: "11",
       recordCount: 2,
@@ -82,6 +96,7 @@ describe("IoT telemetry domain", () => {
       defineTelemetryBatch({
         streamId: parseTelemetryStreamId("business-telemetry"),
         streamEpoch: parseTelemetryStreamEpoch("3"),
+        topology: topology(),
         retentionClass: "standard-30d",
         replay: false,
         records: [point("10"), event("12")],
@@ -91,6 +106,7 @@ describe("IoT telemetry domain", () => {
       defineTelemetryBatch({
         streamId: parseTelemetryStreamId("business-telemetry"),
         streamEpoch: parseTelemetryStreamEpoch("3"),
+        topology: topology(),
         retentionClass: "standard-30d",
         replay: false,
         records: [
@@ -105,6 +121,7 @@ describe("IoT telemetry domain", () => {
       defineTelemetryBatch({
         streamId: parseTelemetryStreamId("business-telemetry"),
         streamEpoch: parseTelemetryStreamEpoch("3"),
+        topology: topology(),
         retentionClass: "hot-7d",
         replay: true,
         records: [
@@ -119,6 +136,7 @@ describe("IoT telemetry domain", () => {
       defineTelemetryBatch({
         streamId: parseTelemetryStreamId("business-telemetry"),
         streamEpoch: parseTelemetryStreamEpoch("3"),
+        topology: topology(),
         retentionClass: "hot-7d",
         replay: false,
         records: [

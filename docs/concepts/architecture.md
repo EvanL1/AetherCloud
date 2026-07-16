@@ -19,7 +19,7 @@ long-lived edge sessions to request/response API workloads.
                         /        |          \
                  HTTP API    CloudLink     workers
                     |           |            |
-               REST / MCP   gRPC streams   IaC/jobs/projections
+               REST / MCP   CloudLink/MQTT IaC/jobs/projections
 
                             web console
                                  |
@@ -35,7 +35,7 @@ long-lived edge sessions to request/response API workloads.
   outbox.
 - `web` is an authenticated client of the API and has no privileged data path.
 
-Only the API composition root exists in the repository-foundation milestone.
+Only the API is a configured long-running process in the repository-foundation milestone.
 It now exposes authenticated audit JSON and finite resumable SSE snapshots in
 addition to public liveness/product metadata; its configured bearer identity
 and in-memory audit adapter are not production IAM or durability.
@@ -43,11 +43,11 @@ and in-memory audit adapter are not production IAM or durability.
 runnable MCP composition root. It delegates Audit, Data Export, and governed Job
 operations to application use cases; MCP SDK transport and identity composition
 remain planned.
-The other roots are planned and must not be presented as runnable yet.
-Transport-neutral CloudLink session/heartbeat and Runtime Manifest use cases,
-domain state, ports, and memory adapters are executable inner layers. They do
-not make the planned `cloud-link` process, a wire schema, or production
-persistence executable.
+The CloudLink package now exposes an independently startable experimental MQTT
+ingress lifecycle backed by strict codecs and application use cases, but it has
+no production environment composition or durable PostgreSQL adapters. Workers
+remain planned. The experimental ingress must not be presented as a production
+CloudLink service.
 
 ## Dependency direction
 
@@ -105,11 +105,11 @@ The first background-work implementation should use a transactional outbox and
 PostgreSQL-backed workers. A broker is introduced only when measured
 throughput, retention, or consumer isolation requires it.
 
-Planned CloudLink wire contracts will use versioned Protobuf messages only
-after joint AetherCloud/AetherIot review. Sequence and acknowledgement fields
-must be represented without unsafe JavaScript-number conversion. The current
-application foundation is deliberately transport neutral and invents no wire
-message.
+The first experimental CloudLink wire contract uses versioned strict JSON over
+MQTT so TypeScript and Rust can execute the same fixtures. A later binary
+encoding requires joint AetherCloud/AetherIot review and cannot change business
+identity or acknowledgement semantics. Sequence fields remain canonical decimal
+strings without unsafe JavaScript-number conversion.
 
 See [multi-cloud fusion](multi-cloud-fusion.md) for provider, state, credential,
 and execution boundaries.

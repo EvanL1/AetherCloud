@@ -1,4 +1,8 @@
 node_modules
 dist
 coverage
+contracts/aether-contracts
+aether-contracts.lock.json
+contracts/cloudlink/v1/*.schema.json
+contracts/cloudlink/v1/fixtures
 pnpm-lock.yaml

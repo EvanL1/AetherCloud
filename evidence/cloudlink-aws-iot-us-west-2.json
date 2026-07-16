@@ -1,0 +1,45 @@
+{
+  "schema": "aether.cloudlink.aws-iot-evidence.v1alpha1",
+  "generated_at": "2026-07-16T00:32:54.792Z",
+  "result": "passed",
+  "command": "pnpm test:cloudlink-aws-iot",
+  "topology": {
+    "broker": "AWS IoT Core",
+    "region": "us-west-2",
+    "protocol": "MQTT 3.1.1 over TLS 1.2+",
+    "authentication": "two ephemeral X.509 client principals",
+    "edge": "AetherIot rumqttc + FileCloudLinkSpool",
+    "cloud": "AetherCloud MQTT.js ingress + application use cases"
+  },
+  "observations": {
+    "cloud_ingress_results": 12,
+    "cloud_application_commands": 11,
+    "cloud_downlinks": 7,
+    "edge_sessions": 2,
+    "telemetry_application_acks": 2,
+    "ack_loss_replays": 1,
+    "duplicate_replays": 1,
+    "conflicts_without_ack": 1,
+    "expired_without_ack": 1,
+    "out_of_order_without_ack": 1,
+    "partial_batches_without_ack": 1,
+    "data_loss_acks": 1,
+    "final_edge_cursor": 1,
+    "final_edge_pending_records": 0
+  },
+  "safety": {
+    "legacy_default": true,
+    "physical_control": "forbidden",
+    "physical_control_messages": 0,
+    "mqtt_puback_is_application_ack": false,
+    "application_ack_signed": false,
+    "production_crash_durable_store": false,
+    "authentication_gate": "proposal",
+    "edge_safety_authority_preserved": true
+  },
+  "cleanup": {
+    "ephemeral_certificates_deleted": 2,
+    "ephemeral_policies_deleted": 2,
+    "thing_resources_created": 0
+  }
+}

@@ -8,11 +8,13 @@ import type {
 } from "@aether-cloud/application";
 import { OpenCloudLinkSession } from "@aether-cloud/application";
 import {
+  parseCloudLinkSessionEpoch,
   parseCloudLinkSessionId,
   parseGatewayCredentialGeneration,
   parseGatewayId,
   parseProjectId,
   parseProtocolVersion,
+  parseStreamEpoch,
   parseStreamId,
   parseStreamPosition,
   parseTenantId,
@@ -134,35 +136,85 @@ describe("CloudLink in-memory adapters", () => {
 
   it("opens with server durable cursors and replays one request idempotently", async () => {
     const repository = new InMemoryCloudLinkSessionRepository();
-    repository.recordDurableCursor(
-      binding,
-      parseStreamId("telemetry"),
-      parseStreamPosition("42"),
-    );
     const firstInput = openInput(
       "cloudlink-open-request-001",
       "44444444-4444-4444-8444-444444444444",
     );
-    const first = await repository.open(firstInput);
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("1"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("42"),
+        },
+      }),
+    ).resolves.toBe("not-found");
+    await repository.open(firstInput);
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("2"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("42"),
+        },
+      }),
+    ).resolves.toBe("stale-session");
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("1"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("42"),
+        },
+      }),
+    ).resolves.toBe("recorded");
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("1"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("42"),
+        },
+      }),
+    ).resolves.toBe("replayed");
+    const secondInput = openInput(
+      "cloudlink-open-request-002",
+      "55555555-5555-4555-8555-555555555555",
+    );
+    const second = await repository.open(secondInput);
     const replay = await repository.open({
-      ...firstInput,
+      ...secondInput,
       sessionId: parseCloudLinkSessionId(
-        "55555555-5555-4555-8555-555555555555",
+        "66666666-6666-4666-8666-666666666666",
       ),
     });
 
-    expect(first).toMatchObject({
+    expect(second).toMatchObject({
       outcome: "opened",
       session: {
         state: "active",
-        epoch: "1",
-        resumeCursors: [{ streamId: "telemetry", position: "42" }],
+        epoch: "2",
+        resumeCursors: [
+          { streamId: "telemetry", streamEpoch: "4", position: "42" },
+        ],
       },
     });
     expect(replay).toMatchObject({
       outcome: "replayed",
       session: {
-        sessionId: first.outcome === "opened" ? first.session.sessionId : "",
+        sessionId: second.outcome === "opened" ? second.session.sessionId : "",
       },
     });
   });

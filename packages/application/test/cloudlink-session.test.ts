@@ -4,6 +4,7 @@ import {
   GET_CLOUDLINK_SESSION_QUERY,
   OPEN_CLOUDLINK_SESSION_COMMAND,
   OpenCloudLinkSession,
+  RecordCloudLinkDurableCursor,
   RECORD_CLOUDLINK_HEARTBEAT_COMMAND,
   RecordCloudLinkHeartbeat,
   GetCurrentCloudLinkSession,
@@ -12,6 +13,7 @@ import {
   type GatewayCredentialVerifier,
   type GatewayCredentialVerificationResult,
   type OpenCloudLinkSessionRepositoryInput,
+  type RecordCloudLinkDurableCursorRepositoryResult,
 } from "../src/index.js";
 import {
   activateCloudLinkSession,
@@ -23,6 +25,7 @@ import {
   parseGatewayId,
   parseProjectId,
   parseProtocolVersion,
+  parseStreamEpoch,
   parseStreamId,
   parseStreamPosition,
   parseTenantId,
@@ -115,6 +118,7 @@ function makeActiveSession(): CloudLinkSession {
     resumeCursors: [
       {
         streamId: parseStreamId("telemetry"),
+        streamEpoch: parseStreamEpoch("4"),
         position: parseStreamPosition("42"),
       },
     ],
@@ -125,6 +129,8 @@ function makeActiveSession(): CloudLinkSession {
 
 class StubSessionRepository implements CloudLinkSessionRepository {
   opened: OpenCloudLinkSessionRepositoryInput | undefined;
+  cursor: unknown;
+  cursorResult: RecordCloudLinkDurableCursorRepositoryResult = "recorded";
   session: CloudLinkSession | undefined = makeActiveSession();
 
   open(input: OpenCloudLinkSessionRepositoryInput) {
@@ -156,6 +162,11 @@ class StubSessionRepository implements CloudLinkSessionRepository {
     }
     this.session = session;
     return Promise.resolve("replaced" as const);
+  }
+
+  recordDurableCursor(input: unknown) {
+    this.cursor = input;
+    return Promise.resolve(this.cursorResult);
   }
 }
 
@@ -276,7 +287,9 @@ describe("CloudLink session application", () => {
     const result = await useCase.execute(validCommandContext, {
       credential,
       protocolVersions: ["2.0", "1.1", "1.0"],
-      clientPositions: [{ streamId: "telemetry", position: "99" }],
+      clientPositions: [
+        { streamId: "telemetry", streamEpoch: "4", position: "99" },
+      ],
     });
 
     expect(result).toMatchObject({
@@ -288,7 +301,9 @@ describe("CloudLink session application", () => {
         gatewayId,
         state: "active",
         protocolVersion: "1.0",
-        resumeCursors: [{ streamId: "telemetry", position: "42" }],
+        resumeCursors: [
+          { streamId: "telemetry", streamEpoch: "4", position: "42" },
+        ],
       },
     });
     expect(repository.opened).toMatchObject({
@@ -297,6 +312,83 @@ describe("CloudLink session application", () => {
       protocolVersion: "1.0",
     });
     expect(repository.opened).not.toHaveProperty("clientPositions");
+  });
+
+  it("records a durable cursor only through the authenticated session use case", async () => {
+    const repository = new StubSessionRepository();
+    const useCase = new RecordCloudLinkDurableCursor({
+      repository,
+      credentialVerifier: new StubCredentialVerifier({
+        ok: true,
+        value: binding(),
+      }),
+      clock: new FixedClock(),
+    });
+
+    const result = await useCase.execute(validCommandContext, {
+      credential,
+      sessionId,
+      sessionEpoch: "9",
+      streamId: "manifest",
+      streamEpoch: "1",
+      position: "7",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      replayed: false,
+      value: {
+        streamId: "manifest",
+        streamEpoch: "1",
+        position: "7",
+      },
+    });
+    expect(repository.cursor).toMatchObject({
+      binding: { tenantId, projectId, gatewayId, generation: "3" },
+      sessionId,
+      sessionEpoch: "9",
+      cursor: { streamId: "manifest", streamEpoch: "1", position: "7" },
+    });
+
+    repository.cursorResult = "replayed";
+    await expect(
+      useCase.execute(validCommandContext, {
+        credential,
+        sessionId,
+        sessionEpoch: "9",
+        streamId: "manifest",
+        streamEpoch: "1",
+        position: "7",
+      }),
+    ).resolves.toMatchObject({ ok: true, replayed: true });
+    repository.cursorResult = "stale-session";
+    await expect(
+      useCase.execute(validCommandContext, {
+        credential,
+        sessionId,
+        sessionEpoch: "8",
+        streamId: "manifest",
+        streamEpoch: "1",
+        position: "7",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "stale-cloudlink-session-epoch" },
+    });
+    repository.cursorResult = "not-found";
+    await expect(
+      useCase.execute(validCommandContext, {
+        credential,
+        sessionId,
+        sessionEpoch: "9",
+        streamId: "manifest",
+        streamEpoch: "1",
+        position: "7",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "session-not-found" },
+    });
   });
 
   it("rejects expired commands and unsupported protocol versions", async () => {

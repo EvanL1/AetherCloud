@@ -25,6 +25,8 @@ declare const edgeInstanceIdBrand: unique symbol;
 declare const edgePointIdBrand: unique symbol;
 declare const deviceEventIdBrand: unique symbol;
 declare const modelRevisionBrand: unique symbol;
+declare const topologyPublicationEpochBrand: unique symbol;
+declare const topologySnapshotDigestBrand: unique symbol;
 
 export type TelemetryStreamId = string & {
   readonly [telemetryStreamIdBrand]: true;
@@ -44,8 +46,15 @@ export type DeviceEventId = string & { readonly [deviceEventIdBrand]: true };
 export type ThingModelRevision = string & {
   readonly [modelRevisionBrand]: true;
 };
+export type TopologyPublicationEpoch = string & {
+  readonly [topologyPublicationEpochBrand]: true;
+};
+export type TopologySnapshotDigest = string & {
+  readonly [topologySnapshotDigestBrand]: true;
+};
 
 export type PointQuality = "bad" | "good" | "uncertain" | "unavailable";
+export type AcquisitionPointKind = "status" | "telemetry";
 export type RetentionClass = "archive-365d" | "hot-7d" | "standard-30d";
 
 export interface ThingModelReference {
@@ -66,10 +75,11 @@ export interface PointSample {
   readonly position: TelemetryStreamPosition;
   readonly sourceTimestampMs: SourceTimestampMs;
   readonly instanceId: EdgeInstanceId;
+  readonly pointKind: AcquisitionPointKind;
   readonly pointId: EdgePointId;
   readonly quality: PointQuality;
   readonly value: TelemetryPointValue;
-  readonly model: ThingModelReference;
+  readonly model?: ThingModelReference;
 }
 
 export type DeviceEventPayloadValue = boolean | null | number | string;
@@ -82,14 +92,20 @@ export interface DeviceEvent {
   readonly eventType: string;
   readonly instanceId: EdgeInstanceId;
   readonly payload: Readonly<Record<string, DeviceEventPayloadValue>>;
-  readonly model: ThingModelReference;
+  readonly model?: ThingModelReference;
 }
 
 export type TelemetryRecord = DeviceEvent | PointSample;
 
+export interface TelemetryTopologyBinding {
+  readonly publicationEpoch: TopologyPublicationEpoch;
+  readonly snapshotDigest: TopologySnapshotDigest;
+}
+
 export interface TelemetryBatch {
   readonly streamId: TelemetryStreamId;
   readonly streamEpoch: TelemetryStreamEpoch;
+  readonly topology: TelemetryTopologyBinding;
   readonly retentionClass: RetentionClass;
   readonly replay: boolean;
   readonly records: readonly TelemetryRecord[];
@@ -130,6 +146,7 @@ export interface PersistedTelemetryRecord {
   readonly gatewayId: GatewayId;
   readonly streamId: TelemetryStreamId;
   readonly streamEpoch: TelemetryStreamEpoch;
+  readonly topology: TelemetryTopologyBinding;
   readonly batchIdentity: string;
   readonly receivedAt: UtcInstant;
   readonly persistedAt: UtcInstant;
@@ -140,6 +157,7 @@ export interface PersistedTelemetryRecord {
 export interface TelemetryBatchInput {
   readonly streamId: TelemetryStreamId;
   readonly streamEpoch: TelemetryStreamEpoch;
+  readonly topology: TelemetryTopologyBinding;
   readonly retentionClass: RetentionClass;
   readonly replay: boolean;
   readonly records: readonly TelemetryRecord[];
@@ -194,6 +212,32 @@ export function parseTelemetryStreamPosition(
     maximumUint64,
     64,
   ) as TelemetryStreamPosition;
+}
+
+export function parseTopologyPublicationEpoch(
+  input: unknown,
+): TopologyPublicationEpoch {
+  return parseUnsigned(
+    input,
+    "topologyPublicationEpoch",
+    maximumUint64,
+    64,
+  ) as TopologyPublicationEpoch;
+}
+
+export function parseTopologySnapshotDigest(
+  input: unknown,
+): TopologySnapshotDigest {
+  if (
+    typeof input !== "string" ||
+    !/^(?:fx64:[0-9a-f]{16}|sha256:[0-9a-f]{64})$/.test(input)
+  ) {
+    throw new InvalidDomainValueError(
+      "topologySnapshotDigest",
+      "topologySnapshotDigest must be an algorithm-qualified lowercase digest",
+    );
+  }
+  return input as TopologySnapshotDigest;
 }
 
 export function parseSourceTimestampMs(input: unknown): SourceTimestampMs {
@@ -356,13 +400,18 @@ function parseRecord(record: TelemetryRecord): TelemetryRecord {
     position: parseTelemetryStreamPosition(record.position),
     sourceTimestampMs: parseSourceTimestampMs(record.sourceTimestampMs),
     instanceId: parseEdgeInstanceId(record.instanceId),
-    model: parseModelReference(record.model),
   };
+  const model =
+    record.model === undefined
+      ? {}
+      : { model: parseModelReference(record.model) };
   switch (record.kind) {
     case "point-sample":
       return Object.freeze({
         kind: "point-sample",
         ...common,
+        ...model,
+        pointKind: parseAcquisitionPointKind(record.pointKind),
         pointId: parseEdgePointId(record.pointId),
         quality: parseTelemetryQuality(record.quality),
         value: parsePointValue(record.value),
@@ -377,6 +426,7 @@ function parseRecord(record: TelemetryRecord): TelemetryRecord {
       return Object.freeze({
         kind: "device-event",
         ...common,
+        ...model,
         eventId: parseDeviceEventId(record.eventId),
         eventType: record.eventType,
         payload: parsePayload(record.payload),
@@ -389,11 +439,27 @@ function parseRecord(record: TelemetryRecord): TelemetryRecord {
   }
 }
 
+function parseAcquisitionPointKind(input: unknown): AcquisitionPointKind {
+  if (!(input === "status" || input === "telemetry")) {
+    throw new InvalidDomainValueError(
+      "pointKind",
+      "pointKind must be acquisition-owned telemetry or status",
+    );
+  }
+  return input;
+}
+
 export function defineTelemetryBatch(
   input: TelemetryBatchInput,
 ): TelemetryBatch {
   const streamId = parseTelemetryStreamId(input.streamId);
   const streamEpoch = parseTelemetryStreamEpoch(input.streamEpoch);
+  const topology = Object.freeze({
+    publicationEpoch: parseTopologyPublicationEpoch(
+      input.topology.publicationEpoch,
+    ),
+    snapshotDigest: parseTopologySnapshotDigest(input.topology.snapshotDigest),
+  });
   const retentionClass = parseRetentionClass(input.retentionClass);
   if (typeof input.replay !== "boolean") {
     throw new InvalidDomainValueError("replay", "replay must be boolean");
@@ -430,6 +496,7 @@ export function defineTelemetryBatch(
   return Object.freeze({
     streamId,
     streamEpoch,
+    topology,
     retentionClass,
     replay: input.replay,
     records: Object.freeze(records),
