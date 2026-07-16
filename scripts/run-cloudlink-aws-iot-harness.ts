@@ -28,7 +28,7 @@ interface PolicyAttachment {
 
 const cloudRoot = resolve(import.meta.dirname, "..");
 const iotRoot = resolve(
-  process.env.AETHERIOT_ROOT ?? resolve(cloudRoot, "../AetherIot"),
+  process.env.AETHERIOT_ROOT ?? resolve(cloudRoot, "../AetherEdge"),
 );
 const workerPath = resolve(cloudRoot, "scripts/cloudlink-dual-cloud-worker.ts");
 const region = process.env.AETHER_CLOUDLINK_AWS_REGION ?? "us-west-2";
@@ -465,9 +465,12 @@ try {
   const edgeCode = await childExit(edge);
   assert(
     edgeCode === 0,
-    `AetherIot AWS Edge test failed with exit ${String(edgeCode)}`,
+    `AetherEdge AWS Edge test failed with exit ${String(edgeCode)}`,
   );
-  assert(existsSync(edgeEvidencePath), "AetherIot AWS Edge evidence is absent");
+  assert(
+    existsSync(edgeEvidencePath),
+    "AetherEdge AWS Edge evidence is absent",
+  );
   const edgeEvidence = JSON.parse(
     readFileSync(edgeEvidencePath, "utf8"),
   ) as JsonRecord;
@@ -508,7 +511,7 @@ try {
       region,
       protocol: "MQTT 3.1.1 over TLS 1.2+",
       authentication: "two ephemeral X.509 client principals",
-      edge: "AetherIot rumqttc + FileCloudLinkSpool",
+      edge: "AetherEdge rumqttc + FileCloudLinkSpool",
       cloud: "AetherCloud MQTT.js ingress + application use cases",
     },
     observations: {

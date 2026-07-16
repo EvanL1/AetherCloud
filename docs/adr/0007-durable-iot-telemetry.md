@@ -21,7 +21,7 @@ future signed-ACK profile remain incomplete.
 
 ## Context
 
-AetherIot acquires live point values, buffers bounded uplink work locally, and
+AetherEdge acquires live point values, buffers bounded uplink work locally, and
 continues operating while disconnected. Wide-area delivery is therefore
 at-least-once: a Gateway can replay a batch after either side loses a response.
 A cloud receiver must distinguish a safe replay from different content using
@@ -85,7 +85,7 @@ and credentials are excluded from every telemetry record and diagnostic signal.
 
 ## Compatibility and migration
 
-AetherIot has a runtime manifest, point model, local durable outbox, and a
+AetherEdge has a runtime manifest, point model, local durable outbox, and a
 compatibility MQTT uplink, but no mutually accepted CloudLink telemetry wire
 schema. The experimental MQTT contract must be executed unchanged against both
 repositories before release; the legacy MQTT payload is not silently adopted as

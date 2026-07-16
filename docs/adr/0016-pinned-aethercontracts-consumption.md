@@ -1,7 +1,7 @@
 ---
 title: "ADR-0016: Pinned AetherContracts consumption"
 description: Consume one digest-pinned public contract release while keeping product codecs local and conformance claims evidence-based
-updated: 2026-07-15
+updated: 2026-07-16
 status: normative
 ---
 
@@ -10,7 +10,7 @@ status: normative
 ## Status
 
 Accepted on 2026-07-15. AetherContracts `v0.1.0-alpha.3` is the public
-release consumed by both AetherCloud and AetherIot through the same
+release consumed by both AetherCloud and AetherEdge through the same
 `aether-contracts.lock.json`. The current claim is `distribution-only`; both
 locks are `complete-consumer` with no pending imports.
 
@@ -31,7 +31,7 @@ production transport and durability conformance.
 1. The tagged AetherContracts specification, Schema, fixture, profile, and TCK
    surface is the shared interoperability authority. Product domain and codec
    implementations remain in their product repositories.
-2. AetherCloud and AetherIot commit byte-identical consumer locks. The lock pins
+2. AetherCloud and AetherEdge commit byte-identical consumer locks. The lock pins
    the annotated tag object, peeled commit, exact release URL, bundle size and
    SHA-256, manifest SHA-256, and the imported and pending artifact sets.
 3. Default verification is offline. A versioned copy of the exact release

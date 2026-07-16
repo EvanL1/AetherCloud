@@ -1,20 +1,20 @@
 ---
 title: AetherCloud overview
 description: Understand the multi-cloud product, its authority boundaries, and the first vertical slices
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
 # AetherCloud overview
 
 AetherCloud is the optional, AI-native multi-cloud fusion and control plane for
-AetherIot. It gives people, applications, and coding agents one place to
+AetherEdge. It gives people, applications, and coding agents one place to
 understand fleets and cloud resources, choose placements, inspect telemetry,
 publish versioned artifacts, and coordinate audited work across edge sites and
 infrastructure providers.
 
 It is not the runtime that acquires device data or closes a control loop. An
-AetherIot host continues operating when AetherCloud, the wide-area network, or
+AetherEdge host continues operating when AetherCloud, the wide-area network, or
 an AI provider is unavailable.
 
 ## What belongs in AetherCloud

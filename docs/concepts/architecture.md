@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: Understand the modular-monolith processes, dependency direction, and evolution rules
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -28,7 +28,7 @@ long-lived edge sessions to request/response API workloads.
 
 - `api` serves REST, OpenAPI, WebSocket notifications, and later MCP Streamable
   HTTP.
-- `cloud-link` owns authenticated, long-lived AetherIot sessions and protocol
+- `cloud-link` owns authenticated, long-lived AetherEdge sessions and protocol
   acknowledgement.
 - `workers` execute isolated infrastructure plans, refresh provider inventory,
   advance deployments and telemetry projections, retry work, and deliver the
@@ -107,7 +107,7 @@ throughput, retention, or consumer isolation requires it.
 
 The first experimental CloudLink wire contract uses versioned strict JSON over
 MQTT so TypeScript and Rust can execute the same fixtures. A later binary
-encoding requires joint AetherCloud/AetherIot review and cannot change business
+encoding requires joint AetherCloud/AetherEdge review and cannot change business
 identity or acknowledgement semantics. Sequence fields remain canonical decimal
 strings without unsafe JavaScript-number conversion.
 

@@ -1,7 +1,7 @@
 ---
 title: "ADR-0009: Immutable artifact publication"
 description: Separate content-addressed revisions, governed release channels, deployment intent, and edge application evidence
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -12,7 +12,7 @@ status: normative
 Accepted on 2026-07-14. The publication state machine, publish/get application
 use cases, content/signature/repository ports, and atomic memory conformance
 adapter are implemented. Production object storage, PostgreSQL, signer/KMS,
-public interfaces, and the AetherIot delivery counterpart remain planned.
+public interfaces, and the AetherEdge delivery counterpart remain planned.
 
 ## Context
 
@@ -73,7 +73,7 @@ must preserve atomic audit/outbox and content immutability.
 
 ## Compatibility and migration
 
-There is no mutually implemented AetherCloud/AetherIot artifact wire contract
+There is no mutually implemented AetherCloud/AetherEdge artifact wire contract
 yet. Future delivery references the exact revision and digest and is versioned
 against runtime compatibility evidence. The memory adapter is not production
 durability and does not imply end-to-end delivery.

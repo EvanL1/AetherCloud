@@ -1,7 +1,7 @@
 ---
 title: Artifact registry and immutable publication
 description: Publish signed content-addressed revisions without confusing release metadata, deployment intent, or edge acceptance
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -10,7 +10,7 @@ status: mixed
 AetherCloud publishes Pack, configuration, model, rule, and application
 revisions as immutable, content-addressed facts. Publication makes a revision
 eligible for a later desired-state reference; it does not deploy, download, or
-apply anything at an AetherIot runtime.
+apply anything at an AetherEdge runtime.
 
 ## Authority and boundaries
 
@@ -18,7 +18,7 @@ apply anything at an AetherIot runtime.
   publication state, signer policy, and release-channel references.
 - The content store is authoritative for the immutable bytes identified by a
   SHA-256 digest.
-- AetherIot remains authoritative for local compatibility checks, cache state,
+- AetherEdge remains authoritative for local compatibility checks, cache state,
   and whether a revision is accepted and applied.
 - A release channel is a governed reference. It is not mutable content and is
   not evidence of deployment.
@@ -67,7 +67,7 @@ The production design separates three responsibilities:
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | PostgreSQL     | artifact/revision metadata, publication state, channel reference, idempotency record, authorization scope, audit and transactional outbox |
 | Object storage | immutable content, signature material, provenance, SBOM and large validation evidence by digest                                           |
-| Edge cache     | locally verified content and application evidence under AetherIot policy                                                                  |
+| Edge cache     | locally verified content and application evidence under AetherEdge policy                                                                 |
 
 The current implementation has no PostgreSQL or object-storage adapter. The
 memory adapter's `putContent` and trusted-signature helpers are test fixtures,
@@ -94,7 +94,7 @@ after a durable transaction writes a real outbox.
   validation;
 - deprecate, withdraw, and channel-move application commands;
 - HTTP, CloudLink, export, and MCP interfaces;
-- AetherIot artifact download and verification counterpart;
+- AetherEdge artifact download and verification counterpart;
 - desired/reported/applied deployment and rollout.
 
 See [ADR-0009](../adr/0009-immutable-artifact-publication.md) for the decision

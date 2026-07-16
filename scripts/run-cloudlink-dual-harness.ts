@@ -17,7 +17,7 @@ type JsonRecord = Record<string, unknown>;
 
 const cloudRoot = resolve(import.meta.dirname, "..");
 const iotRoot = resolve(
-  process.env.AETHERIOT_ROOT ?? resolve(cloudRoot, "../AetherIot"),
+  process.env.AETHERIOT_ROOT ?? resolve(cloudRoot, "../AetherEdge"),
 );
 const contractsRoot = resolve(
   process.env.AETHERCONTRACTS_ROOT ?? resolve(cloudRoot, "../AetherContracts"),
@@ -291,7 +291,7 @@ async function runEdgePhase(
   const code = await handleControls(edge);
   assert(
     code === 0,
-    `AetherIot Edge phase ${phase} failed with exit ${String(code)}`,
+    `AetherEdge Edge phase ${phase} failed with exit ${String(code)}`,
   );
   assert(existsSync(evidencePath), `Edge phase ${phase} did not emit evidence`);
 }
@@ -503,7 +503,7 @@ try {
     command: "pnpm test:cloudlink-dual",
     topology: {
       broker: `${basename(mosquitto)} MQTT 3.1.1`,
-      edge: "AetherIot aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
+      edge: "AetherEdge aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
       cloud:
         "AetherCloud node-mqtt adapter + CloudLink ingress + application use cases",
       unique_topic_prefix: topicPrefix,
@@ -527,7 +527,7 @@ try {
     repositories: {
       AetherContracts: { branch: "main", head: gitHead(contractsRoot) },
       AetherCloud: { branch: "main", head: gitHead(cloudRoot) },
-      AetherIot: { branch: "main", head: gitHead(iotRoot) },
+      AetherEdge: { branch: "main", head: gitHead(iotRoot) },
     },
     observations: {
       cloud_ingress_results: ingressResults.length,

@@ -9,7 +9,7 @@ status: mixed
 
 This is an experimental, pre-release interoperability candidate. The public
 AetherContracts `v0.1.0-alpha.3` release is the sole contract authority, and
-AetherCloud and AetherIot commit the same digest-pinned consumer lock. The
+AetherCloud and AetherEdge commit the same digest-pinned consumer lock. The
 current claim is complete distribution adoption and public fixture execution,
 not production protocol conformance. Shared-Broker production key lifecycle is
 still unresolved, and alpha.3 durable ACKs are explicitly unsigned.
@@ -54,7 +54,7 @@ the exact digest-pinned release.
   persistence is also planned; the alpha harness records an application fact
   but does not claim production durability.
 - Default tests need no Broker, Docker, PostgreSQL, or cloud account. The opt-in
-  alpha harness starts real Mosquitto, AetherIot's rumqttc transport and file
+  alpha harness starts real Mosquitto, AetherEdge's rumqttc transport and file
   spool, plus AetherCloud's MQTT ingress and application use cases.
 
 ## Provisional wire boundary
@@ -105,10 +105,10 @@ the authentication gate a proposal.
 | Reachable customer-selected Broker | Dedicated namespace, TLS, challenge/per-message proof    | Transport adapter implemented; origin auth planned |
 | AetherCloud-managed Broker         | Same CloudLink application/session boundary              | Broker product/principal integration planned       |
 | Private customer Broker            | Site connector preserving identity, spool/ACK, and audit | Planned                                            |
-| Legacy AetherIot MQTT              | Separate namespace, never silently decoded as CloudLink  | Retained during migration                          |
+| Legacy AetherEdge MQTT             | Separate namespace, never silently decoded as CloudLink  | Retained during migration                          |
 
 MQTT PUBACK is transport evidence only and never authorizes deletion from the
-AetherIot spool.
+AetherEdge spool.
 
 ## Evidence and remaining gates
 
@@ -164,7 +164,7 @@ This external-service test requires an authenticated AWS CLI identity with AWS
 IoT permissions. It defaults to `us-west-2` and can be moved explicitly with
 `AETHER_CLOUDLINK_AWS_REGION`. The command provisions two separate X.509 client
 principals and two least-privilege topic policies, creates no Thing, runs the
-AetherCloud MQTT.js ingress and AetherIot rumqttc/FileCloudLinkSpool through
+AetherCloud MQTT.js ingress and AetherEdge rumqttc/FileCloudLinkSpool through
 AWS IoT Core MQTT 3.1.1 on port 8883, and writes sanitized evidence to
 `evidence/cloudlink-aws-iot-us-west-2.json`.
 

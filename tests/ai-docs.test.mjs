@@ -15,6 +15,7 @@ const requiredDocuments = [
   "ai/invariants.md",
   "skills/aether-cloud/SKILL.md",
   "docs/get-started/overview.md",
+  "docs/get-started/aetheriot-product-family.md",
   "docs/concepts/architecture.md",
   "docs/concepts/audit-and-integrations.md",
   "docs/concepts/artifact-registry.md",
@@ -56,6 +57,7 @@ const requiredDocuments = [
   "docs/adr/0014-cloudlink-mqtt-transport-binding.md",
   "docs/adr/0015-cloudlink-interoperability-release-gates.md",
   "docs/adr/0016-pinned-aethercontracts-consumption.md",
+  "docs/adr/0017-aetheriot-product-family-naming.md",
 ];
 
 function read(path) {
@@ -512,6 +514,24 @@ test("infrastructure planning documentation preserves the Plan-only safety bound
   assert.match(source, /production.*artifact store.*planned/is);
   assert.match(source, /implemented/i);
   assert.match(source, /planned/i);
+});
+
+test("product-family naming distinguishes AetherIoT from AetherEdge without rewriting releases", () => {
+  const family = read("docs/get-started/aetheriot-product-family.md");
+  const decision = read("docs/adr/0017-aetheriot-product-family-naming.md");
+  const importedRelease = read(
+    "contracts/aether-contracts/v0.1.0-alpha.3/spec/distribution-v1alpha1.md",
+  );
+
+  assert.match(family, /AetherIoT is the umbrella project/);
+  assert.match(family, /AetherEdge.*edge runtime/s);
+  assert.match(
+    family,
+    /AetherContracts remains the sole shared interoperability authority/,
+  );
+  assert.match(decision, /`aether` CLI/);
+  assert.match(decision, /Published releases, evidence, provenance/);
+  assert.match(importedRelease, /AetherIot/);
 });
 
 test("relative Markdown links inside indexed documents resolve", () => {

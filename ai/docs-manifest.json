@@ -10,6 +10,13 @@
       "audience": ["developer", "agent"]
     },
     {
+      "path": "docs/get-started/aetheriot-product-family.md",
+      "title": "AetherIoT product family",
+      "description": "Place AetherCloud beside AetherEdge and AetherContracts without blurring edge, cloud, provider, or protocol authority",
+      "status": "normative",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
       "path": "docs/concepts/architecture.md",
       "title": "Architecture",
       "description": "Understand the modular-monolith processes, dependency direction, and evolution rules",
@@ -293,6 +300,13 @@
       "path": "docs/adr/0016-pinned-aethercontracts-consumption.md",
       "title": "ADR-0016: Pinned AetherContracts consumption",
       "description": "Consume one digest-pinned public contract release while keeping product codecs local and conformance claims evidence-based",
+      "status": "normative",
+      "audience": ["developer", "agent", "operator"]
+    },
+    {
+      "path": "docs/adr/0017-aetheriot-product-family-naming.md",
+      "title": "ADR-0017: Adopt AetherIoT product-family naming",
+      "description": "Name the edge product AetherEdge while preserving AetherCloud authority, stable software identifiers, and immutable contract evidence",
       "status": "normative",
       "audience": ["developer", "agent", "operator"]
     },

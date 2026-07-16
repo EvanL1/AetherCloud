@@ -1,7 +1,7 @@
 ---
 title: "ADR-0010: Desired, reported, and applied deployment"
 description: Preserve cloud intent, edge observations, applied evidence, unknown outcomes, and cancellation as separate facts
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -12,7 +12,7 @@ status: normative
 Accepted on 2026-07-14. Domain transitions, application use cases, published
 artifact gating, Gateway-authenticated observation ingestion, Tenant query,
 and an atomic memory adapter are implemented. CloudLink wire, PostgreSQL,
-workers, batching, public interfaces, and the AetherIot application counterpart
+workers, batching, public interfaces, and the AetherEdge application counterpart
 remain planned.
 
 ## Context
@@ -78,4 +78,4 @@ current mocks are end to end.
 - late evidence remains useful after reconnect;
 - reconciliation requires durable history and idempotency indexes;
 - cloud cancellation has deliberately limited semantics;
-- production completion depends on an AetherIot counterpart.
+- production completion depends on an AetherEdge counterpart.

@@ -1,7 +1,7 @@
 ---
 title: AetherCloud invariants
 description: Non-negotiable authority, tenancy, safety, and documentation rules for every change
-updated: 2026-07-15
+updated: 2026-07-16
 status: normative
 ---
 
@@ -9,7 +9,7 @@ status: normative
 
 These rules are more stable than the current directory layout.
 
-1. An AetherIot edge runtime is authoritative for live point state and physical
+1. An AetherEdge edge runtime is authoritative for live point state and physical
    control.
 2. Cloud unavailability cannot stop acquisition, local history, deterministic
    rules, alarms, or safety behavior at a commissioned edge.
@@ -98,7 +98,7 @@ These rules are more stable than the current directory layout.
 41. A Runtime Manifest is scoped only by an authenticated Gateway credential.
     Its generation is lossless and immutable: late generations remain history,
     while reuse of one generation with a different checksum fails closed.
-42. Runtime Manifest checksum verification matches AetherIot's canonical JSON
+42. Runtime Manifest checksum verification matches AetherEdge's canonical JSON
     SHA-256 contract. A reported capability catalog is an observed edge fact,
     not cloud permission to execute that capability.
 43. A published artifact revision is immutable and content-addressed. A release
@@ -143,7 +143,7 @@ These rules are more stable than the current directory layout.
     only alternative is configured trusted-adapter origin evidence outside the
     payload for every delivered publish. Per-Gateway ACLs are defense in depth,
     not origin proof.
-55. The legacy AetherIot MQTT adapter remains a separate migration surface.
+55. The legacy AetherEdge MQTT adapter remains a separate migration surface.
     CloudLink cannot silently reinterpret legacy topics, and removal requires a
     later ADR, joint conformance, rollback evidence, and an elapsed support
     window.
@@ -168,7 +168,7 @@ These rules are more stable than the current directory layout.
     production key lifecycle, signed ACK, or crash durability. Legacy remains
     the default.
 61. Shared contract authority is the digest-pinned AetherContracts release.
-    AetherCloud and AetherIot keep the same closed consumer lock; product-local
+    AetherCloud and AetherEdge keep the same closed consumer lock; product-local
     manifests, wire profiles, authentication drafts, and gates cannot redefine
     the public core.
 62. Complete contract distribution integrity and fixture execution are not

@@ -1,7 +1,7 @@
 ---
 title: Governed capability Jobs
 description: Request versioned edge capabilities without arbitrary RPC, unsafe retry, or cloud claims about physical outcomes
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -15,14 +15,14 @@ ingest authenticated edge Receipts, and query the resulting Job.
 
 This is not an end-to-end remote execution product. PostgreSQL, production
 audit/outbox, Runtime Manifest catalog wiring, CloudLink envelopes and mailbox,
-large evidence storage, public HTTP, scheduling workers, and the AetherIot
+large evidence storage, public HTTP, scheduling workers, and the AetherEdge
 counterpart remain planned.
 
 ## Authority and admission
 
 - AetherCloud owns Job intent, Tenant authorization, confirmation evidence,
   expiry, and delivery policy.
-- AetherIot owns capability acceptance, local precondition and safety checks,
+- AetherEdge owns capability acceptance, local precondition and safety checks,
   execution, and result facts.
 - A declared capability is evidence of availability, not authorization. Job
   creation requires both `edge.job.create` and the declaration's permission.
@@ -90,7 +90,7 @@ it does not satisfy production durability.
 Production work adds a PostgreSQL ledger and Receipt inbox, a transactionally
 coupled outbox/audit chain, Runtime Manifest declaration provenance,
 application-owned CloudLink delivery, evidence objects, scheduling and expiry
-workers, public interfaces, and a reviewed AetherIot contract. Acknowledgement
+workers, public interfaces, and a reviewed AetherEdge contract. Acknowledgement
 to the edge occurs only after durable Receipt acceptance.
 
 Read [ADR-0011](../adr/0011-governed-capability-jobs.md) for the decision and

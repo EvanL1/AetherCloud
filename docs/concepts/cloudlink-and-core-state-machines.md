@@ -1,7 +1,7 @@
 ---
 title: CloudLink and core state machines
 description: Define offline, duplicate, ordering, timeout, retry, partial-success, and cancellation semantics
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -105,9 +105,9 @@ authenticating -> negotiating -> resuming -> active -> draining -> closed
 
 ## Runtime Manifest report
 
-The implemented transport-neutral report command accepts the closed AetherIot
+The implemented transport-neutral report command accepts the closed AetherEdge
 Runtime Manifest v1 shape only after credential authentication. It verifies the
-same canonical-JSON SHA-256 contract as AetherIot, represents its generation as
+same canonical-JSON SHA-256 contract as AetherEdge, represents its generation as
 a canonical unsigned 64-bit decimal string, and derives Tenant, Project, and
 Gateway scope from the verified credential rather than payload identifiers.
 

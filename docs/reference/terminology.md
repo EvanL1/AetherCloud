@@ -1,7 +1,7 @@
 ---
 title: Terminology
 description: Resolve AetherCloud terms before naming contracts or database records
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -20,7 +20,7 @@ expiry, idempotency, preconditions, authorization evidence, and audit context.
 provider identity, account or subscription scope, and secret reference.
 
 **CloudLink** — The versioned, authenticated protocol between AetherCloud and
-an AetherIot runtime. It is not a device protocol.
+an AetherEdge runtime. It is not a device protocol.
 
 **Control-plane cell** — One independently operated API, CloudLink, worker,
 PostgreSQL, and object-storage placement with one authoritative transactional
@@ -37,7 +37,7 @@ locked, applied, recovered, and destroyed independently, with one remote State.
 Its isolation key is derived from its Tenant, Project, Cloud Connection, and
 Stack identities.
 
-**Edge** — One commissioned AetherIot runtime and its local authority. Edge and
+**Edge** — One commissioned AetherEdge runtime and its local authority. Edge and
 gateway are related but not interchangeable in protocol contracts.
 
 **Enrollment claim** — A Tenant/Project/Gateway-bound, expiring bootstrap claim
@@ -47,7 +47,7 @@ long-lived API or CloudLink credential.
 **Gateway credential generation** — One independently revocable generation of
 long-lived Gateway identity material. Recovery creates a new generation.
 
-**Gateway** — The cloud resource representing an enrolled AetherIot runtime
+**Gateway** — The cloud resource representing an enrolled AetherEdge runtime
 identity.
 
 **Instance** — A thing-model instance owned by one gateway.

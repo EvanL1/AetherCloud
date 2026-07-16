@@ -1,7 +1,7 @@
 ---
 title: Edge, AetherCloud, and provider authority
 description: Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -13,15 +13,15 @@ projection, and the behavior during disconnection before choosing a transport.
 
 | Concern                    | Authority               | Remote representation                        |
 | -------------------------- | ----------------------- | -------------------------------------------- |
-| Current point value        | AetherIot SHM           | Time-stamped telemetry projection            |
-| Device acquisition         | AetherIot runtime       | Connection and health observation            |
-| Local safety and rules     | AetherIot runtime       | Versioned configuration and audit projection |
-| Commissioned channel state | AetherIot local store   | Desired/applied revision status              |
+| Current point value        | AetherEdge SHM          | Time-stamped telemetry projection            |
+| Device acquisition         | AetherEdge runtime      | Connection and health observation            |
+| Local safety and rules     | AetherEdge runtime      | Versioned configuration and audit projection |
+| Commissioned channel state | AetherEdge local store  | Desired/applied revision status              |
 | Tenant and user access     | AetherCloud             | Bounded grants delivered to an edge          |
 | Fleet membership           | AetherCloud             | Enrolled gateway identity                    |
 | Published artifact         | AetherCloud             | Verified local artifact cache                |
 | Job intent                 | AetherCloud             | Locally validated accepted/rejected job      |
-| Physical command result    | AetherIot runtime       | Receipt and audit record                     |
+| Physical command result    | AetherEdge runtime      | Receipt and audit record                     |
 | Desired cloud placement    | AetherCloud             | Provider-scoped deployment plan              |
 | Actual cloud resource      | Infrastructure provider | Normalized inventory projection              |
 | Infrastructure state       | Stack remote backend    | Metadata and version reference               |

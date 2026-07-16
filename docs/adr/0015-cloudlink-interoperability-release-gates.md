@@ -61,7 +61,7 @@ CloudLink v1 cannot replace legacy MQTT until these ordered gates pass:
    structurally invalid, and context-invalid fixtures with the agreed
    classification. The alpha.3 consumer lock and both codec suites cover the
    complete public fixture manifest.
-5. **Real-Broker dual harness.** One opt-in test runs the AetherIot harness and
+5. **Real-Broker dual harness.** One opt-in test runs the AetherEdge harness and
    AetherCloud ingress through one real Broker and proves session/resume,
    Runtime Manifest, telemetry, and application ACK behavior.
 6. **Fault injection.** The joint harness injects disconnect, ACK loss, Edge and
