@@ -1,0 +1,106 @@
+# AetherCloud
+
+[English](README.md)
+
+**AetherIoT 正在演进中的智能体与控制平面。**
+
+AetherCloud 负责把人的意图转化为受治理的期望状态、能力任务、集成工作和可解释变更，并协调 AetherEdge 与各类云服务。它不是托管版边缘运行时，也不是在传统多云管理后台上附加一个聊天框。
+
+产品方向是“对话优先”：用户描述想要的结果，智能体发现系统真实具备的能力，生成类型明确的变更方案，解释影响，在高风险操作前请求确认，最后把确定性行为交给边缘端执行。
+
+完整的终端用户对话体验仍在开发中。当前仓库提供经过测试的领域层和应用层基础，并不代表已经交付可用于家庭生产环境的智能体。
+
+AetherCloud 是 [AetherIoT 平台](docs/get-started/aetheriot-product-family.md)的一部分，另外两个核心产品是 [AetherEdge](https://github.com/EvanL1/AetherEdge) 和 [AetherContracts](https://github.com/EvanL1/AetherContracts)。
+
+## 产品职责
+
+| 事项                                         | 权威来源               |
+| -------------------------------------------- | ---------------------- |
+| 用户意图、空间语义、方案与解释               | AetherCloud 智能体平面 |
+| 期望部署位置和受治理的基础设施任务           | AetherCloud            |
+| 公共消息结构和能力词汇                       | AetherContracts        |
+| 实时点位状态、确定性规则、安全联锁和物理执行 | AetherEdge             |
+| 云资源是否真实存在及其原生状态               | 对应的云服务商         |
+
+云端故障不能中断已经交付给边缘端的行为。智能体可以提出变更，但不能绕过应用用例、策略、确认、审计，也不能越过边缘端的最终本地决策。
+
+## 智能原生闭环
+
+```text
+描述想要的结果
+      ↓
+发现真实能力和当前环境
+      ↓
+生成带版本的变更方案
+      ↓
+检查策略、风险、权限和兼容性
+      ↓
+解释或模拟预期变化
+      ↓
+在必要时请求确认
+      ↓
+下发期望行为
+      ↓
+持续观察、解释与修订
+```
+
+“不需要配置界面”不等于“不可查看”。当用户需要检查决策时，智能体可以临时生成摘要、差异、时间线或模拟结果。这些内容服务于当前对话，不会重新变成一套长期维护的配置迷宫。
+
+## 当前交付状态
+
+| 领域                                                         | 状态                                             |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| 租户与项目边界、云服务适配器注册表、资源发现、部署栈         | 已实现基础能力                                   |
+| 只支持规划的 OpenTofu 与 Terraform 引擎，以及精确状态锁证据  | 已实现，并完成可选集成测试                       |
+| 网关身份与注册、CloudLink 会话、运行清单、遥测和告警         | 已实现部分领域层、应用层及持久化基础             |
+| 制品、期望/上报/已应用部署、受治理能力任务                   | 已实现部分基础                                   |
+| 审计查询、可恢复事件传输、网络回调、数据导出、智能体工具接口 | 已实现部分基础，多个生产适配器和后台任务仍待建设 |
+| 生产凭据生命周期、远程状态、加密规划存储                     | 规划中                                           |
+| 基础设施应用与销毁                                           | 规划为独立的受治理命令                           |
+| 家庭空间语义、对话智能体、方案编译、模拟与持续适配           | 规划中的产品能力                                 |
+
+“已实现基础能力”表示相应领域或应用契约已有测试；只有明确标注时才包含生产适配器，它不等于已经提供公开生产服务。精确证据与缺失项请查看[当前实现审计](docs/concepts/current-state-audit.md)。
+
+## 安全规则
+
+- 所有能力默认拒绝。
+- 查询与命令使用不同类型。
+- 命令必须声明风险、权限、幂等、确认和审计策略。
+- 智能体输出在通过应用边界验证前一律视为不可信输入。
+- 基础设施规划文件和原始规划数据不得进入提示词、日志、审计载荷或公开响应。
+- 当前基础设施端口不提供应用和销毁操作。
+- 跨租户访问必须使用明确的平台级用例并留下审计记录。
+
+## 开发
+
+环境要求：
+
+- Node.js 24
+- pnpm 11
+
+```bash
+pnpm install
+pnpm check
+pnpm dev:api
+```
+
+开发接口默认监听 127.0.0.1:3000，GET /health 是初始就绪检查。默认验证流程不依赖 PostgreSQL、边缘设备、消息代理或云账号。
+
+## 文档入口
+
+- [产品总览](docs/get-started/overview.md)
+- [AetherIoT 产品关系](docs/get-started/aetheriot-product-family.md)
+- [架构与依赖规则](docs/concepts/architecture.md)
+- [边缘、云端与云服务商的权责边界](docs/concepts/edge-cloud-boundary.md)
+- [网关身份与注册](docs/concepts/gateway-identity-and-enrollment.md)
+- [CloudLink 与核心状态机](docs/concepts/cloudlink-and-core-state-machines.md)
+- [物联网遥测](docs/concepts/iot-telemetry.md)
+- [期望、上报与已应用部署](docs/concepts/desired-reported-applied-deployment.md)
+- [受治理的能力任务](docs/concepts/governed-capability-jobs.md)
+- [智能体应用接口](docs/concepts/mcp-application-interface.md)
+- [审计与集成](docs/concepts/audit-and-integrations.md)
+- [安全规划基础设施](docs/guides/plan-infrastructure.md)
+- [使用智能体参与开发](docs/guides/build-with-an-agent.md)
+- [应用契约目录](docs/reference/application-contracts.md)
+
+智能体和代码工具应从 [llms.txt](llms.txt) 以及仓库自带的 [AetherCloud 智能体技能](skills/aether-cloud/SKILL.md)开始读取。

@@ -1,94 +1,101 @@
 # AetherCloud
 
-AetherCloud is an AI-native, multi-cloud IoT fusion and control plane. It
-unifies provider capabilities, placement, infrastructure plans, fleets,
-telemetry, and audited work without hiding provider-native differences. An
-AetherEdge edge runtime remains authoritative for live state, deterministic
-automation, and physical control.
+[中文说明](README-CN.md)
 
-AetherCloud is one product in the [AetherIoT platform](docs/get-started/aetheriot-product-family.md),
-alongside AetherEdge and AetherContracts. The AetherEdge repository was formerly
-named AetherIot; stable software and protocol identifiers are not renamed by
-this product-identity migration.
+**The evolving agent and control plane for AetherIoT.**
 
-This repository is intentionally agent-readable. Start with [`llms.txt`](llms.txt)
-for a compact documentation index or install the repository-owned
-[`aether-cloud` Agent Skill](skills/aether-cloud/SKILL.md) for task-specific
-routing and safety constraints.
+AetherCloud is where human intent becomes governed desired state, capability
+jobs, integration work, and explainable change across AetherEdge runtimes and
+cloud providers. It is not a hosted copy of the edge runtime, and it is not a
+generic multi-cloud dashboard with an AI chat box added on top.
 
-## Current milestone
+The product direction is conversation-first: a person describes an outcome,
+the Agent discovers the capabilities that actually exist, proposes a typed
+change, explains its effects, requests confirmation when risk requires it, and
+then commissions deterministic behavior to the edge.
 
-The first milestone establishes the TypeScript workspace, dynamic provider and
-Cloud Connection models, an authorized tenant/project-scoped read-only provider
-discovery use case, a provider-scoped Deployment Stack and remote State
-binding, an adapter conformance kit, an independently runnable API composition
-root, stable architecture decisions, documentation contracts for coding
-agents, and the first Gateway identity and enrollment domain/application
-foundation. Transport-neutral CloudLink session/heartbeat and Runtime Manifest
-report/query foundations now add credential-derived scope, epoch fencing,
-lossless resume positions, canonical checksum verification, monotonic manifest
-history, and memory adapters. An experimental CloudLink MQTT slice adds strict
-versioned JSON codecs, topic/session binding, a MQTT.js transport, an
-application bridge, an independently startable ingress lifecycle, candidate
-Schemas/fixtures, and an opt-in real-broker transport harness. The ordered
-CloudLink interoperability gates now record provisional core fixture
-convergence while requiring shared-Broker message-origin authentication first,
-then one public alpha.3 wire profile with unsigned application ACKs. A dual
-Edge/Cloud real-Broker harness and alpha fault injection now provide opt-in
-evidence. A separate opt-in AWS IoT Core mTLS harness provisions and cleans
-ephemeral least-privilege principals while exercising the same Cloud ingress
-and Edge spool. A separate PostgreSQL telemetry slice now supplies atomic
-receipt/fact/Audit/integration-Outbox/exact-ACK evidence across pre-commit and
-post-commit failures, but the full crash-durable gate remains blocked before
-legacy cutover. The
-public AetherContracts `v0.1.0-alpha.3` release is consumed through the same
-complete, digest-pinned lock in Cloud and Edge with no pending imports. This
-proves offline distribution integrity and product fixture execution; it does
-not prove production authentication, signed ACK, full CloudLink crash
-durability, or cutover readiness. Atomic IoT telemetry ingestion/history and alarm
-projection/workflow foundations now add lossless stream positions, durable
-receipt semantics, replay/conflict/gap handling, cloud-only acknowledgement,
-and memory inbox/outbox/audit conformance adapters. An OpenTelemetry adapter
-adds no-op defaults, in-memory and OTLP HTTP exporters, bounded queues, W3C
-Trace Context, and low-cardinality ingestion instrumentation. It also includes
-a partial Artifact Registry foundation with immutable publication, content and
-signature verification ports, compatibility metadata, release-channel
-protection, and an atomic memory adapter. Single-Gateway
-Desired/Reported/Applied deployment and governed capability Job foundations
-add immutable intent, edge-authoritative observations, ordered Receipts,
-explicit uncertainty, and atomic memory audit/outbox evidence. Tenant-scoped
-audit query values, an authenticated JSON/SSE audit interface, webhook
-subscription and bounded delivery/dead-letter workflows, and asynchronous data
-export foundations now provide the first integration slice. The webhook sender,
-destination secrets, durable persistence, live event fan-out, object storage,
-and export workers remain planned. A transport-neutral MCP interface now lists
-capability and Audit resources plus governed Data Export and Job tools, all
-delegating to existing application use cases; an MCP wire server remains
-planned. It also includes a governed, idempotent
-infrastructure Plan command, a dynamic plan-only OpenTofu/Terraform engine
-port, policy receipts, a deterministic conformance adapter, and a real local
-OpenTofu saved-Plan worker with bounded argv-only process execution and
-temporary-workspace cleanup. Real provider adapters, credential resolution,
-production remote State and encrypted object storage, production CloudLink
-identity/durability/process configuration,
-remaining durable persistence, Apply, production Gateway credentials, production
-telemetry/alarm/artifact/deployment/Job persistence, remaining public interfaces,
-scheduling, production integration delivery, and MCP transport are separate contract-first vertical
-slices.
+The complete end-user conversational experience is **in development**. This
+repository currently provides tested domain and application foundations for
+that direction; it does not yet ship a production household Agent.
 
-The first PostgreSQL persistence slice now adds a parameterized Gateway
-Identity repository, explicit migration, Tenant-scoped Row-Level Security,
-optimistic revisions, a real `pg` pool boundary, and atomic aggregate, Audit,
-and Outbox writes. The telemetry PostgreSQL slice adds lossless cursor/history,
-idempotent receipts, forced RLS, Audit/integration Outbox, an exact durable ACK
-outbox, and a bounded leased delivery use case. Its PostgreSQL 18 tests prove no
-ACK before commit and identical ACK recovery after an uncertain commit.
-`managed-postgresql` is a portable Provider capability; production database and
-worker composition plus provider-specific database profiles remain planned.
+AetherCloud is one product in the
+[AetherIoT platform](docs/get-started/aetheriot-product-family.md), alongside
+[AetherEdge](https://github.com/EvanL1/AetherEdge) and
+[AetherContracts](https://github.com/EvanL1/AetherContracts).
+
+## Product role
+
+| Concern                                                           | Authority               |
+| ----------------------------------------------------------------- | ----------------------- |
+| Human intent, semantic context, proposals, explanations           | AetherCloud Agent plane |
+| Desired placement and governed infrastructure jobs                | AetherCloud             |
+| Public message shapes and capability vocabulary                   | AetherContracts         |
+| Live point state, deterministic rules, safety, physical execution | AetherEdge              |
+| Provider-native resource existence and state                      | Infrastructure provider |
+
+Cloud failure must not stop commissioned edge behavior. The Agent may propose
+change, but it cannot bypass application use cases, policy, confirmation, audit,
+or the edge's final local decision.
+
+## AI-native control loop
+
+```text
+Describe outcome
+      ↓
+Discover typed capabilities and current context
+      ↓
+Generate a versioned proposal
+      ↓
+Validate policy, risk, permissions, and compatibility
+      ↓
+Explain or simulate the expected change
+      ↓
+Confirm when required
+      ↓
+Commission desired behavior
+      ↓
+Observe, explain, and revise
+```
+
+“No configuration interface” does not mean “no visibility.” The Agent can
+generate a temporary summary, diff, timeline, or simulation when the person
+needs to inspect a decision. Those views are evidence for a conversation, not
+another permanent configuration maze.
+
+## What exists today
+
+| Area                                                                                            | Status                                                                         |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Tenant/project boundaries, Provider Adapter registry, discovery, deployment stacks              | Implemented foundations                                                        |
+| Plan-only OpenTofu/Terraform engine with exact-state locking evidence                           | Implemented and opt-in integration tested                                      |
+| Gateway identity, enrollment, CloudLink sessions, manifests, telemetry, alarms                  | Partial domain/application and persistence foundations                         |
+| Artifacts, desired/reported/applied deployment, governed capability jobs                        | Partial foundations                                                            |
+| Audit query, resumable event delivery, webhooks, exports, MCP application interface             | Partial foundations; several production adapters and workers are still planned |
+| Production credential lifecycle, durable remote state and encrypted plan storage                | Planned                                                                        |
+| Infrastructure Apply and Destroy                                                                | Planned as separate governed commands                                          |
+| Household semantics, conversational Agent, proposal compiler, simulation, continuous adaptation | Planned product work                                                           |
+
+“Implemented foundation” means the behavior has tested domain/application
+contracts and, where stated, adapters. It does not imply a public production
+service. See the
+[current implementation audit](docs/concepts/current-state-audit.md) for exact
+evidence and missing composition work.
+
+## Safety rules
+
+- Capabilities are deny by default.
+- Queries and commands are distinct types.
+- Commands declare risk, permission, idempotency, confirmation, and audit
+  policy.
+- Agent output is untrusted input until the application boundary validates it.
+- Saved infrastructure Plans and raw Plan JSON never enter prompts, logs,
+  audit payloads, or public responses.
+- Infrastructure Apply and Destroy do not exist in the current port.
+- Cross-tenant access requires an explicit platform-level use case and audit.
 
 ## Development
 
-Prerequisites:
+Requirements:
 
 - Node.js 24
 - pnpm 11
@@ -99,71 +106,26 @@ pnpm check
 pnpm dev:api
 ```
 
-The API listens on `127.0.0.1:3000` by default. `GET /health` is the initial
-readiness endpoint.
+The development API listens on 127.0.0.1:3000 by default. GET /health is the
+initial readiness endpoint. The default verification path requires no
+PostgreSQL instance, edge device, Broker, or cloud account.
 
 ## Documentation
 
 - [Product overview](docs/get-started/overview.md)
 - [AetherIoT product family](docs/get-started/aetheriot-product-family.md)
-- [Architecture](docs/concepts/architecture.md)
-- [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md)
-- [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md)
-- [Current implementation audit](docs/concepts/current-state-audit.md)
-- [IoT Cloud capability map](docs/concepts/iot-cloud-capability-map.md)
-- [IoT business telemetry](docs/concepts/iot-telemetry.md)
-- [Artifact registry and immutable publication](docs/concepts/artifact-registry.md)
-- [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md)
-- [Governed capability Jobs](docs/concepts/governed-capability-jobs.md)
-- [MCP application interface](docs/concepts/mcp-application-interface.md)
-- [Operational observability](docs/concepts/operational-observability.md)
+- [Architecture and dependency rules](docs/concepts/architecture.md)
+- [Edge, cloud, and provider authority](docs/concepts/edge-cloud-boundary.md)
 - [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md)
 - [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md)
-- [Pre-release CloudLink MQTT v1](docs/reference/cloudlink-mqtt-v1.md)
-- [CloudLink interoperability release gates](docs/adr/0015-cloudlink-interoperability-release-gates.md)
-- [IoT Cloud vertical-slice roadmap](docs/guides/iot-cloud-roadmap.md)
-- [Multi-cloud fusion](docs/concepts/multi-cloud-fusion.md)
-- [Edge, cloud, and provider authority](docs/concepts/edge-cloud-boundary.md)
-- [Build with an AI agent](docs/guides/build-with-an-agent.md)
-- [Add a Provider Adapter](docs/guides/add-provider-adapter.md)
+- [IoT telemetry](docs/concepts/iot-telemetry.md)
+- [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md)
+- [Governed capability jobs](docs/concepts/governed-capability-jobs.md)
+- [MCP application interface](docs/concepts/mcp-application-interface.md)
+- [Audit and integrations](docs/concepts/audit-and-integrations.md)
 - [Plan infrastructure safely](docs/guides/plan-infrastructure.md)
-- [Repository layout](docs/reference/repository-layout.md)
+- [Build with an AI agent](docs/guides/build-with-an-agent.md)
 - [Application contract catalog](docs/reference/application-contracts.md)
-- [Artifact registry and immutable publication](docs/concepts/artifact-registry.md)
 
-## Status
-
-AetherCloud is at the repository-foundation stage. Read-only provider discovery
-is implemented as a domain/application contract and test adapter, but it is not
-yet exposed through HTTP or backed by a real provider. Deployment Stack State
-isolation and governed Plan orchestration are implemented as contracts with
-memory adapters. The real local OpenTofu process adapter is implemented and
-opt-in integration-tested without a cloud account. Production remote State,
-distributed locking, durable encrypted Plan storage, a public Plan API, and
-every Apply path remain planned. Gateway registration,
-claim issuance, claim consumption, and enrollment status query are implemented
-as domain/application contracts with memory and PostgreSQL adapters. The
-PostgreSQL slice atomically writes Gateway, Audit, and Outbox records, but it is
-not wired to an HTTP route or production database deployment and does not issue
-certificates. CloudLink
-session/heartbeat, Runtime Manifest, telemetry ingestion/history, alarm
-projection/workflow, Artifact Registry publication/query, single-target
-deployment, and governed capability Jobs are implemented as
-domain/application contracts with memory adapters. Telemetry also has a bounded
-PostgreSQL repository and exact ACK-delivery slice, without a production
-composition root. Audit search is additionally
-exposed through authenticated JSON and finite resumable SSE routes; webhook
-subscription/delivery and data export are inner-layer foundations only. The MCP
-resource/tool application interface is implemented without a wire server. The
-experimental CloudLink MQTT codec/ingress and complete digest-pinned alpha.3
-contract adoption exist. Production key lifecycle, a signed-ACK profile,
-production CloudLink process configuration, complete session/loss durability,
-and full production crash-restart proof do not exist. The consumer dual Edge/Cloud harness is
-development evidence only. The candidate is experimental; legacy remains the default and no
-physical control is part of this milestone. No long-running worker root, public fleet endpoint, or general
-production persistence exists. Most public Tenant APIs,
-production telemetry composition and analytics, production artifact stores/signers, scheduling,
-Job delivery, and the MCP transport runtime also remain planned. OpenTelemetry
-instrumentation is partial and does not replace business telemetry or audit.
-IoT telemetry is product data and remains separate from sampled operational
-traces and metrics.
+Agents and coding tools should begin with [llms.txt](llms.txt) and the
+repository-owned [AetherCloud Agent Skill](skills/aether-cloud/SKILL.md).
