@@ -93,6 +93,5 @@ application-owned CloudLink delivery, evidence objects, scheduling and expiry
 workers, public interfaces, and a reviewed AetherEdge contract. Acknowledgement
 to the edge occurs only after durable Receipt acceptance.
 
-Read [ADR-0011](../adr/0011-governed-capability-jobs.md) for the decision and
-[CloudLink and core state machines](cloudlink-and-core-state-machines.md) for
-transport-independent failure semantics.
+Read [CloudLink reliability and lifecycle](cloudlink-and-core-state-machines.md)
+to understand delivery, timeout, retry, and unknown-result behavior.

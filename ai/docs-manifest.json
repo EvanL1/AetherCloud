@@ -95,8 +95,8 @@
     },
     {
       "path": "docs/concepts/cloudlink-and-core-state-machines.md",
-      "title": "CloudLink and core state machines",
-      "description": "Define offline, duplicate, ordering, timeout, retry, partial-success, and cancellation semantics",
+      "title": "CloudLink reliability and lifecycle",
+      "description": "Understand delivery, retries, acknowledgements, offline recovery, and current production limits",
       "status": "mixed",
       "audience": ["developer", "agent", "operator"]
     },

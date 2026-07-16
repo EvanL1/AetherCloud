@@ -178,6 +178,5 @@ payloads, errors, logs, traces, or audit details.
   session persistence remain planned.
 - HTTP history adapter: planned.
 
-Read [ADR-0007](../adr/0007-durable-iot-telemetry.md) for the durable-ingestion
-decision and [operational observability](operational-observability.md) for the
-separate OpenTelemetry signal path.
+Read [operational observability](operational-observability.md) to understand
+why traces, metrics, and logs remain separate from durable IoT telemetry.

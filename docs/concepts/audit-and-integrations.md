@@ -96,7 +96,7 @@ planned. The current API uses an in-memory audit repository and a configured
 bearer identity, so it is an executable interface for local composition and
 contract tests rather than a production identity or durability boundary.
 
-Read [ADR-0012](../adr/0012-durable-audit-and-outbound-integrations.md), the
-[HTTP API reference](../reference/http-api.md), and the
-[application contract catalog](../reference/application-contracts.md) before
-adding an external integration surface.
+Use the [HTTP API reference](../reference/http-api.md) and the
+[application contract catalog](../reference/application-contracts.md) to find
+the supported integration operations, required permissions, and current
+implementation status.

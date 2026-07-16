@@ -148,11 +148,10 @@ process recovery, the Cloud-owned `manifest/1/1` resume cursor, a separate
 Cloud ingress process restart, exact duplicate replay, digest/batch conflict,
 explicit data loss, out-of-order, expiry, and a non-durable partial application
 outcome. It records Cloud restart continuity as unknown; it does not prove
-production process-crash durability. Read
-[ADR-0014](../adr/0014-cloudlink-mqtt-transport-binding.md)
-and [ADR-0015](../adr/0015-cloudlink-interoperability-release-gates.md) for the
-transport decision and ordered release gates. [ADR-0016](../adr/0016-pinned-aethercontracts-consumption.md)
-defines public release authority and pinning.
+production process-crash durability. For current behavior and production
+limits, read [CloudLink reliability and lifecycle](../concepts/cloudlink-and-core-state-machines.md).
+For protocol compatibility and version pinning, use the public
+[AetherContracts compatibility guide](https://docs.aetheriot.workers.dev/aethercontracts/compatibility/).
 
 ## Opt-in AWS IoT Core mTLS harness
 

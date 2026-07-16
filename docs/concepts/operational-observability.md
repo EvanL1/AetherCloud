@@ -105,5 +105,5 @@ context propagation, missing context, exporter failure isolation, bounded
 queues, redaction, forbidden high-cardinality labels, and independence between
 audit persistence and trace sampling.
 
-Read [ADR-0008](../adr/0008-operational-observability.md) for the decision and
-[IoT business telemetry](iot-telemetry.md) for the product data path.
+Read [IoT business telemetry](iot-telemetry.md) for the durable product data
+path and the boundary between business facts and operational signals.

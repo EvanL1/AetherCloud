@@ -97,6 +97,6 @@ after a durable transaction writes a real outbox.
 - AetherEdge artifact download and verification counterpart;
 - desired/reported/applied deployment and rollout.
 
-See [ADR-0009](../adr/0009-immutable-artifact-publication.md) for the decision
-and [CloudLink and core state machines](cloudlink-and-core-state-machines.md)
-for how publication differs from deployment.
+Next, read [Desired, reported, and applied deployment](desired-reported-applied-deployment.md)
+to understand how a published artifact becomes a governed rollout without
+being mistaken for proof that an edge runtime applied it.

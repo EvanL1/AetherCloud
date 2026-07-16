@@ -121,6 +121,5 @@ and worker composition, CloudLink session/epoch persistence, data-loss facts,
 multi-sample mapping, and a full production crash-durable release gate remain
 planned.
 
-Read [ADR-0013](../adr/0013-postgresql-control-plane-persistence.md) for the
-decision and [Gateway identity and enrollment](gateway-identity-and-enrollment.md)
-for the persisted aggregate boundary.
+Read [Gateway identity and enrollment](gateway-identity-and-enrollment.md) for
+the tenant-scoped identity and persistence boundary visible to gateway users.
