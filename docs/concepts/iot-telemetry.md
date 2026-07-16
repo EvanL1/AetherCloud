@@ -19,7 +19,7 @@ persistence remain planned; the memory adapter is not a production durability
 claim.
 
 IoT business telemetry is Tenant-owned product data. It is not OpenTelemetry
-operational data. An AetherIot runtime remains authoritative for the current
+operational data. An AetherEdge runtime remains authoritative for the current
 live point value; AetherCloud stores replay-safe, time-stamped historical facts
 and freshness-labelled projections.
 
@@ -47,7 +47,7 @@ The first slice uses explicit resources rather than a generic entity table:
 - `RetentionClass` selects an authorized retention policy; callers do not
   provide arbitrary storage duration.
 
-AetherIot currently exposes numeric acquired samples and four quality states.
+AetherEdge currently exposes numeric acquired samples and four quality states.
 The cloud value model may be broader for future thing models, but the first
 wire contract must not claim edge value variants that the edge cannot emit.
 
@@ -173,7 +173,7 @@ payloads, errors, logs, traces, or audit details.
   for accepted telemetry; production worker composition is planned.
 - Stream cursor, gap, lag, and retention-state query: planned.
 - CloudLink MQTT adapter: experimental codec/bridge/ingress and the shared
-  alpha.3 AetherIot fixture manifest implemented; the bridge consumes the
+  alpha.3 AetherEdge fixture manifest implemented; the bridge consumes the
   persisted ACK projection, while production database/worker composition and
   session persistence remain planned.
 - HTTP history adapter: planned.

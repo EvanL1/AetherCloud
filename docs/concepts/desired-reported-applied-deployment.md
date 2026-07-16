@@ -1,7 +1,7 @@
 ---
 title: Desired, Reported, and Applied deployment
 description: Roll out immutable artifact intent without treating dispatch, connection, or timeout as edge application evidence
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -16,13 +16,13 @@ and outbox evidence.
 
 This is not an end-to-end rollout. PostgreSQL, a production audit/outbox,
 CloudLink outbound delivery and observation envelopes, target snapshots,
-canary/batch scheduling, public HTTP, and the AetherIot counterpart remain
+canary/batch scheduling, public HTTP, and the AetherEdge counterpart remain
 planned.
 
 ## Authority and facts
 
 - AetherCloud owns desired revision and rollout intent.
-- AetherIot owns its reported observation and final compatibility/policy
+- AetherEdge owns its reported observation and final compatibility/policy
   decision.
 - Applied exists only when edge evidence says applied or failed. A dispatch,
   download, validation, connected session, or HTTP success cannot create it.

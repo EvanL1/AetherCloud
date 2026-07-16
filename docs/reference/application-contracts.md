@@ -1,7 +1,7 @@
 ---
 title: Application contract catalog
 description: Discover capability governance, errors, events, HTTP operations, and implementation layers from one machine-readable catalog
-updated: 2026-07-15
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -61,7 +61,7 @@ and Data Export application slices; and planned later IoT product capabilities.
 Gateway registration and enrollment events are now `partial` because the
 PostgreSQL adapter writes them into the same transaction as aggregate and Audit
 state. The catalog now names the experimental CloudLink MQTT layer separately
-from production composition and joint AetherIot conformance. It does not claim a
+from production composition and joint AetherEdge conformance. It does not claim a
 production live event stream, external webhook sender, export worker/download
 interface, MCP wire server, production CloudLink process, migration runner, or
 deployed production database exists.

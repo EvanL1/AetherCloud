@@ -1,13 +1,13 @@
 ---
 title: Gateway identity and enrollment
 description: Build tenant-scoped Gateway identity from registration and short-lived bootstrap claims
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
 # Gateway identity and enrollment
 
-A Gateway is AetherCloud's tenant-scoped identity for one AetherIot runtime. It
+A Gateway is AetherCloud's tenant-scoped identity for one AetherEdge runtime. It
 is not a device session, a live-state owner, or a certificate record. Enrollment
 progressively binds a registered cloud resource to proof held by the runtime.
 

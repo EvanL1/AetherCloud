@@ -1,7 +1,7 @@
 ---
 title: "ADR-0011: Governed capability Jobs and Receipts"
 description: Admit only declared edge capabilities and preserve confirmation, uncertainty, cancellation, ordering, and edge outcomes as separate evidence
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -13,7 +13,7 @@ Accepted on 2026-07-14. Domain transitions, application commands/queries,
 active-Gateway Receipt binding, lossless ordering, and an atomic memory
 audit/outbox adapter are implemented. Production persistence, Runtime Manifest
 catalog wiring, CloudLink delivery, workers, HTTP/MCP exposure, large evidence,
-and the AetherIot counterpart remain planned.
+and the AetherEdge counterpart remain planned.
 
 ## Context
 
@@ -64,7 +64,7 @@ facts during reconnect and prevents deterministic convergence.
 
 Capabilities are deny by default. Every cloud command declares permission,
 risk, confirmation, idempotency, expiry, and audit. Physical effect remains an
-explicit declaration and never transfers final control from AetherIot.
+explicit declaration and never transfers final control from AetherEdge.
 Arguments and preconditions are represented by content digests in the current
 foundation; raw secrets, device registers, SHM addresses, and evidence bytes do
 not belong in audit or agent context.
@@ -83,4 +83,4 @@ claiming a mock is interoperable.
 - late and reordered Receipts converge without overwriting history;
 - durable production completion requires an inbox, ledger, audit, and outbox;
 - convenience retries must respect replay safety and preserve Job identity;
-- AetherIot integration is required before any capability executes remotely.
+- AetherEdge integration is required before any capability executes remotely.

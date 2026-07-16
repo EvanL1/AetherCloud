@@ -1,7 +1,7 @@
 ---
 title: Resource model
 description: Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently
-updated: 2026-07-14
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -50,7 +50,7 @@ resource's actual existence and lifecycle state.
 **Site** is a physical or logical operating location that remains meaningful
 while gateways are replaced.
 
-**Gateway** is one enrolled AetherIot runtime identity. A reinstall or hardware
+**Gateway** is one enrolled AetherEdge runtime identity. A reinstall or hardware
 replacement must follow an explicit identity-recovery workflow.
 
 The implemented Gateway foundation distinguishes registration, a short-lived

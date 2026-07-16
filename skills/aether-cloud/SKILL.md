@@ -98,7 +98,7 @@ process configuration, and CA/KMS lifecycle integration remain planned. Strict
 operator-provided CA/client-certificate/private-key files and an opt-in
 ephemeral AWS IoT Core mTLS harness are implemented alpha evidence. The public
 AetherContracts `v0.1.0-alpha.3` release is consumed through the same
-digest-pinned lock as AetherIot. Both complete-consumer locks import the same 53
+digest-pinned lock as AetherEdge. Both complete-consumer locks import the same 53
 alpha.3 artifacts with no pending imports, and both codecs execute all 25
 fixtures with stable failure classes. Local wire/authentication files cannot
 override the public authority. The opt-in real Mosquitto dual harness and fault

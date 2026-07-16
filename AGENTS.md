@@ -6,7 +6,7 @@ repository.
 ## Product direction
 
 AetherCloud is an AI-native, industry-neutral, multi-cloud IoT fusion and
-control plane for AetherIot edge runtimes and cloud-side workloads. It is a
+control plane for AetherEdge edge runtimes and cloud-side workloads. It is a
 separate product and repository, not a hosted copy of the edge runtime and not
 a clone of another IoT or cloud-management platform.
 

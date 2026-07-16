@@ -2,7 +2,7 @@
 
 > AI-native, multi-cloud IoT fusion and control plane built with TypeScript.
 > AetherCloud unifies provider capabilities, infrastructure plans, fleets,
-> desired state, telemetry, and audited jobs while AetherIot edge runtimes
+> desired state, telemetry, and audited jobs while AetherEdge edge runtimes
 > retain authority over live state and physical control.
 
 Use this file as the primary documentation index. Read the narrowest page that
@@ -11,6 +11,7 @@ answers the task, then follow its links for deeper context.
 ## Start here
 
 - [Product overview](docs/get-started/overview.md): Understand the multi-cloud product, its authority boundaries, and the first vertical slices
+- [AetherIoT product family](docs/get-started/aetheriot-product-family.md): Place AetherCloud beside AetherEdge and AetherContracts without blurring edge, cloud, provider, or protocol authority
 - [Build with an AI agent](docs/guides/build-with-an-agent.md): Use repository contracts and verification commands without inventing unsupported APIs
 - [Add a Provider Adapter](docs/guides/add-provider-adapter.md): Implement provider discovery behind the application port and prove it with the shared conformance suite
 - [Plan infrastructure safely](docs/guides/plan-infrastructure.md): Run the implemented OpenTofu Plan worker without implying Apply, production remote State, or safe plaintext output
@@ -63,3 +64,4 @@ answers the task, then follow its links for deeper context.
 - [ADR-0014: Experimental CloudLink MQTT transport binding](docs/adr/0014-cloudlink-mqtt-transport-binding.md): Use an operator-selected broker without trusting MQTT topic identity or weakening application acknowledgements
 - [ADR-0015: CloudLink interoperability release gates](docs/adr/0015-cloudlink-interoperability-release-gates.md): Record alpha.3 Broker and telemetry ACK evidence while keeping full authentication, durability, and legacy cutover gated
 - [ADR-0016: Pinned AetherContracts consumption](docs/adr/0016-pinned-aethercontracts-consumption.md): Consume one exact public release offline while separating distribution integrity from codec and interoperability conformance
+- [ADR-0017: Adopt AetherIoT product-family naming](docs/adr/0017-aetheriot-product-family-naming.md): Name the edge product AetherEdge while preserving AetherCloud authority, stable software identifiers, and immutable contract evidence

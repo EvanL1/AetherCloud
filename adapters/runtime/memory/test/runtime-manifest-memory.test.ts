@@ -93,7 +93,7 @@ function recordInput(
 }
 
 describe("runtime manifest in-memory adapters", () => {
-  it("verifies the checksum produced by the AetherIot canonical JSON contract", async () => {
+  it("verifies the checksum produced by the AetherEdge canonical JSON contract", async () => {
     const verifier = new NodeRuntimeManifestIntegrityVerifier();
 
     expect(await verifier.verify(manifest)).toBe(true);

@@ -3,8 +3,13 @@
 AetherCloud is an AI-native, multi-cloud IoT fusion and control plane. It
 unifies provider capabilities, placement, infrastructure plans, fleets,
 telemetry, and audited work without hiding provider-native differences. An
-AetherIot edge runtime remains authoritative for live state, deterministic
+AetherEdge edge runtime remains authoritative for live state, deterministic
 automation, and physical control.
+
+AetherCloud is one product in the [AetherIoT platform](docs/get-started/aetheriot-product-family.md),
+alongside AetherEdge and AetherContracts. The AetherEdge repository was formerly
+named AetherIot; stable software and protocol identifiers are not renamed by
+this product-identity migration.
 
 This repository is intentionally agent-readable. Start with [`llms.txt`](llms.txt)
 for a compact documentation index or install the repository-owned
@@ -100,6 +105,7 @@ readiness endpoint.
 ## Documentation
 
 - [Product overview](docs/get-started/overview.md)
+- [AetherIoT product family](docs/get-started/aetheriot-product-family.md)
 - [Architecture](docs/concepts/architecture.md)
 - [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md)
 - [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md)

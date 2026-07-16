@@ -1,7 +1,7 @@
 ---
 title: "ADR-0005: Gateway identity and enrollment"
 description: Separate gateway registration, bootstrap claims, credential binding, revocation, and recovery
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -14,7 +14,7 @@ credential issuance, revocation, and recovery remain planned.
 
 ## Context
 
-A Gateway represents one AetherIot runtime identity in a Tenant and Project.
+A Gateway represents one AetherEdge runtime identity in a Tenant and Project.
 Enrollment must establish that identity without turning a short-lived bootstrap
 secret into a long-lived credential. Network retries also make a command that
 both registers a Gateway and returns a secret unsafe: either the secret must be

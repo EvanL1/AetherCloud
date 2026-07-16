@@ -1,7 +1,7 @@
 ---
 title: "ADR-0014: Experimental CloudLink MQTT transport binding"
 description: Bind the provisional CloudLink candidate to operator-selected MQTT without weakening identity or durable acknowledgement boundaries
-updated: 2026-07-15
+updated: 2026-07-16
 status: normative
 ---
 
@@ -10,7 +10,7 @@ status: normative
 ## Status
 
 Accepted on 2026-07-15 for the experimental CloudLink MQTT binding. AetherCloud
-and AetherIot execute byte-identical provisional core fixtures, but production
+and AetherEdge execute byte-identical provisional core fixtures, but production
 message-origin key lifecycle and the signed-ACK profile are not production
 ready. Alpha.3 freezes an experimental transcript and unsigned application ACK,
 not production credentials or signatures. This is not evidence that dual-process interoperability or
@@ -25,7 +25,7 @@ Gateway ID copied into a topic or payload is only a routing claim. The broker
 connection, topic ACL, CloudLink establishment proof, and active session fence
 must work together; none may be silently treated as the others.
 
-The AetherIot compatibility MQTT adapter also has installed users and
+The AetherEdge compatibility MQTT adapter also has installed users and
 established topics. Replacing it in place would conflate migration with a new
 delivery contract. MQTT PUBACK proves broker delivery, not durable acceptance
 by the AetherCloud application.
@@ -69,7 +69,7 @@ by the AetherCloud application.
 9. The CloudLink composition root is independently startable from HTTP and
    workers. An injected low-cardinality observer permits OpenTelemetry wiring;
    observer/export failure cannot alter message or acknowledgement semantics.
-10. The AetherIot legacy MQTT adapter is retained. Its `legacy`, experimental
+10. The AetherEdge legacy MQTT adapter is retained. Its `legacy`, experimental
     `cloudlink-v1`, and measured `dual` modes remain distinct. Legacy removal
     requires a later ADR, a supported migration window, zero supported
     dependencies, rollback evidence, and joint protocol conformance.
@@ -101,7 +101,7 @@ subscriptions.
   authentication.
 - Private brokers require an additional connector deployment and operational
   ownership.
-- A broker or Cloud outage cannot stop commissioned AetherIot acquisition,
+- A broker or Cloud outage cannot stop commissioned AetherEdge acquisition,
   rules, alarms, history, safety interlocks, or local control.
 - PostgreSQL production adapters and the dual Edge/Cloud harness remain release
   gates even though both codecs consume identical provisional core fixtures.

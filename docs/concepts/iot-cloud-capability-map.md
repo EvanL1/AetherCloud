@@ -1,7 +1,7 @@
 ---
 title: IoT Cloud capability map
 description: Map AetherCloud bounded contexts, authority, use cases, storage, edge interaction, risk, and delivery phase
-updated: 2026-07-15
+updated: 2026-07-16
 status: mixed
 ---
 
@@ -30,7 +30,7 @@ without joining the hard real-time control loop.
 - transport-neutral CloudLink session/heartbeat domain/application foundation
   with epoch fencing, cursor resume, credential verification port, and memory
   adapter
-- AetherIot Runtime Manifest v1 report/query domain/application foundation with
+- AetherEdge Runtime Manifest v1 report/query domain/application foundation with
   canonical checksum verification, monotonic history, and memory adapter
 - replay-safe IoT telemetry batch ingest/history domain/application foundation
   with lossless positions, conflict/gap/reorder handling, and atomic memory
@@ -68,7 +68,7 @@ without joining the hard real-time control loop.
 - production artifact stores/upload/API and multi-target deployment scheduling,
   persistence, wire, and public interfaces
 - production governed Job ledger/inbox, CloudLink delivery, Runtime Manifest
-  declaration provenance, workers, public interfaces, and AetherIot counterpart
+  declaration provenance, workers, public interfaces, and AetherEdge counterpart
 - PostgreSQL, object-storage, time-series, durable outbox, integration/export
   workers, production webhook sender/destination secrets/signing, live SSE,
   WebSocket, MCP wire/root and remaining tools, fleet operations, quota, or cost
@@ -82,7 +82,7 @@ in the [current implementation audit](current-state-audit.md).
 
 ## Capability map
 
-| Bounded context                    | User value and core aggregates                                                                                                                                                     | Authority                                                                                                           | Queries / commands                                                                                            | Storage needs                                                                                                      | AetherIot interaction                                                                           | Main safety risk                                                                                                  | Phase                                                                          |
+| Bounded context                    | User value and core aggregates                                                                                                                                                     | Authority                                                                                                           | Queries / commands                                                                                            | Storage needs                                                                                                      | AetherEdge interaction                                                                          | Main safety risk                                                                                                  | Phase                                                                          |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Identity and Access                | Isolate and delegate access with `Tenant`, `Project`, `User`, `ServiceAccount`, `Role`, `Grant`, `Policy`, and `ApiCredential`                                                     | AetherCloud owns membership and authorization; an external IdP may prove login identity                             | Q: principals, grants, effective permissions. C: invite, grant, revoke, rotate credential                     | PostgreSQL; hashes or secret references only; audit and outbox in the same transaction                             | Deliver bounded authorization evidence; edge still applies local policy                         | forged Tenant context, cross-tenant IDOR, over-broad service accounts, leaked keys                                | minimum actor context begins in phase 1; durable IAM before public Tenant APIs |
 | Fleet Identity and Enrollment      | Establish and recover trusted runtime identity with `Site`, `GatewayIdentity`, `EnrollmentClaim`, `CredentialBinding`, and `RecoveryAttempt`                                       | AetherCloud owns fleet membership; Gateway owns its private key; issuer owns certificate validity                   | Q: Gateway and enrollment status. C: register, issue claim, claim, suspend, revoke, recover                   | memory conformance now; PostgreSQL and secret/KMS-backed token service later                                       | one-time bootstrap claim, then credential-bound CloudLink authentication                        | token used as a long-term credential, replay, cross-tenant recovery, revoked credential resurrection              | phase 1                                                                        |

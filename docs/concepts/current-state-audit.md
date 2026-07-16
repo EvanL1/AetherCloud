@@ -9,7 +9,7 @@ status: mixed
 
 This audit is evidence-based as of 2026-07-16. `Implemented` below always names
 the executable layer. It does not imply a public API, durable production
-adapter, or complete AetherIot integration unless those layers are named.
+adapter, or complete AetherEdge integration unless those layers are named.
 
 ## Repository baseline
 
@@ -37,7 +37,7 @@ documentation contract tests before this capability expansion began.
 | Gateway registration and enrollment claim  | Gateway domain/application modules plus `adapters/fleet/memory` and `adapters/fleet/postgres`                        | Domain/application, memory conformance, PostgreSQL SQL/migration/driver adapter, and atomic Gateway/Audit/Outbox write implemented; production DB composition, identity binding, CA/KMS, and HTTP planned                                                                                                                                               |
 | CloudLink session and heartbeat foundation | CloudLink domain/application modules and `adapters/cloudlink/memory`                                                 | Credential-authenticated use cases, epoch fencing, cursor resume, and memory adapter implemented; PostgreSQL planned                                                                                                                                                                                                                                    |
 | Experimental CloudLink MQTT ingress        | `adapters/cloudlink/mqtt`, `apps/cloudlink`, `contracts/cloudlink/v1`, and opt-in dual Broker test                   | Strict alpha.3 codec and failure classes, MQTT.js ingress, application bridge, real Mosquitto/AWS evidence, and alpha fault matrix implemented; bridge accepts an exact persisted telemetry ACK, while production shared-Broker authentication, multi-sample mapping, durable data-loss persistence, session durability, and composition remain planned |
-| Runtime Manifest and capability foundation | Runtime domain/application modules and `adapters/runtime/memory`                                                     | AetherIot v1 checksum, monotonic history, report/query, memory adapter, and experimental MQTT mapping implemented; PostgreSQL/HTTP planned                                                                                                                                                                                                              |
+| Runtime Manifest and capability foundation | Runtime domain/application modules and `adapters/runtime/memory`                                                     | AetherEdge v1 checksum, monotonic history, report/query, memory adapter, and experimental MQTT mapping implemented; PostgreSQL/HTTP planned                                                                                                                                                                                                             |
 | IoT telemetry ingestion and history        | Telemetry domain/application modules plus `adapters/telemetry/memory` and `adapters/telemetry/postgres`              | Atomic replay/gap/cursor/history semantics, PostgreSQL receipt/facts/Audit/integration-Outbox/exact-ACK transaction, leased delivery use case, forced RLS, and PostgreSQL 18 crash-boundary tests implemented; public HTTP, production composition, data-loss persistence, and analytics remain planned                                                 |
 | Alarm fact and workflow projection         | Alarm domain/application modules and `adapters/alarm/memory`                                                         | Edge-fact ordering and cloud acknowledgement implemented with memory projection; production persistence and wire planned                                                                                                                                                                                                                                |
 | Operational OpenTelemetry foundation       | `adapters/observability/opentelemetry`                                                                               | No-op, in-memory, OTLP HTTP, bounded queue, W3C extraction, and ingestion decorator implemented; broad root wiring planned                                                                                                                                                                                                                              |
@@ -92,11 +92,11 @@ domain/application implementation at this audit point:
   durable audit/outbox, upload API, deprecation/withdrawal commands, and HTTP;
   publication/query and memory-conformance foundations are executable
 - PostgreSQL deployment ledger, target snapshots, canary/batch scheduler,
-  CloudLink wire, public HTTP, durable audit/outbox, and AetherIot counterpart;
+  CloudLink wire, public HTTP, durable audit/outbox, and AetherEdge counterpart;
   the single-target domain/application/memory foundation is executable
 - PostgreSQL governed Job ledger/inbox, Runtime Manifest catalog provenance,
   CloudLink delivery, public HTTP and remaining MCP exposure, scheduling/expiry workers, large evidence
-  storage, and the AetherIot counterpart; the capability-gated
+  storage, and the AetherEdge counterpart; the capability-gated
   domain/application/memory foundation is executable
 - PostgreSQL audit/outbox/delivery/export adapters, destination registry and
   secrets, hardened webhook sender/signing/SSRF defence, retry and export
@@ -111,15 +111,15 @@ The machine-readable [application contract catalog](../reference/application-con
 uses `partial` for executable inner layers that do not yet form a production
 product surface.
 
-## AetherIot boundary evidence
+## AetherEdge boundary evidence
 
-AetherIot has a stable runtime-manifest JSON Schema at
+AetherEdge has a stable runtime-manifest JSON Schema at
 `contracts/runtime/runtime-manifest.v1.schema.json`, an acquisition-owned
 `PointSample`/`PointQuality` model, and a local `DurableOutbox` with at-least-once
 forwarding. Its SHM remains authoritative for live T/S values and its local
 alarm stream remains authoritative for alarm facts.
 
-AetherIot also has a compatibility MQTT uplink and instance export endpoint.
+AetherEdge also has a compatibility MQTT uplink and instance export endpoint.
 Those payloads do not define AetherCloud CloudLink session epochs, per-stream
 durable cursors, digest-conflict behavior, or cloud persistence acknowledgement.
 The new AetherCloud JSON/MQTT implementation is an experimental consumer of the
@@ -162,7 +162,7 @@ default external-service-free path:
 - `pnpm test:postgres-integration`: the Gateway registration/claim flow and the
   telemetry commit/replay/crash-boundary cases passed against PostgreSQL 18 with
   a non-superuser, non-`BYPASSRLS` application role
-- `pnpm test:cloudlink-alpha-harness`: the local Mosquitto/AetherIot/AetherCloud
+- `pnpm test:cloudlink-alpha-harness`: the local Mosquitto/AetherEdge/AetherCloud
   dual-process ACK-loss, restart, replay, conflict, gap, expiry, partial-result,
   and data-loss matrix passed; its composition intentionally still reports no
   production crash-durable store

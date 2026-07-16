@@ -1,7 +1,7 @@
 ---
 title: IoT Cloud vertical-slice roadmap
 description: Deliver AetherCloud product value through independently testable cloud-edge slices
-updated: 2026-07-14
+updated: 2026-07-16
 status: planned
 ---
 
@@ -9,7 +9,7 @@ status: planned
 
 Each phase must be runnable and valuable without pretending that later phases
 exist. The default verification path remains independent of PostgreSQL, cloud
-accounts, and real AetherIot devices through ports, memory adapters, and
+accounts, and real AetherEdge devices through ports, memory adapters, and
 contract fixtures.
 
 ## Phase 0: Audit and architecture contract
@@ -81,7 +81,7 @@ implements credential verification through a port, protocol selection, lossless
 epochs/cursors, fencing, resume, heartbeat, and session query. An experimental
 JSON/MQTT codec, broker adapter, application bridge, ingress lifecycle, Schemas,
 fixtures, and real-broker harness are also implemented. Production credential
-lifecycle, shared AetherIot conformance, timeout scheduler, PostgreSQL
+lifecycle, shared AetherEdge conformance, timeout scheduler, PostgreSQL
 session/epoch state, durable data-loss facts, multi-instance ownership, and
 backpressure remain planned, so Phase 2 is not complete. The accepted-telemetry
 PostgreSQL inbox/cursor/receipt/ACK transaction and delivery use case are
@@ -133,7 +133,7 @@ and data loss. Unit coverage additionally includes gap, reorder window, old
 epoch, simultaneous connections, backpressure, heartbeat timeout, missing
 trace context, forbidden baggage authorization, redaction, and exporter loss.
 
-**Done when.** The independent CloudLink root and AetherIot harness resume from
+**Done when.** The independent CloudLink root and AetherEdge harness resume from
 the PostgreSQL durable cursor, a pre-commit crash emits no ACK, a post-commit
 crash republishes one stable identical ACK, and every ordered interoperability gate
 passes. The external-service-free default suite remains available separately.
@@ -144,9 +144,9 @@ phase is complete.
 
 ## Phase 3: Runtime manifest and capability catalog
 
-**Current status.** The bounded AetherIot Runtime Manifest v1 report/query slice
+**Current status.** The bounded AetherEdge Runtime Manifest v1 report/query slice
 is implemented in domain, application, Node checksum, and memory repository
-layers. It validates exact external fields, verifies the AetherIot canonical
+layers. It validates exact external fields, verifies the AetherEdge canonical
 JSON SHA-256 vector, derives scope from an active credential, preserves
 lossless generations and late history, rejects conflicting reuse, and exposes
 the current capability catalog. PostgreSQL, durable audit/outbox, CloudLink
@@ -309,7 +309,7 @@ observations, represents timeout as unknown without an Applied fact, preserves
 late observations, supports pause/resume/cancel-request and rollback as a new
 generation, and atomically records memory audit/outbox evidence. PostgreSQL,
 durable audit/outbox, target snapshots, canary/batch scheduling, CloudLink wire,
-HTTP, and AetherIot delivery remain planned, so the production phase is partial.
+HTTP, and AetherEdge delivery remain planned, so the production phase is partial.
 
 **Observable value.** Operators perform canary/batched rollout, pause/resume,
 cancel remaining targets, roll back through a new generation, and see truthful
@@ -348,7 +348,7 @@ capability permissions, supports confirmation/queue/offer/unknown/cancel,
 orders lossless edge Receipts across gaps, binds ingestion to an active Gateway
 credential, and atomically records memory audit/outbox evidence. PostgreSQL,
 Runtime Manifest declaration provenance, CloudLink delivery, workers, public
-HTTP, evidence storage, and the AetherIot counterpart remain planned, so the
+HTTP, evidence storage, and the AetherEdge counterpart remain planned, so the
 production phase is partial.
 
 **Observable value.** Tenants first run low-risk diagnostics and later approved

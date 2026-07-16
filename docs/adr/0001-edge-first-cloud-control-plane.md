@@ -1,7 +1,7 @@
 ---
 title: ADR-0001: Edge-first cloud control plane
 description: Keep the cloud optional for deterministic edge operation
-updated: 2026-07-14
+updated: 2026-07-16
 status: normative
 ---
 
@@ -13,7 +13,7 @@ Accepted on 2026-07-14.
 
 ## Context
 
-AetherIot is a deterministic edge kernel whose live state and safety behavior
+AetherEdge is a deterministic edge kernel whose live state and safety behavior
 must survive external-service and network failure. A cloud product is needed
 for fleet identity, historical projections, artifact distribution, desired
 state, audited work, and application development. Treating the cloud as a
@@ -22,7 +22,7 @@ depend on wide-area connectivity.
 
 ## Decision
 
-AetherCloud is a separate, optional control-plane repository. AetherIot remains
+AetherCloud is a separate, optional control-plane repository. AetherEdge remains
 authoritative for live state, device communication, deterministic automation,
 and final acceptance of physical work. AetherCloud owns tenant and fleet
 identity, published artifacts, desired revisions, jobs, and cloud audit state.
