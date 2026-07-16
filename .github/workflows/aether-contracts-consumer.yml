@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Enable the locked pnpm before setup-node cache discovery
-        run: corepack enable pnpm
+      - name: Prepare the locked pnpm cache boundary
+        run: |
+          corepack enable pnpm
+          mkdir -p "$(pnpm store path --silent)"
       - uses: EvanL1/AetherContracts/.github/actions/verify-consumer@c5aad674f0844138e778963118e786e430ffb365
