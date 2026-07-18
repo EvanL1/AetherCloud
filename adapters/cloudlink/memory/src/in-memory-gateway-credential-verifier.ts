@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import type {
   GatewayCredentialAssertion,
+  GatewayCredentialClaim,
+  GatewayCredentialClaimResolver,
   GatewayCredentialVerificationResult,
   GatewayCredentialVerifier,
 } from "@aether-cloud/application";
@@ -21,15 +23,15 @@ function digestProof(proof: string): Buffer {
   return createHash("sha256").update(proof, "utf8").digest();
 }
 
-export class InMemoryGatewayCredentialVerifier implements GatewayCredentialVerifier {
+export class InMemoryGatewayCredentialVerifier
+  implements GatewayCredentialVerifier, GatewayCredentialClaimResolver
+{
   readonly #credentials = new Map<string, StoredGatewayCredential>();
 
   constructor(records: readonly InMemoryGatewayCredentialRecord[] = []) {
     for (const record of records) {
       if (this.#credentials.has(record.assertion.credentialId)) {
-        throw new Error(
-          `duplicate in-memory Gateway credential ${record.assertion.credentialId}`,
-        );
+        throw new Error("duplicate in-memory Gateway credential record");
       }
       this.#credentials.set(
         record.assertion.credentialId,
@@ -60,5 +62,19 @@ export class InMemoryGatewayCredentialVerifier implements GatewayCredentialVerif
       });
     }
     return Promise.resolve({ ok: true, value: stored.binding });
+  }
+
+  resolveClaim(
+    claim: GatewayCredentialClaim,
+  ): Promise<GatewayCredentialBinding | undefined> {
+    const stored = this.#credentials.get(claim.credentialId);
+    if (
+      stored === undefined ||
+      stored.binding.gatewayId !== claim.gatewayId ||
+      stored.binding.generation !== claim.generation
+    ) {
+      return Promise.resolve(undefined);
+    }
+    return Promise.resolve(stored.binding);
   }
 }

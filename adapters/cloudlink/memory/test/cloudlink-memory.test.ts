@@ -176,6 +176,18 @@ describe("CloudLink in-memory adapters", () => {
           position: parseStreamPosition("42"),
         },
       }),
+    ).resolves.toBe("position-gap");
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("1"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("1"),
+        },
+      }),
     ).resolves.toBe("recorded");
     await expect(
       repository.recordDurableCursor({
@@ -185,7 +197,31 @@ describe("CloudLink in-memory adapters", () => {
         cursor: {
           streamId: parseStreamId("telemetry"),
           streamEpoch: parseStreamEpoch("4"),
-          position: parseStreamPosition("42"),
+          position: parseStreamPosition("3"),
+        },
+      }),
+    ).resolves.toBe("position-gap");
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("1"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("2"),
+        },
+      }),
+    ).resolves.toBe("recorded");
+    await expect(
+      repository.recordDurableCursor({
+        binding,
+        sessionId: firstInput.sessionId,
+        sessionEpoch: parseCloudLinkSessionEpoch("1"),
+        cursor: {
+          streamId: parseStreamId("telemetry"),
+          streamEpoch: parseStreamEpoch("4"),
+          position: parseStreamPosition("2"),
         },
       }),
     ).resolves.toBe("replayed");
@@ -207,7 +243,7 @@ describe("CloudLink in-memory adapters", () => {
         state: "active",
         epoch: "2",
         resumeCursors: [
-          { streamId: "telemetry", streamEpoch: "4", position: "42" },
+          { streamId: "telemetry", streamEpoch: "4", position: "2" },
         ],
       },
     });

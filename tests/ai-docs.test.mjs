@@ -2,17 +2,27 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import process from "node:process";
 import test from "node:test";
+import { URL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
+const githubBlobBase = "https://github.com/EvanL1/AetherCloud/blob/main";
+const githubRawBase =
+  "https://raw.githubusercontent.com/EvanL1/AetherCloud/main";
+const publicDocsBase = "https://docs.aetheriot.workers.dev";
+const manifestSchemaUrl = `${githubRawBase}/ai/docs-manifest.schema.json`;
 
 const requiredDocuments = [
   "README.md",
   "AGENTS.md",
   "llms.txt",
   "ai/docs-manifest.json",
+  "ai/docs-manifest.schema.json",
   "ai/application-contracts.json",
   "ai/invariants.md",
+  "scripts/generate-ai-doc-index.mjs",
   "skills/aether-cloud/SKILL.md",
   "docs/get-started/overview.md",
   "docs/get-started/aetheriot-product-family.md",
@@ -58,10 +68,88 @@ const requiredDocuments = [
   "docs/adr/0015-cloudlink-interoperability-release-gates.md",
   "docs/adr/0016-pinned-aethercontracts-consumption.md",
   "docs/adr/0017-aetheriot-product-family-naming.md",
+  "docs/recovery/credential-revocation-and-reenrollment.md",
+  "docs/recovery/cloudlink-offline-and-reconnect.md",
+  "docs/recovery/unknown-command-outcome.md",
+  "docs/recovery/database-backup-and-restore.md",
+  "docs/recovery/emergency-revoke.md",
+  "docs/recovery/integration-safe-degradation.md",
+  "docs/recovery/infrastructure-lock-failure.md",
+];
+
+const documentRoles = [
+  "agent-task",
+  "operations",
+  "safety",
+  "recovery",
+  "reference",
+  "decision",
+  "status",
+];
+const agentProfiles = ["coding-agent", "operator-agent", "runtime-agent"];
+const implementationStatuses = [
+  "implemented",
+  "partial",
+  "planned",
+  "deprecated",
+];
+const productionReadinessValues = [
+  "production-ready",
+  "experimental",
+  "not-production-ready",
+  "not-applicable",
+];
+const contextSensitivityValues = [
+  "public",
+  "internal",
+  "redacted-only",
+  "sensitive-never-load",
+];
+const priorities = ["core", "optional"];
+const requiredManifestFields = [
+  "id",
+  "path",
+  "canonical_url",
+  "title",
+  "description",
+  "locale",
+  "translation_of",
+  "document_role",
+  "agent_profiles",
+  "intents",
+  "implementation_status",
+  "production_readiness",
+  "context_sensitivity",
+  "updated",
+  "priority",
 ];
 
 function read(path) {
   return readFileSync(join(root, path), "utf8");
+}
+
+function isPublishedEnglishUserDocument(document) {
+  if (document.locale !== "en") {
+    return false;
+  }
+  if (document.path === "docs/concepts/current-state-audit.md") {
+    return false;
+  }
+  return [
+    "docs/get-started/",
+    "docs/concepts/",
+    "docs/guides/",
+    "docs/reference/",
+    "docs/recovery/",
+  ].some((prefix) => document.path.startsWith(prefix));
+}
+
+function expectedCanonicalUrl(document) {
+  if (isPublishedEnglishUserDocument(document)) {
+    const slug = document.path.slice("docs/".length, -".md".length);
+    return `${publicDocsBase}/en/aethercloud/${slug}.md`;
+  }
+  return `${githubBlobBase}/${document.path}`;
 }
 
 function parseFrontmatter(path) {
@@ -84,41 +172,163 @@ test("the repository exposes the minimum agent documentation surface", () => {
   }
 });
 
-test("llms.txt only links to existing local Markdown documents", () => {
-  const links = [...read("llms.txt").matchAll(/\[[^\]]+\]\(([^)]+)\)/g)]
-    .map((match) => match[1])
-    .filter((target) => !target.startsWith("http"));
-
-  assert.ok(
-    links.length >= 10,
-    "llms.txt should be a useful index, not a stub",
+test("llms.txt is a generated English task router covering every catalog document", () => {
+  const source = read("llms.txt");
+  const links = [...read("llms.txt").matchAll(/\[[^\]]+\]\(([^)]+)\)/g)].map(
+    (match) => match[1],
   );
+  const manifest = JSON.parse(read("ai/docs-manifest.json"));
+  const agentsUrl = `${githubBlobBase}/AGENTS.md`;
+  const skillUrl = `${githubBlobBase}/skills/aether-cloud/SKILL.md`;
+  const machineUrls = new Set([
+    `${githubRawBase}/ai/application-contracts.json`,
+    `${githubRawBase}/ai/docs-manifest.json`,
+    manifestSchemaUrl,
+  ]);
+  const permittedUrls = new Set([
+    agentsUrl,
+    skillUrl,
+    ...machineUrls,
+    ...manifest.documents.map((document) => document.canonical_url),
+  ]);
+
+  assert.doesNotMatch(source, /[\u3400-\u9fff]/u);
+  assert.match(source, /Coding agents/);
+  assert.match(source, /Operator agents/);
+  assert.match(source, /Runtime agents/);
+  assert.equal(
+    links.filter((target) => target === agentsUrl).length,
+    1,
+    "AGENTS.md must be directly reachable from llms.txt",
+  );
+  assert.equal(
+    links.filter((target) => target === skillUrl).length,
+    1,
+    "the AetherCloud agent skill must be directly reachable from llms.txt",
+  );
+  assert.match(source, /Static documentation never grants runtime permission/);
+  assert.match(source, /live capability catalog/);
+  assert.match(source, /deny by default/i);
 
   for (const target of links) {
+    assert.equal(new URL(target).protocol, "https:");
     assert.ok(
-      existsSync(join(root, target)),
-      `llms.txt has a broken link: ${target}`,
+      permittedUrls.has(target),
+      `llms.txt has an unknown link: ${target}`,
     );
   }
-});
-
-test("the machine-readable manifest matches document frontmatter", () => {
-  const manifest = JSON.parse(read("ai/docs-manifest.json"));
-  const seen = new Set();
-
-  assert.equal(manifest.schema_version, 2);
-  assert.ok(manifest.documents.length >= 10);
 
   for (const document of manifest.documents) {
+    assert.equal(
+      links.filter((target) => target === document.canonical_url).length,
+      1,
+      `${document.canonical_url} must appear exactly once in llms.txt`,
+    );
+  }
+
+  const requiredSections = [
+    "## Agent Task Manual",
+    "## Deployment and Operations",
+    "## Safety and Governance",
+    "## Recovery",
+    "## Platform Reference",
+    "## Compatibility and Status",
+    "## Optional",
+  ];
+  let previousSection = -1;
+  for (const section of requiredSections) {
+    const position = source.indexOf(section);
     assert.ok(
-      !seen.has(document.path),
+      position > previousSection,
+      `${section} is missing or out of order`,
+    );
+    previousSection = position;
+  }
+
+  const optionalPosition = source.indexOf("## Optional");
+  for (const document of manifest.documents.filter(
+    (entry) => entry.document_role === "decision",
+  )) {
+    assert.ok(
+      source.indexOf(`](${document.canonical_url})`) > optionalPosition,
+      `${document.path} must remain optional`,
+    );
+  }
+
+  const generated = spawnSync(
+    process.execPath,
+    ["scripts/generate-ai-doc-index.mjs", "--stdout"],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(generated.status, 0, generated.stderr);
+  assert.equal(
+    source,
+    generated.stdout,
+    "llms.txt is not deterministically generated",
+  );
+});
+
+test("the schema-v3 manifest is complete, typed, and matches document metadata", () => {
+  const manifest = JSON.parse(read("ai/docs-manifest.json"));
+  const schema = JSON.parse(read("ai/docs-manifest.schema.json"));
+  const seenPaths = new Set();
+  const seenIds = new Set();
+
+  assert.equal(manifest.schema_version, 3);
+  assert.equal(manifest.$schema, manifestSchemaUrl);
+  assert.equal(schema.$id, manifestSchemaUrl);
+  assert.equal(schema.properties.$schema.const, manifestSchemaUrl);
+  assert.equal(schema.properties.schema_version.const, 3);
+  assert.deepEqual(
+    schema.$defs.document.properties.document_role.enum,
+    documentRoles,
+  );
+  assert.deepEqual(
+    schema.$defs.document.properties.agent_profiles.items.enum,
+    agentProfiles,
+  );
+  assert.deepEqual(
+    schema.$defs.document.properties.implementation_status.enum,
+    implementationStatuses,
+  );
+  assert.deepEqual(
+    schema.$defs.document.properties.production_readiness.enum,
+    productionReadinessValues,
+  );
+  assert.deepEqual(
+    schema.$defs.document.properties.context_sensitivity.enum,
+    contextSensitivityValues,
+  );
+  assert.deepEqual(schema.$defs.document.properties.priority.enum, priorities);
+  assert.ok(manifest.documents.length >= 57);
+
+  for (const document of manifest.documents) {
+    for (const field of requiredManifestFields) {
+      assert.ok(
+        Object.hasOwn(document, field),
+        `${document.path ?? document.id ?? "document"} is missing ${field}`,
+      );
+    }
+    assert.ok(
+      !seenPaths.has(document.path),
       `duplicate manifest path: ${document.path}`,
     );
-    seen.add(document.path);
+    assert.ok(
+      !seenIds.has(document.id),
+      `duplicate manifest id: ${document.id}`,
+    );
+    seenPaths.add(document.path);
+    seenIds.add(document.id);
     assert.ok(
       existsSync(join(root, document.path)),
       `missing ${document.path}`,
     );
+    assert.equal(
+      document.canonical_url,
+      expectedCanonicalUrl(document),
+      `${document.path} has an invalid canonical_url`,
+    );
+    assert.equal(new URL(document.canonical_url).protocol, "https:");
 
     const frontmatter = parseFrontmatter(document.path);
     assert.equal(
@@ -131,17 +341,105 @@ test("the machine-readable manifest matches document frontmatter", () => {
       frontmatter.description,
       `${document.path} description drifted`,
     );
-    assert.ok(
-      ["deprecated", "implemented", "mixed", "normative", "planned"].includes(
-        document.status,
-      ),
-      `${document.path} has an invalid implementation status`,
-    );
     assert.equal(
-      document.status,
-      frontmatter.status,
-      `${document.path} implementation status drifted`,
+      document.updated,
+      frontmatter.updated,
+      `${document.path} update date drifted`,
     );
+    assert.ok(documentRoles.includes(document.document_role));
+    assert.ok(implementationStatuses.includes(document.implementation_status));
+    assert.ok(
+      productionReadinessValues.includes(document.production_readiness),
+    );
+    assert.ok(contextSensitivityValues.includes(document.context_sensitivity));
+    assert.ok(priorities.includes(document.priority));
+    assert.ok(["en", "zh-CN"].includes(document.locale));
+    assert.ok(document.agent_profiles.length > 0);
+    assert.ok(
+      document.agent_profiles.every((profile) =>
+        agentProfiles.includes(profile),
+      ),
+    );
+    assert.ok(document.intents.length > 0);
+    assert.ok(!Object.hasOwn(document, "status"));
+    assert.ok(!Object.hasOwn(document, "audience"));
+  }
+
+  for (const document of manifest.documents) {
+    if (document.translation_of === null) {
+      continue;
+    }
+    const canonical = manifest.documents.find(
+      (candidate) => candidate.id === document.translation_of,
+    );
+    assert.ok(canonical, `${document.path} has an unknown translation_of`);
+    assert.equal(canonical.locale, "en");
+    assert.notEqual(document.locale, canonical.locale);
+  }
+});
+
+test("manifest capability routes resolve governance and high-risk recovery", () => {
+  const manifest = JSON.parse(read("ai/docs-manifest.json"));
+  const catalog = JSON.parse(read("ai/application-contracts.json"));
+  const byCapability = new Map(
+    catalog.capabilities.map((capability) => [capability.name, capability]),
+  );
+  const byPath = new Map(
+    manifest.documents.map((document) => [document.path, document]),
+  );
+
+  for (const document of manifest.documents) {
+    for (const reference of document.capability_refs ?? []) {
+      assert.ok(
+        byCapability.has(reference),
+        `${document.path} references unknown capability ${reference}`,
+      );
+    }
+    if (document.recovery_route !== undefined) {
+      const recovery = byPath.get(document.recovery_route);
+      assert.ok(recovery, `${document.path} has an unknown recovery route`);
+      assert.equal(recovery.document_role, "recovery");
+    }
+  }
+
+  for (const capability of catalog.capabilities.filter(
+    (candidate) =>
+      candidate.kind === "command" &&
+      ["high", "critical"].includes(candidate.risk),
+  )) {
+    const routes = manifest.documents.filter((document) =>
+      (document.capability_refs ?? []).includes(capability.name),
+    );
+    assert.ok(
+      routes.length > 0,
+      `${capability.name} has no documentation route`,
+    );
+    for (const route of routes) {
+      assert.ok(
+        route.recovery_route,
+        `${route.path} lacks recovery for ${capability.name}`,
+      );
+      assert.ok(
+        route.human_escalation,
+        `${route.path} lacks human escalation for ${capability.name}`,
+      );
+    }
+  }
+});
+
+test("recovery documents distinguish executable behavior from operator advice", () => {
+  const manifest = JSON.parse(read("ai/docs-manifest.json"));
+  const recoveryDocuments = manifest.documents.filter(
+    (document) => document.document_role === "recovery",
+  );
+
+  assert.ok(recoveryDocuments.length >= 7);
+  for (const document of recoveryDocuments) {
+    const source = read(document.path);
+    assert.match(source, /## Implemented today/);
+    assert.match(source, /## Not implemented/);
+    assert.match(source, /## Safe response/);
+    assert.match(source, /## Escalate/);
   }
 });
 
@@ -164,6 +462,10 @@ test("agent-facing documents are complete and route agents to deeper context", (
   assert.match(skill, /deny by default/i);
   assert.match(skill, /provider adapter/i);
   assert.match(skill, /OpenTofu/i);
+  assert.match(skill, /ai\/docs-manifest\.json/);
+  assert.match(skill, /ai\/application-contracts\.json/);
+  assert.match(skill, /docs\/recovery\//);
+  assert.doesNotMatch(skill, /## Implementation status/);
 });
 
 test("machine-readable application contracts distinguish governance and implementation", () => {

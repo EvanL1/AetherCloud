@@ -73,6 +73,13 @@ describe("CloudLink session domain", () => {
     expect(() => parseStreamPosition("18446744073709551616")).toThrow();
   });
 
+  it("accepts the complete frozen CloudLink stream identifier profile", () => {
+    expect(parseStreamId("Stream_A:B")).toBe("Stream_A:B");
+    expect(parseStreamId(`A${"b".repeat(127)}`)).toHaveLength(128);
+    expect(() => parseStreamId(`A${"b".repeat(128)}`)).toThrow();
+    expect(() => parseStreamId("-invalid")).toThrow();
+  });
+
   it("negotiates and activates with cloud-owned durable resume cursors", () => {
     const session = activeSession();
 

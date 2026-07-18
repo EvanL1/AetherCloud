@@ -143,6 +143,61 @@
       ]
     },
     {
+      "name": "cloudlink.session.challenge.request",
+      "kind": "command",
+      "permission": "cloudlink.session.challenge.request",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential-claim",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "node-ed25519-adapter",
+        "experimental-cloudlink-mqtt"
+      ],
+      "missing_layers": [
+        "atomic-credential-and-key-lifecycle",
+        "durable-audit",
+        "production-database-composition",
+        "joint-aetheriot-conformance",
+        "production-cloudlink-composition"
+      ]
+    },
+    {
+      "name": "cloudlink.session.gateway-signed.accept",
+      "kind": "command",
+      "permission": "cloudlink.session.gateway-signed.accept",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-session-challenge",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "node-ed25519-adapter",
+        "experimental-cloudlink-mqtt"
+      ],
+      "missing_layers": [
+        "atomic-credential-and-key-lifecycle",
+        "per-uplink-gateway-authentication",
+        "durable-audit",
+        "production-database-composition",
+        "joint-aetheriot-conformance",
+        "production-cloudlink-composition"
+      ]
+    },
+    {
       "name": "cloudlink.session.heartbeat",
       "kind": "command",
       "permission": "cloudlink.session.heartbeat",
@@ -239,6 +294,149 @@
       "status": "partial",
       "implemented_layers": ["domain", "application", "memory-history-adapter"],
       "missing_layers": ["postgresql", "http"]
+    },
+    {
+      "name": "integration.topology.report",
+      "kind": "command",
+      "permission": "integration.topology.report",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "candidate-contract-codec",
+        "memory-projection-receipt-and-test-markers",
+        "experimental-cloudlink-mqtt",
+        "postgresql-projection-ledger",
+        "transactional-audit-outbox-and-durable-ack"
+      ],
+      "missing_layers": [
+        "pinned-alpha4-contract-consumer",
+        "production-cloudlink-composition",
+        "production-credential-lifecycle",
+        "http",
+        "public-agent-service"
+      ]
+    },
+    {
+      "name": "integration.observations.report",
+      "kind": "command",
+      "permission": "integration.observations.report",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "candidate-contract-codec",
+        "memory-projection-receipt-and-test-markers",
+        "experimental-cloudlink-mqtt",
+        "postgresql-projection-ledger",
+        "transactional-audit-outbox-and-durable-ack"
+      ],
+      "missing_layers": [
+        "pinned-alpha4-contract-consumer",
+        "production-cloudlink-composition",
+        "production-credential-lifecycle",
+        "http",
+        "public-agent-service"
+      ]
+    },
+    {
+      "name": "integration.projection.get",
+      "kind": "query",
+      "permission": "integration.projection.read",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-projection-adapter",
+        "postgresql-projection-adapter",
+        "optional-mcp-resource-interface"
+      ],
+      "missing_layers": ["http", "mcp-wire-composition-root"]
+    },
+    {
+      "name": "integration.projection.list",
+      "kind": "query",
+      "permission": "integration.projection.read",
+      "status": "partial",
+      "implemented_layers": [
+        "application",
+        "memory-projection-adapter",
+        "postgresql-projection-adapter",
+        "optional-mcp-resource-interface"
+      ],
+      "missing_layers": ["http", "mcp-wire-composition-root"]
+    },
+    {
+      "name": "integration.device.power.set",
+      "kind": "command",
+      "permission": "integration.device.control",
+      "risk": "high",
+      "confirmation": "explicit",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "tenant-permission",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "candidate-contract-codec",
+        "memory-control-ledger",
+        "postgresql-control-ledger",
+        "transactional-audit-outbox-and-durable-ack",
+        "node-ed25519-adapter",
+        "cloudlink-mqtt-composition",
+        "optional-mcp-tool-interface"
+      ],
+      "missing_layers": [
+        "production-control-ledger-composition",
+        "production-key-lifecycle",
+        "released-contract-conformance",
+        "cross-repository-runtime-conformance",
+        "production-broker-proof",
+        "public-agent-http-and-mcp-wire"
+      ]
+    },
+    {
+      "name": "integration.control.receipt.ingest",
+      "kind": "command",
+      "permission": "integration.control.receipt.ingest",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "gateway-credential",
+      "status": "partial",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "candidate-contract-codec",
+        "memory-control-ledger",
+        "postgresql-control-ledger",
+        "transactional-audit-outbox-and-durable-ack",
+        "node-ed25519-adapter",
+        "cloudlink-mqtt-composition"
+      ],
+      "missing_layers": [
+        "production-control-ledger-composition",
+        "production-key-lifecycle",
+        "released-contract-conformance",
+        "cross-repository-runtime-conformance",
+        "production-broker-proof"
+      ]
     },
     {
       "name": "alarm.fact.ingest",
@@ -830,6 +1028,40 @@
       "transport_status": "planned"
     },
     {
+      "kind": "resource-template",
+      "uri_template": "aethercloud://integration/projections/{gatewayId}/{integrationId}",
+      "capability": "integration.projection.get",
+      "permission": "integration.projection.read",
+      "authentication": "tenant-subject",
+      "availability": "only-when-application-query-is-injected",
+      "enumeration": "separate-bounded-catalog-resource",
+      "authority": "edge-reported-copy-not-live-truth",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
+      "kind": "resource-template",
+      "uri_template": "aethercloud://integration/projections{?gatewayId,cursor,limit}",
+      "capability": "integration.projection.list",
+      "permission": "integration.projection.read",
+      "authentication": "tenant-subject",
+      "availability": "only-when-application-query-is-injected",
+      "pagination": "opaque-cursor-gateway-then-integration",
+      "authority": "edge-reported-copy-not-live-truth",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
+      "kind": "tool",
+      "name": "integration.device.power.set",
+      "capability": "integration.device.power.set",
+      "availability": "only-when-use-case-and-trusted-governance-resolver-are-injected",
+      "caller_governance_references": "forbidden",
+      "success_semantics": "accepted-awaiting-edge-evidence",
+      "interface_status": "implemented",
+      "transport_status": "planned"
+    },
+    {
       "kind": "tool",
       "name": "integration.webhook.subscription.create",
       "capability": "integration.webhook.subscription.create",
@@ -995,6 +1227,46 @@
     },
     {
       "code": "gateway-credential-inactive",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-signed-session-disabled",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-challenge-ineligible",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-challenge-rate-limited",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-challenge-request-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-challenge-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-challenge-expired",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-hello-binding-mismatch",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "gateway-hello-authentication-invalid",
       "status": "implemented",
       "http_mapping": "planned"
     },
@@ -1274,6 +1546,106 @@
       "http_mapping": "not-applicable"
     },
     {
+      "code": "integration-topology-required",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-generation-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-batch-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-projection-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "cloudlink-session-not-active",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-control-disabled",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-control-intent-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-control-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-control-protocol-not-declared",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-control-publish-failed",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-control-storage-unavailable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-delivery-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-delivery-gap",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-receipt-authentication-invalid",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-receipt-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-stream-binding-conflict",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-target-not-found",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-target-not-writable",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-topology-generation-future",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
+      "code": "integration-topology-generation-stale",
+      "status": "implemented",
+      "http_mapping": "planned"
+    },
+    {
       "code": "outcome-unknown",
       "status": "planned",
       "http_mapping": "planned"
@@ -1299,6 +1671,16 @@
       "name": "telemetry.batch-accepted.v1",
       "status": "partial",
       "producer": "telemetry"
+    },
+    {
+      "name": "integration.projection-topology-changed.v1",
+      "status": "partial",
+      "producer": "integration-projection"
+    },
+    {
+      "name": "integration.projection-observations-changed.v1",
+      "status": "partial",
+      "producer": "integration-projection"
     },
     {
       "name": "alarm.projection-updated.v1",

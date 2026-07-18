@@ -1,7 +1,7 @@
 ---
 title: Application contract catalog
-description: Discover capability governance, errors, events, HTTP operations, and implementation layers from one machine-readable catalog
-updated: 2026-07-16
+description: Discover capability governance, bounded Integration discovery, errors, events, transports, and implementation layers from one machine-readable catalog
+updated: 2026-07-17
 status: mixed
 ---
 
@@ -46,6 +46,27 @@ Queries declare a permission and never mutate product state. Edge-originated
 observations that change a projection are commands even when they describe a
 fact rather than request physical work.
 
+## Integration discovery contract
+
+`integration.projection.list` is a separate read-only application port and
+query; it is not a method on the projection write repository. It uses the same
+`integration.projection.read` permission as the exact
+`integration.projection.get` query. The list input is closed and accepts only
+an optional Gateway identity, an opaque cursor, and a bounded limit.
+
+The result is stably ordered by Gateway then Integration identity. It contains
+only Integration kind, snapshot generation, entity and latest-observation
+counts, receive time, and revision in addition to those identities. Provider
+payloads, arbitrary topology data, source addresses, and secrets are outside
+the catalog contract. Both list and detail results are edge-reported copies,
+not real-time physical truth.
+
+Memory and PostgreSQL adapters implement the catalog. The PostgreSQL query uses
+Tenant row-level security, explicit Tenant/Project parameters, optional
+Gateway filtering, keyset pagination, and one extra fetched row to establish a
+next page. Optional MCP catalog and detail resource adapters invoke these
+application queries, but no connectable MCP transport exists yet.
+
 ## Compatibility
 
 `schema_version` changes before incompatible catalog structure changes.
@@ -60,8 +81,19 @@ telemetry, alarm, Artifact Registry, deployment, governed Job, audit, webhook,
 and Data Export application slices; and planned later IoT product capabilities.
 Gateway registration and enrollment events are now `partial` because the
 PostgreSQL adapter writes them into the same transaction as aggregate and Audit
-state. The catalog now names the experimental CloudLink MQTT layer separately
-from production composition and joint AetherEdge conformance. It does not claim a
-production live event stream, external webhook sender, export worker/download
-interface, MCP wire server, production CloudLink process, migration runner, or
-deployed production database exists.
+state. The Integration projection and default-off Integration Control slices
+now name their transactional PostgreSQL ledgers, including real-database
+concurrency, rollback, restart, and row-isolation evidence. This does not mean
+their production composition, signing-key lifecycle, public Agent, real Broker
+qualification, or MCP wire server exists. The catalog also names the
+experimental CloudLink MQTT layer separately from production composition and
+joint AetherEdge conformance. The partial
+`cloudlink.session.challenge.request` and
+`cloudlink.session.gateway-signed.accept` entries describe the executable
+v1alpha1 challenge/hello path and its memory, PostgreSQL, Node.js Ed25519, and
+MQTT layers. They do not claim production authentication: atomic
+credential/key lifecycle, durable command audit, and per-uplink
+Gateway-signed authentication are missing, so later business uplinks fail
+closed. It does not claim a production live event stream,
+external webhook sender, export worker/download interface, production
+CloudLink process, migration runner, or deployed production database exists.

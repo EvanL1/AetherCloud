@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@aether-cloud/domain": "workspace:*",
+    "@aether-cloud/integration-aether-contracts-adapter": "workspace:*",
     "mqtt": "5.15.2"
   }
 }

@@ -11,10 +11,12 @@ const canonicalUuidPattern =
 const canonicalUint64Pattern = /^(?:0|[1-9][0-9]*)$/;
 const maximumUint64 = 18_446_744_073_709_551_615n;
 const protocolVersionPattern = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
-const streamIdPattern = /^[a-z][a-z0-9.-]{0,63}$/;
+const streamIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const requestIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
+const gatewayKeyIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 declare const cloudLinkSessionIdBrand: unique symbol;
+declare const cloudLinkSessionChallengeIdBrand: unique symbol;
 declare const gatewayCredentialGenerationBrand: unique symbol;
 declare const cloudLinkSessionEpochBrand: unique symbol;
 declare const protocolVersionBrand: unique symbol;
@@ -24,6 +26,9 @@ declare const streamPositionBrand: unique symbol;
 
 export type CloudLinkSessionId = string & {
   readonly [cloudLinkSessionIdBrand]: true;
+};
+export type CloudLinkSessionChallengeId = string & {
+  readonly [cloudLinkSessionChallengeIdBrand]: true;
 };
 export type GatewayCredentialGeneration = string & {
   readonly [gatewayCredentialGenerationBrand]: true;
@@ -79,6 +84,8 @@ export interface CloudLinkSession {
   readonly activatedAt?: UtcInstant;
   readonly lastHeartbeatAt?: UtcInstant;
   readonly lastHeartbeatRequestId?: string;
+  readonly gatewayKeyId?: string;
+  readonly heartbeatIntervalMs?: string;
   readonly suspectAt?: UtcInstant;
   readonly closedAt?: UtcInstant;
   readonly closeReason?: "drained" | "fenced" | "heartbeat-timeout";
@@ -120,6 +127,18 @@ export function parseCloudLinkSessionId(input: unknown): CloudLinkSessionId {
   return input as CloudLinkSessionId;
 }
 
+export function parseCloudLinkSessionChallengeId(
+  input: unknown,
+): CloudLinkSessionChallengeId {
+  if (typeof input !== "string" || !canonicalUuidPattern.test(input)) {
+    throw new InvalidDomainValueError(
+      "cloudLinkSessionChallengeId",
+      "cloudLinkSessionChallengeId must be a canonical lowercase UUID",
+    );
+  }
+  return input as CloudLinkSessionChallengeId;
+}
+
 export function parseGatewayCredentialGeneration(
   input: unknown,
 ): GatewayCredentialGeneration {
@@ -149,7 +168,7 @@ export function parseStreamId(input: unknown): StreamId {
   if (typeof input !== "string" || !streamIdPattern.test(input)) {
     throw new InvalidDomainValueError(
       "streamId",
-      "streamId must be a lower-case bounded protocol identifier",
+      "streamId must match the frozen 1-128 character CloudLink identifier profile",
     );
   }
   return input as StreamId;
@@ -168,6 +187,27 @@ export function parseStreamEpoch(input: unknown): StreamEpoch {
 
 export function parseStreamPosition(input: unknown): StreamPosition {
   return parseUint64(input, "streamPosition") as StreamPosition;
+}
+
+export function parseCloudLinkGatewayKeyId(input: unknown): string {
+  if (typeof input !== "string" || !gatewayKeyIdPattern.test(input)) {
+    throw new InvalidDomainValueError(
+      "cloudLinkGatewayKeyId",
+      "cloudLinkGatewayKeyId must match the frozen 1-128 character identifier profile",
+    );
+  }
+  return input;
+}
+
+export function parseCloudLinkHeartbeatIntervalMs(input: unknown): string {
+  const value = parseUint64(input, "cloudLinkHeartbeatIntervalMs");
+  if (value === "0") {
+    throw new InvalidDomainValueError(
+      "cloudLinkHeartbeatIntervalMs",
+      "cloudLinkHeartbeatIntervalMs must be a positive unsigned 64-bit decimal string",
+    );
+  }
+  return value;
 }
 
 function freezeSession(session: CloudLinkSession): CloudLinkSession {
@@ -197,7 +237,22 @@ export function createCloudLinkSession(input: {
   readonly credentialGeneration: GatewayCredentialGeneration;
   readonly epoch: CloudLinkSessionEpoch;
   readonly openedAt: UtcInstant;
+  readonly gatewayKeyId?: string;
+  readonly heartbeatIntervalMs?: string;
 }): CloudLinkSession {
+  if (
+    (input.gatewayKeyId === undefined) !==
+    (input.heartbeatIntervalMs === undefined)
+  ) {
+    throw new InvalidDomainValueError(
+      "cloudLinkSessionAuthentication",
+      "Gateway-signed CloudLink session facts must be complete",
+    );
+  }
+  if (input.gatewayKeyId !== undefined) {
+    parseCloudLinkGatewayKeyId(input.gatewayKeyId);
+    parseCloudLinkHeartbeatIntervalMs(input.heartbeatIntervalMs);
+  }
   return freezeSession({
     ...input,
     state: "negotiating",

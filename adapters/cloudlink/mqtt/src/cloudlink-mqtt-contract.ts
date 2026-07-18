@@ -1,7 +1,18 @@
 import { createHash } from "node:crypto";
 
+import {
+  IntegrationWireError,
+  StrictJsonError,
+  decodeIntegrationObservationPayloadInput,
+  decodeIntegrationTopologyPayload,
+  decodeStrictJson,
+} from "@aether-cloud/integration-aether-contracts-adapter";
+
 const protocol = "aether.cloudlink" as const;
 const protocolVersion = "1.0" as const;
+const integrationExtension = "aether.cloudlink.integration.v1alpha1" as const;
+const integrationControlExtension =
+  "aether.cloudlink.integration-control.v1alpha1" as const;
 const maximumDefaultPayloadBytes = 256 * 1024;
 const maximumPointSamples = 256;
 const maximumUint64 = 18_446_744_073_709_551_615n;
@@ -23,7 +34,12 @@ type JsonRecord = Record<string, unknown>;
 export interface CloudLinkMqttDecodeOptions {
   readonly topicPrefix: string;
   readonly maximumPayloadBytes?: number;
+  readonly enabledExtensions?: readonly CloudLinkExtension[];
 }
+
+export type CloudLinkExtension =
+  | typeof integrationControlExtension
+  | typeof integrationExtension;
 
 export type CloudLinkMqttDecodeFailureCode =
   | "digest-mismatch"
@@ -39,18 +55,29 @@ export type CloudLinkMqttDecodeFailureCode =
 export type CloudLinkContractFailureCode =
   | "AUTHENTICATION_INVALID"
   | "AUTHENTICATION_REQUIRED"
+  | "BATCH_ID_MISMATCH"
   | "CURSOR_CONFLICT"
   | "DIGEST_MISMATCH"
+  | "DUPLICATE_JSON_KEY"
   | "FIELD_BOUND"
+  | "IDENTITY_CONFLICT"
   | "INTEGER_NON_CANONICAL"
   | "INTEGER_OUT_OF_RANGE"
   | "INVALID_ARGUMENT"
   | "INVALID_DIGEST"
+  | "JSON_INVALID_UNICODE"
+  | "JSON_NON_FINITE_NUMBER"
   | "JSON_SYNTAX_ERROR"
+  | "JSON_UNSAFE_NUMBER"
   | "MANIFEST_INVALID"
+  | "OBSERVATION_VALUE_INVALID"
+  | "REFERENCE_NOT_FOUND"
   | "SEMVER_INVALID"
+  | "TEXT_INVALID"
   | "UNKNOWN_FIELD"
-  | "UNSUPPORTED_VERSION";
+  | "UNSUPPORTED_VERSION"
+  | "VALUE_ENCODING_INVALID"
+  | "VALUE_TYPE_MISMATCH";
 
 export type CloudLinkMqttDecodeResult =
   | Readonly<{ ok: true; value: CloudLinkContractMessage }>
@@ -97,6 +124,20 @@ export interface CloudLinkSessionHello {
   readonly resume: readonly CloudLinkResumeCursor[];
 }
 
+export interface CloudLinkSessionChallengeRequest {
+  readonly schema: "aether.cloudlink.session-challenge-request.v1";
+  readonly protocol: typeof protocol;
+  readonly message_kind: "session-challenge-request";
+  readonly gateway_id: string;
+  readonly credential_binding: Readonly<{
+    credential_id: string;
+    generation: string;
+  }>;
+  readonly offered_protocol_versions: readonly string[];
+  readonly client_nonce: string;
+  readonly resume: readonly CloudLinkResumeCursor[];
+}
+
 export interface CloudLinkSessionChallenge {
   readonly schema: "aether.cloudlink.session-challenge.v1";
   readonly protocol: typeof protocol;
@@ -134,6 +175,7 @@ export interface CloudLinkHeartbeat {
   readonly credential_generation: string;
   readonly observed_at_ms: string;
   readonly cursors: readonly CloudLinkResumeCursor[];
+  readonly message_authentication?: CloudLinkMessageAuthentication;
 }
 
 export interface CloudLinkDeliveryDescriptor {
@@ -184,6 +226,14 @@ export interface CloudLinkDataLossPayload {
   readonly recorded_at_ms: string;
 }
 
+export type CloudLinkIntegrationTopologyPayload = Readonly<
+  Record<string, unknown>
+>;
+
+export type CloudLinkIntegrationObservationPayload = Readonly<
+  Record<string, unknown>
+>;
+
 interface CloudLinkDeliveryEnvelopeBase {
   readonly schema: "aether.cloudlink.envelope.v1";
   readonly protocol: typeof protocol;
@@ -195,6 +245,7 @@ interface CloudLinkDeliveryEnvelopeBase {
   readonly sent_at_ms: string;
   readonly expires_at_ms?: string;
   readonly delivery: CloudLinkDeliveryDescriptor;
+  readonly message_authentication?: CloudLinkMessageAuthentication;
   readonly traceparent?: string;
 }
 
@@ -213,6 +264,16 @@ export type CloudLinkDeliveryEnvelope =
       Readonly<{
         message_kind: "telemetry-batch";
         payload: CloudLinkTelemetryPayload;
+      }>)
+  | (CloudLinkDeliveryEnvelopeBase &
+      Readonly<{
+        message_kind: "integration-topology-snapshot";
+        payload: CloudLinkIntegrationTopologyPayload;
+      }>)
+  | (CloudLinkDeliveryEnvelopeBase &
+      Readonly<{
+        message_kind: "integration-observation-batch";
+        payload: CloudLinkIntegrationObservationPayload;
       }>);
 
 export interface CloudLinkDurableAck {
@@ -251,6 +312,7 @@ export interface CloudLinkReplayRequest {
 export type CloudLinkMqttInbound =
   | CloudLinkDeliveryEnvelope
   | (CloudLinkHeartbeat & Readonly<{ message_kind: "heartbeat" }>)
+  | CloudLinkSessionChallengeRequest
   | CloudLinkSessionHello;
 
 export type CloudLinkMqttInboundDecodeResult =
@@ -278,6 +340,7 @@ export type CloudLinkContractMessage =
   | CloudLinkReplayRequest
   | CloudLinkSessionAccepted
   | CloudLinkSessionChallenge
+  | CloudLinkSessionChallengeRequest
   | CloudLinkSessionHello;
 
 class ContractInputError extends Error {
@@ -485,6 +548,7 @@ function decodeResume(
 function decodeMessageAuthentication(
   value: unknown,
   name: string,
+  requireCanonicalEncoding = false,
 ): CloudLinkMessageAuthentication {
   const record = requireRecord(value, name);
   requireExactKeys(record, ["algorithm", "key_id", "signature"], name);
@@ -492,7 +556,12 @@ function decodeMessageAuthentication(
   if (
     record.algorithm !== "Ed25519" ||
     signature.length !== 86 ||
-    !unpaddedBase64UrlPattern.test(signature)
+    !unpaddedBase64UrlPattern.test(signature) ||
+    (requireCanonicalEncoding &&
+      (() => {
+        const bytes = Buffer.from(signature, "base64url");
+        return bytes.length !== 64 || bytes.toString("base64url") !== signature;
+      })())
   ) {
     throw new ContractInputError(
       `${name} must be an Ed25519 base64url signature`,
@@ -501,7 +570,7 @@ function decodeMessageAuthentication(
     );
   }
   return {
-    key_id: requireIdentifier(record.key_id, `${name}.key_id`, 256),
+    key_id: requireIdentifier(record.key_id, `${name}.key_id`),
     algorithm: "Ed25519",
     signature,
   };
@@ -579,7 +648,7 @@ function decodeSessionHello(record: JsonRecord): CloudLinkSessionHello {
     ? decodeMessageAuthentication(record.gateway_signature, "gateway signature")
     : undefined;
   const gatewayKeyId = gatewaySigned
-    ? requireIdentifier(record.gateway_key_id, "gateway_key_id", 256)
+    ? requireIdentifier(record.gateway_key_id, "gateway_key_id")
     : undefined;
   if (
     gatewaySignature !== undefined &&
@@ -622,6 +691,87 @@ function decodeSessionHello(record: JsonRecord): CloudLinkSessionHello {
       }
       return nonce;
     })(),
+    resume: decodeResume(record.resume, "resume"),
+  };
+}
+
+function decodeSessionChallengeRequest(
+  record: JsonRecord,
+): CloudLinkSessionChallengeRequest {
+  requireExactKeys(
+    record,
+    [
+      "client_nonce",
+      "credential_binding",
+      "gateway_id",
+      "message_kind",
+      "offered_protocol_versions",
+      "protocol",
+      "resume",
+      "schema",
+    ],
+    "session challenge request",
+  );
+  decodeProtocol(record);
+  if (
+    record.schema !== "aether.cloudlink.session-challenge-request.v1" ||
+    record.message_kind !== "session-challenge-request"
+  ) {
+    throw new ContractInputError(
+      "session challenge request discriminator is invalid",
+    );
+  }
+  const credential = requireRecord(
+    record.credential_binding,
+    "credential binding",
+  );
+  requireExactKeys(
+    credential,
+    ["credential_id", "generation"],
+    "credential binding",
+  );
+  if (
+    !Array.isArray(record.offered_protocol_versions) ||
+    record.offered_protocol_versions.length === 0 ||
+    record.offered_protocol_versions.length > 8 ||
+    record.offered_protocol_versions.some(
+      (version) => version !== protocolVersion,
+    )
+  ) {
+    throw new ContractInputError(
+      "offered_protocol_versions must contain supported unique versions",
+    );
+  }
+  const offered = record.offered_protocol_versions as string[];
+  if (new Set(offered).size !== offered.length) {
+    throw new ContractInputError("offered_protocol_versions must be unique");
+  }
+  const clientNonce = requireString(record.client_nonce, "client_nonce", 43);
+  if (
+    clientNonce.length !== 43 ||
+    !unpaddedBase64UrlPattern.test(clientNonce)
+  ) {
+    throw new ContractInputError("client_nonce must be 32-byte base64url");
+  }
+  return {
+    schema: "aether.cloudlink.session-challenge-request.v1",
+    protocol,
+    message_kind: "session-challenge-request",
+    gateway_id: requireUuid(record.gateway_id, "gateway_id"),
+    credential_binding: {
+      credential_id: requireIdentifier(
+        credential.credential_id,
+        "credential_id",
+        256,
+      ),
+      generation: requireUint64(
+        credential.generation,
+        "credential generation",
+        true,
+      ),
+    },
+    offered_protocol_versions: Object.freeze([...offered]),
+    client_nonce: clientNonce,
     resume: decodeResume(record.resume, "resume"),
   };
 }
@@ -729,6 +879,7 @@ function decodeSessionAccepted(record: JsonRecord): CloudLinkSessionAccepted {
 }
 
 function decodeHeartbeat(record: JsonRecord): CloudLinkHeartbeat {
+  const hasAuthentication = record.message_authentication !== undefined;
   requireExactKeys(
     record,
     [
@@ -736,6 +887,7 @@ function decodeHeartbeat(record: JsonRecord): CloudLinkHeartbeat {
       "cursors",
       "gateway_id",
       "message_kind",
+      ...(hasAuthentication ? ["message_authentication"] : []),
       "observed_at_ms",
       "protocol",
       "protocol_version",
@@ -771,6 +923,15 @@ function decodeHeartbeat(record: JsonRecord): CloudLinkHeartbeat {
     ),
     observed_at_ms: requireUint64(record.observed_at_ms, "observed_at_ms"),
     cursors: decodeResume(record.cursors, "cursors"),
+    ...(hasAuthentication
+      ? {
+          message_authentication: decodeMessageAuthentication(
+            record.message_authentication,
+            "message_authentication",
+            true,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -920,11 +1081,73 @@ function decodePointFact(value: unknown): CloudLinkPointFact {
   };
 }
 
+function rethrowIntegrationWireFailure(error: unknown): never {
+  if (error instanceof StrictJsonError) {
+    const contractCode: CloudLinkContractFailureCode =
+      error.code === "FIELD_BOUND" ? "FIELD_BOUND" : error.code;
+    throw new ContractInputError(
+      "Integration payload is invalid",
+      error.code === "JSON_SYNTAX_ERROR" ? "invalid-json" : "invalid-payload",
+      contractCode,
+    );
+  }
+  if (error instanceof IntegrationWireError) {
+    let contractCode: CloudLinkContractFailureCode;
+    switch (error.code) {
+      case "FIELD_TYPE":
+      case "REQUIRED_FIELD_MISSING":
+        contractCode = "FIELD_BOUND";
+        break;
+      case "SCHEMA_UNSUPPORTED":
+        contractCode = "UNSUPPORTED_VERSION";
+        break;
+      default:
+        contractCode = error.code;
+        break;
+    }
+    throw new ContractInputError(
+      "Integration payload is invalid",
+      contractCode === "UNSUPPORTED_VERSION"
+        ? "unsupported-contract-version"
+        : "invalid-payload",
+      contractCode,
+    );
+  }
+  throw error;
+}
+
+function decodeIntegrationPayload(
+  kind: "integration-observation-batch" | "integration-topology-snapshot",
+  payload: JsonRecord,
+): JsonRecord {
+  const encoded = new TextEncoder().encode(JSON.stringify(payload));
+  try {
+    if (kind === "integration-topology-snapshot") {
+      decodeIntegrationTopologyPayload(encoded, {
+        maxBytes: maximumDefaultPayloadBytes,
+      });
+    } else {
+      decodeIntegrationObservationPayloadInput(encoded, {
+        maxBytes: maximumDefaultPayloadBytes,
+      });
+    }
+    return payload;
+  } catch (error: unknown) {
+    return rethrowIntegrationWireFailure(error);
+  }
+}
+
 function decodeBusinessPayload(
   kind: CloudLinkDeliveryEnvelope["message_kind"],
   value: unknown,
 ): CloudLinkDeliveryEnvelope["payload"] {
   const payload = requireRecord(value, `${kind} payload`);
+  if (
+    kind === "integration-topology-snapshot" ||
+    kind === "integration-observation-batch"
+  ) {
+    return decodeIntegrationPayload(kind, payload);
+  }
   if (kind === "runtime-manifest-report") {
     requireExactKeys(
       payload,
@@ -1050,6 +1273,7 @@ export function cloudLinkBusinessDigest(
 
 function decodeDelivery(record: JsonRecord): CloudLinkDeliveryEnvelope {
   const hasExpiry = record.expires_at_ms !== undefined;
+  const hasAuthentication = record.message_authentication !== undefined;
   const hasTrace = record.traceparent !== undefined;
   requireExactKeys(
     record,
@@ -1059,6 +1283,7 @@ function decodeDelivery(record: JsonRecord): CloudLinkDeliveryEnvelope {
       ...(hasExpiry ? ["expires_at_ms"] : []),
       "gateway_id",
       "message_kind",
+      ...(hasAuthentication ? ["message_authentication"] : []),
       "payload",
       "protocol",
       "protocol_version",
@@ -1078,6 +1303,8 @@ function decodeDelivery(record: JsonRecord): CloudLinkDeliveryEnvelope {
   if (
     !(
       record.message_kind === "data-loss" ||
+      record.message_kind === "integration-observation-batch" ||
+      record.message_kind === "integration-topology-snapshot" ||
       record.message_kind === "runtime-manifest-report" ||
       record.message_kind === "telemetry-batch"
     )
@@ -1120,6 +1347,42 @@ function decodeDelivery(record: JsonRecord): CloudLinkDeliveryEnvelope {
     record.message_kind,
     record.payload,
   );
+  if (record.message_kind === "integration-topology-snapshot") {
+    const integrationPayload = requireRecord(
+      businessPayload,
+      "Integration topology payload",
+    );
+    const generation = requireString(
+      integrationPayload.snapshot_generation,
+      "payload.snapshot_generation",
+      20,
+    );
+    if (descriptor.batch_id !== `topology-${generation}`) {
+      throw new ContractInputError(
+        "Integration topology batch identity does not match its generation",
+        "invalid-payload",
+        "BATCH_ID_MISMATCH",
+      );
+    }
+  }
+  if (record.message_kind === "integration-observation-batch") {
+    const integrationPayload = requireRecord(
+      businessPayload,
+      "Integration observation payload",
+    );
+    const batchId = requireString(
+      integrationPayload.batch_id,
+      "payload.batch_id",
+      128,
+    );
+    if (descriptor.batch_id !== batchId) {
+      throw new ContractInputError(
+        "Integration observation batch identities do not match",
+        "invalid-payload",
+        "BATCH_ID_MISMATCH",
+      );
+    }
+  }
   if (
     cloudLinkBusinessDigest(record.message_kind, businessPayload) !==
     descriptor.digest
@@ -1145,6 +1408,15 @@ function decodeDelivery(record: JsonRecord): CloudLinkDeliveryEnvelope {
     sent_at_ms: sentAt,
     ...(expiresAt === undefined ? {} : { expires_at_ms: expiresAt }),
     delivery: descriptor,
+    ...(hasAuthentication
+      ? {
+          message_authentication: decodeMessageAuthentication(
+            record.message_authentication,
+            "message_authentication",
+            true,
+          ),
+        }
+      : {}),
     ...(traceparent === undefined ? {} : { traceparent }),
     payload: businessPayload,
   } as CloudLinkDeliveryEnvelope;
@@ -1271,6 +1543,8 @@ function decodeRecord(record: JsonRecord): CloudLinkContractMessage {
       return decodeSessionAccepted(record);
     case "aether.cloudlink.session-challenge.v1":
       return decodeSessionChallenge(record);
+    case "aether.cloudlink.session-challenge-request.v1":
+      return decodeSessionChallengeRequest(record);
     case "aether.cloudlink.session-hello.v1":
       return decodeSessionHello(record);
     default:
@@ -1312,9 +1586,23 @@ export function decodeCloudLinkContractMessage(
   }
   let raw: unknown;
   try {
-    raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(payload));
-  } catch {
-    return failure("invalid-json", "CloudLink payload is not valid UTF-8 JSON");
+    raw = decodeStrictJson(payload, {
+      maxBytes: maximum,
+      maxDepth: 32,
+      maxStringCodeUnits: 65_536,
+      maxObjectMembers: 1_024,
+      maxArrayItems: 65_536,
+      maxNumberTokenLength: 128,
+    });
+  } catch (error: unknown) {
+    if (error instanceof StrictJsonError) {
+      return failure(
+        error.code === "FIELD_BOUND" ? "invalid-payload" : "invalid-json",
+        "CloudLink payload is not valid bounded UTF-8 JSON",
+        error.code,
+      );
+    }
+    throw error;
   }
   try {
     return {
@@ -1353,7 +1641,7 @@ function parseUplinkTopic(
   const suffix = segments.slice(prefix.length);
   if (
     !prefix.every((segment, index) => segments[index] === segment) ||
-    suffix.length !== 5 ||
+    (suffix.length !== 5 && suffix.length !== 6) ||
     suffix[0] !== "v1" ||
     suffix[1] !== "gateways" ||
     suffix[3] !== "up"
@@ -1365,17 +1653,56 @@ function parseUplinkTopic(
   }
   return {
     gatewayId: requireUuid(suffix[2], "topic gateway ID"),
-    route: requireString(suffix[4], "topic route", 32),
+    route: requireString(suffix.slice(4).join("/"), "topic route", 32),
   };
 }
 
 function inboundRoute(message: CloudLinkContractMessage): string | undefined {
-  if (message.message_kind === "session-hello") return "session";
+  if (
+    message.message_kind === "session-challenge-request" ||
+    message.message_kind === "session-hello"
+  ) {
+    return "session";
+  }
   if (message.message_kind === "heartbeat") return "heartbeat";
   if (message.message_kind === "runtime-manifest-report") return "manifest";
   if (message.message_kind === "telemetry-batch") return "telemetry";
+  if (message.message_kind === "integration-topology-snapshot") {
+    return "integration/topology";
+  }
+  if (message.message_kind === "integration-observation-batch") {
+    return "integration/observations";
+  }
   if (message.message_kind === "data-loss") return "data-loss";
   return undefined;
+}
+
+function integrationExtensionIsEnabled(
+  extensions: readonly CloudLinkExtension[] | undefined,
+): boolean {
+  return extensions?.includes(integrationExtension) === true;
+}
+
+function integrationControlExtensionIsEnabled(
+  extensions: readonly CloudLinkExtension[] | undefined,
+): boolean {
+  return extensions?.includes(integrationControlExtension) === true;
+}
+
+function isIntegrationMessage(
+  message: CloudLinkContractMessage,
+): message is Extract<
+  CloudLinkDeliveryEnvelope,
+  {
+    message_kind:
+      | "integration-observation-batch"
+      | "integration-topology-snapshot";
+  }
+> {
+  return (
+    message.message_kind === "integration-observation-batch" ||
+    message.message_kind === "integration-topology-snapshot"
+  );
 }
 
 export function decodeCloudLinkMqttInbound(
@@ -1402,6 +1729,19 @@ export function decodeCloudLinkMqttInbound(
     options.maximumPayloadBytes,
   );
   if (!decoded.ok) return { ok: false, failure: decoded.failure };
+  if (
+    isIntegrationMessage(decoded.value) &&
+    !integrationExtensionIsEnabled(options.enabledExtensions)
+  ) {
+    return {
+      ok: false,
+      failure: {
+        code: "unsupported-message",
+        contract_code: "UNSUPPORTED_VERSION",
+        message: "CloudLink Integration extension is not enabled",
+      },
+    };
+  }
   const route = inboundRoute(decoded.value);
   if (
     route === undefined ||
@@ -1420,11 +1760,34 @@ export function decodeCloudLinkMqttInbound(
   return { ok: true, value: decoded.value as CloudLinkMqttInbound };
 }
 
-export function mqttUplinkFilters(topicPrefix: string): readonly string[] {
+export function mqttUplinkFilters(
+  topicPrefix: string,
+  enabledExtensions?: readonly CloudLinkExtension[],
+): readonly string[] {
   validateTopicPrefix(topicPrefix);
-  return ["session", "heartbeat", "manifest", "telemetry", "data-loss"].map(
-    (route) => `${topicPrefix}/v1/gateways/+/up/${route}`,
-  );
+  const base = [
+    "session",
+    "heartbeat",
+    "manifest",
+    "telemetry",
+    "data-loss",
+  ].map((route) => `${topicPrefix}/v1/gateways/+/up/${route}`);
+  const filters = [...base];
+  if (integrationExtensionIsEnabled(enabledExtensions)) {
+    filters.push(
+      `${topicPrefix}/v1/gateways/+/up/integration/topology`,
+      `${topicPrefix}/v1/gateways/+/up/integration/observations`,
+    );
+  }
+  if (
+    integrationExtensionIsEnabled(enabledExtensions) &&
+    integrationControlExtensionIsEnabled(enabledExtensions)
+  ) {
+    filters.push(
+      `${topicPrefix}/v1/gateways/+/up/integration-control/receipts`,
+    );
+  }
+  return filters;
 }
 
 export function mqttDownlinkTopic(

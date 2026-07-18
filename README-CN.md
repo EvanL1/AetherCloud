@@ -2,6 +2,8 @@
 
 [English](README.md)
 
+**文档网站：** [docs.aetheriot.workers.dev/aethercloud](https://docs.aetheriot.workers.dev/aethercloud/)
+
 **AetherIoT 正在演进中的智能体与控制平面。**
 
 AetherCloud 负责把人的意图转化为受治理的期望状态、能力任务、集成工作和可解释变更，并协调 AetherEdge 与各类云服务。它不是托管版边缘运行时，也不是在传统多云管理后台上附加一个聊天框。
@@ -48,18 +50,23 @@ AetherCloud 是 [AetherIoT 平台](docs/get-started/aetheriot-product-family.md)
 
 ## 当前交付状态
 
-| 领域                                                         | 状态                                             |
-| ------------------------------------------------------------ | ------------------------------------------------ |
-| 租户与项目边界、云服务适配器注册表、资源发现、部署栈         | 已实现基础能力                                   |
-| 只支持规划的 OpenTofu 与 Terraform 引擎，以及精确状态锁证据  | 已实现，并完成可选集成测试                       |
-| 网关身份与注册、CloudLink 会话、运行清单、遥测和告警         | 已实现部分领域层、应用层及持久化基础             |
-| 制品、期望/上报/已应用部署、受治理能力任务                   | 已实现部分基础                                   |
-| 审计查询、可恢复事件传输、网络回调、数据导出、智能体工具接口 | 已实现部分基础，多个生产适配器和后台任务仍待建设 |
-| 生产凭据生命周期、远程状态、加密规划存储                     | 规划中                                           |
-| 基础设施应用与销毁                                           | 规划为独立的受治理命令                           |
-| 家庭空间语义、对话智能体、方案编译、模拟与持续适配           | 规划中的产品能力                                 |
+| 领域                                                         | 状态                                                                                                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 租户与项目边界、云服务适配器注册表、资源发现、部署栈         | 已实现基础能力                                                                                                                                                      |
+| 只支持规划的 OpenTofu 与 Terraform 引擎，以及精确状态锁证据  | 已实现，并完成可选集成测试                                                                                                                                          |
+| 网关身份与注册、CloudLink 会话、运行清单、遥测和告警         | 已实现部分领域层、应用层及持久化基础                                                                                                                                |
+| Home Assistant 拓扑和观测投影                                | 实验性边缘连接器、持久 CloudLink 传输、内存与 PostgreSQL 投影，以及有界目录和按标识查询接口已实现；发行组合和公开服务仍待完成                                       |
+| 受治理的 Home Assistant 电源控制                             | 实验性且默认关闭；已有严格 CloudLink 消息组合、应用用例、内存与 PostgreSQL 账本、签名适配器和可选智能体适配器；生产组合、密钥、消息代理验证和公开智能体入口仍待完成 |
+| 制品、期望/上报/已应用部署、受治理能力任务                   | 已实现部分基础                                                                                                                                                      |
+| 审计查询、可恢复事件传输、网络回调、数据导出、智能体工具接口 | 已实现部分基础，多个生产适配器和后台任务仍待建设                                                                                                                    |
+| 生产凭据生命周期、远程状态、加密规划存储                     | 规划中                                                                                                                                                              |
+| 基础设施应用与销毁                                           | 规划为独立的受治理命令                                                                                                                                              |
+| 家庭空间语义、对话智能体、方案编译、模拟与持续适配           | 规划中的产品能力                                                                                                                                                    |
 
 “已实现基础能力”表示相应领域或应用契约已有测试；只有明确标注时才包含生产适配器，它不等于已经提供公开生产服务。精确证据与缺失项请查看[当前实现审计](docs/concepts/current-state-audit.md)。
+
+[受治理的 Home Assistant 电源控制](docs/zh-CN/concepts/home-assistant-governed-control.md)
+说明了固定语义动作、确认与回执模型，以及为什么当前源码基础还不能作为面向用户的控制产品。
 
 ## 安全规则
 
@@ -95,9 +102,11 @@ pnpm dev:api
 - [网关身份与注册](docs/concepts/gateway-identity-and-enrollment.md)
 - [CloudLink 与核心状态机](docs/concepts/cloudlink-and-core-state-machines.md)
 - [物联网遥测](docs/concepts/iot-telemetry.md)
+- [Home Assistant 集成](docs/zh-CN/concepts/home-assistant-integration.md)
+- [受治理的 Home Assistant 电源控制](docs/zh-CN/concepts/home-assistant-governed-control.md)
 - [期望、上报与已应用部署](docs/concepts/desired-reported-applied-deployment.md)
 - [受治理的能力任务](docs/concepts/governed-capability-jobs.md)
-- [智能体应用接口](docs/concepts/mcp-application-interface.md)
+- [智能体应用接口](docs/zh-CN/concepts/mcp-application-interface.md)
 - [审计与集成](docs/concepts/audit-and-integrations.md)
 - [安全规划基础设施](docs/guides/plan-infrastructure.md)
 - [使用智能体参与开发](docs/guides/build-with-an-agent.md)

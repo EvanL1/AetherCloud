@@ -71,6 +71,10 @@ domain <- ports <- application <- interfaces/composition roots
 
 - `llms.txt` is the compact agent index.
 - `ai/docs-manifest.json` is the machine-readable document catalog.
+- Manifest entries keep a repository-local `path` for validation and an
+  absolute `canonical_url` for retrieval. Published pages use the unified
+  documentation site; internal Markdown uses GitHub; machine resources use
+  Raw GitHub.
 - `skills/aether-cloud/SKILL.md` routes task-specific agent work.
 - `ai/invariants.md` lists rules that must survive refactors.
 - Architecture decisions live under `docs/adr/`.

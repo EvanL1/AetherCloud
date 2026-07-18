@@ -35,11 +35,20 @@ import type {
   GatewayCredentialVerifier,
 } from "./cloudlink-session-repository.js";
 import type { ApplicationClock } from "./gateway-identity-repository.js";
+import {
+  decodeGatewaySignedCloudLinkBusinessDelivery,
+  isGatewaySignedCloudLinkUplinkAuthenticationFact,
+  validateGatewaySignedCloudLinkAuthenticationConsumption,
+  type CloudLinkBusinessPayloadDigestor,
+  type GatewaySignedCloudLinkUplinkAuthenticationFact,
+} from "./cloudlink-uplink-authentication.js";
 
 type CloudLinkApplicationFailureCode =
+  | "cloudlink-cursor-gap"
   | "command-expired"
   | "concurrent-modification"
   | "gateway-credential-inactive"
+  | "gateway-signed-authentication-invalid"
   | "idempotency-conflict"
   | "invalid-cloudlink-session-transition"
   | "invalid-gateway-credential"
@@ -80,6 +89,8 @@ export interface CloudLinkSessionView {
   readonly openedAt: UtcInstant;
   readonly activatedAt?: UtcInstant;
   readonly lastHeartbeatAt?: UtcInstant;
+  readonly gatewayKeyId?: string;
+  readonly heartbeatIntervalMs?: string;
 }
 
 export interface CloudLinkDurableCursorView {
@@ -116,6 +127,64 @@ function requireRecord(input: unknown, name: string): Record<string, unknown> {
   if (!isRecord(input))
     throw new CloudLinkInputError(`${name} must be an object`);
   return input;
+}
+
+function requireExactKeys(
+  record: Record<string, unknown>,
+  expected: readonly string[],
+  name: string,
+): void {
+  const actual = Object.keys(record).sort();
+  const canonical = [...expected].sort();
+  if (
+    actual.length !== canonical.length ||
+    actual.some((key, index) => key !== canonical[index])
+  ) {
+    throw new CloudLinkInputError(`${name} contains unknown or missing fields`);
+  }
+}
+
+function millisecondsToInstant(input: string, name: string): UtcInstant {
+  if (!/^(?:0|[1-9][0-9]*)$/.test(input)) {
+    throw new CloudLinkInputError(`${name} must be a canonical timestamp`);
+  }
+  const milliseconds = Number(input);
+  const instant = new Date(milliseconds);
+  if (!Number.isSafeInteger(milliseconds) || Number.isNaN(instant.valueOf())) {
+    throw new CloudLinkInputError(`${name} is outside the supported range`);
+  }
+  return parseUtcInstant(instant.toISOString());
+}
+
+type CloudLinkCommandAuthentication =
+  | Readonly<{
+      kind: "credential";
+      credential: GatewayCredentialAssertion;
+    }>
+  | Readonly<{
+      kind: "gateway-signed";
+      fact: GatewaySignedCloudLinkUplinkAuthenticationFact;
+    }>;
+
+async function verifyCommandAuthentication(
+  verifier: GatewayCredentialVerifier,
+  authentication: CloudLinkCommandAuthentication,
+): Promise<
+  | Readonly<{ ok: true; value: GatewayCredentialBinding }>
+  | Readonly<{ ok: false; failure: CloudLinkApplicationFailure }>
+> {
+  return authentication.kind === "gateway-signed"
+    ? {
+        ok: true,
+        value: Object.freeze({
+          tenantId: authentication.fact.tenantId,
+          projectId: authentication.fact.projectId,
+          gatewayId: authentication.fact.gatewayId,
+          generation: authentication.fact.credentialGeneration,
+          status: "active",
+        }),
+      }
+    : verifyActiveCredential(verifier, authentication.credential);
 }
 
 function requireString(input: unknown, name: string, maximum = 128): string {
@@ -292,6 +361,12 @@ function toView(session: CloudLinkSession): CloudLinkSessionView {
     ...(session.lastHeartbeatAt === undefined
       ? {}
       : { lastHeartbeatAt: session.lastHeartbeatAt }),
+    ...(session.gatewayKeyId === undefined
+      ? {}
+      : { gatewayKeyId: session.gatewayKeyId }),
+    ...(session.heartbeatIntervalMs === undefined
+      ? {}
+      : { heartbeatIntervalMs: session.heartbeatIntervalMs }),
   };
 }
 
@@ -430,22 +505,74 @@ export class RecordCloudLinkHeartbeat {
     const decoded = decodeSafely(() => {
       const context = decodeCommandContext(rawContext);
       const input = requireRecord(rawInput, "CloudLink heartbeat input");
+      if (input.gatewaySignedAuthentication !== undefined) {
+        requireExactKeys(
+          input,
+          ["gatewaySignedAuthentication", "observedAtMs"],
+          "Gateway-signed CloudLink heartbeat input",
+        );
+        if (
+          !isGatewaySignedCloudLinkUplinkAuthenticationFact(
+            input.gatewaySignedAuthentication,
+          )
+        ) {
+          throw new CloudLinkInputError(
+            "Gateway-signed heartbeat authentication is invalid",
+          );
+        }
+        const observedAtMs = requireString(
+          input.observedAtMs,
+          "observedAtMs",
+          20,
+        );
+        return {
+          context,
+          authentication: {
+            kind: "gateway-signed",
+            fact: input.gatewaySignedAuthentication,
+          } satisfies CloudLinkCommandAuthentication,
+          sessionId: input.gatewaySignedAuthentication.sessionId,
+          epoch: input.gatewaySignedAuthentication.sessionEpoch,
+          observedAtMs,
+          observedAt: millisecondsToInstant(observedAtMs, "observedAtMs"),
+        };
+      }
       return {
         context,
-        credential: decodeCredential(input.credential),
+        authentication: {
+          kind: "credential",
+          credential: decodeCredential(input.credential),
+        } satisfies CloudLinkCommandAuthentication,
         sessionId: parseCloudLinkSessionId(input.sessionId),
         epoch: parseCloudLinkSessionEpoch(input.sessionEpoch),
+        observedAt: undefined,
+        observedAtMs: undefined,
       };
     });
     if (!decoded.ok) return decoded;
     const now = this.#clock.now();
     const timeFailure = validateCommandTime(decoded.value.context, now);
     if (timeFailure !== undefined) return { ok: false, failure: timeFailure };
-    const verified = await verifyActiveCredential(
+    const verified = await verifyCommandAuthentication(
       this.#credentialVerifier,
-      decoded.value.credential,
+      decoded.value.authentication,
     );
     if (!verified.ok) return verified;
+    if (decoded.value.authentication.kind === "gateway-signed") {
+      const consumed =
+        await validateGatewaySignedCloudLinkAuthenticationConsumption({
+          kind: "heartbeat",
+          fact: decoded.value.authentication.fact,
+          observedAtMs: decoded.value.observedAtMs as string,
+          nowMs: String(Date.parse(now)),
+        });
+      if (!consumed.ok) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          "Gateway-signed heartbeat authentication is invalid",
+        );
+      }
+    }
     const session = await this.#repository.findById(
       verified.value,
       decoded.value.sessionId,
@@ -462,7 +589,7 @@ export class RecordCloudLinkHeartbeat {
     const transition = observeCloudLinkHeartbeat(session, {
       epoch: decoded.value.epoch,
       requestId: decoded.value.context.requestId,
-      observedAt: now,
+      observedAt: decoded.value.observedAt ?? now,
     });
     if (!transition.ok) {
       return failure(
@@ -493,15 +620,20 @@ export class RecordCloudLinkDurableCursor {
   readonly #repository: CloudLinkSessionRepository;
   readonly #credentialVerifier: GatewayCredentialVerifier;
   readonly #clock: ApplicationClock;
+  readonly #businessPayloadDigestor:
+    | CloudLinkBusinessPayloadDigestor
+    | undefined;
 
   constructor(dependencies: {
     readonly repository: CloudLinkSessionRepository;
     readonly credentialVerifier: GatewayCredentialVerifier;
     readonly clock: ApplicationClock;
+    readonly businessPayloadDigestor?: CloudLinkBusinessPayloadDigestor;
   }) {
     this.#repository = dependencies.repository;
     this.#credentialVerifier = dependencies.credentialVerifier;
     this.#clock = dependencies.clock;
+    this.#businessPayloadDigestor = dependencies.businessPayloadDigestor;
   }
 
   async execute(
@@ -511,9 +643,55 @@ export class RecordCloudLinkDurableCursor {
     const decoded = decodeSafely(() => {
       const context = decodeCommandContext(rawContext);
       const input = requireRecord(rawInput, "CloudLink durable cursor input");
+      if (input.gatewaySignedAuthentication !== undefined) {
+        requireExactKeys(
+          input,
+          [
+            "cloudLinkDelivery",
+            "cloudLinkPayload",
+            "gatewaySignedAuthentication",
+          ],
+          "Gateway-signed CloudLink durable cursor input",
+        );
+        const fact = input.gatewaySignedAuthentication;
+        const delivery = decodeGatewaySignedCloudLinkBusinessDelivery(
+          input.cloudLinkDelivery,
+        );
+        if (
+          !isGatewaySignedCloudLinkUplinkAuthenticationFact(fact) ||
+          delivery === undefined ||
+          typeof input.cloudLinkPayload !== "object" ||
+          input.cloudLinkPayload === null
+        ) {
+          throw new CloudLinkInputError(
+            "Gateway-signed durable cursor authentication is invalid",
+          );
+        }
+        return {
+          context,
+          authentication: {
+            kind: "gateway-signed",
+            fact,
+          } satisfies CloudLinkCommandAuthentication,
+          delivery,
+          payload: input.cloudLinkPayload,
+          sessionId: delivery.sessionId,
+          sessionEpoch: delivery.sessionEpoch,
+          cursor: {
+            streamId: delivery.streamId,
+            streamEpoch: delivery.streamEpoch,
+            position: delivery.position,
+          },
+        };
+      }
       return {
         context,
-        credential: decodeCredential(input.credential),
+        authentication: {
+          kind: "credential",
+          credential: decodeCredential(input.credential),
+        } satisfies CloudLinkCommandAuthentication,
+        delivery: undefined,
+        payload: undefined,
         sessionId: parseCloudLinkSessionId(input.sessionId),
         sessionEpoch: parseCloudLinkSessionEpoch(input.sessionEpoch),
         cursor: {
@@ -529,11 +707,39 @@ export class RecordCloudLinkDurableCursor {
       this.#clock.now(),
     );
     if (timeFailure !== undefined) return { ok: false, failure: timeFailure };
-    const verified = await verifyActiveCredential(
+    const verified = await verifyCommandAuthentication(
       this.#credentialVerifier,
-      decoded.value.credential,
+      decoded.value.authentication,
     );
     if (!verified.ok) return verified;
+    if (decoded.value.authentication.kind === "gateway-signed") {
+      if (
+        this.#businessPayloadDigestor === undefined ||
+        decoded.value.delivery === undefined
+      ) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          "Gateway-signed durable cursor validation is unavailable",
+        );
+      }
+      const consumed =
+        await validateGatewaySignedCloudLinkAuthenticationConsumption({
+          kind: "delivery",
+          fact: decoded.value.authentication.fact,
+          delivery: decoded.value.delivery,
+          payload: decoded.value.payload,
+          nowMs: String(Date.parse(this.#clock.now())),
+          digestor: this.#businessPayloadDigestor,
+        });
+      if (!consumed.ok) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          consumed.failure === "MESSAGE_EXPIRED"
+            ? "Gateway-signed durable cursor delivery expired"
+            : "Gateway-signed durable cursor authentication is invalid",
+        );
+      }
+    }
     const recorded = await this.#repository.recordDurableCursor({
       binding: verified.value,
       sessionId: decoded.value.sessionId,
@@ -547,6 +753,12 @@ export class RecordCloudLinkDurableCursor {
       return failure(
         "stale-cloudlink-session-epoch",
         "CloudLink durable cursor belongs to a stale session",
+      );
+    }
+    if (recorded === "position-gap") {
+      return failure(
+        "cloudlink-cursor-gap",
+        "CloudLink durable cursor cannot advance across an unresolved position",
       );
     }
     return {

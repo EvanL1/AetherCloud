@@ -2,6 +2,8 @@
 
 [中文说明](README-CN.md)
 
+**Documentation website:** [docs.aetheriot.workers.dev/en/aethercloud](https://docs.aetheriot.workers.dev/en/aethercloud/)
+
 **The evolving agent and control plane for AetherIoT.**
 
 AetherCloud is where human intent becomes governed desired state, capability
@@ -64,22 +66,32 @@ another permanent configuration maze.
 
 ## What exists today
 
-| Area                                                                                            | Status                                                                         |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Tenant/project boundaries, Provider Adapter registry, discovery, deployment stacks              | Implemented foundations                                                        |
-| Plan-only OpenTofu/Terraform engine with exact-state locking evidence                           | Implemented and opt-in integration tested                                      |
-| Gateway identity, enrollment, CloudLink sessions, manifests, telemetry, alarms                  | Partial domain/application and persistence foundations                         |
-| Artifacts, desired/reported/applied deployment, governed capability jobs                        | Partial foundations                                                            |
-| Audit query, resumable event delivery, webhooks, exports, MCP application interface             | Partial foundations; several production adapters and workers are still planned |
-| Production credential lifecycle, durable remote state and encrypted plan storage                | Planned                                                                        |
-| Infrastructure Apply and Destroy                                                                | Planned as separate governed commands                                          |
-| Household semantics, conversational Agent, proposal compiler, simulation, continuous adaptation | Planned product work                                                           |
+| Area                                                                                            | Status                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tenant/project boundaries, Provider Adapter registry, discovery, deployment stacks              | Implemented foundations                                                                                                                                                                                                                                 |
+| Plan-only OpenTofu/Terraform engine with exact-state locking evidence                           | Implemented and opt-in integration tested                                                                                                                                                                                                               |
+| Gateway identity, enrollment, CloudLink sessions, manifests, telemetry, alarms                  | Partial domain/application and persistence foundations                                                                                                                                                                                                  |
+| Home Assistant topology and observation projection                                              | Experimental Edge connector, durable CloudLink transport, memory/PostgreSQL projection, and bounded catalog/by-ID query interfaces implemented; release composition and public service planned                                                          |
+| Governed Home Assistant power control                                                           | Experimental and default off; strict CloudLink MQTT composition, application use cases, memory/PostgreSQL ledgers, signing adapters, and optional MCP adapters exist; production composition, keys/Broker proof, and public Agent access remain planned |
+| Artifacts, desired/reported/applied deployment, governed capability jobs                        | Partial foundations                                                                                                                                                                                                                                     |
+| Audit query, resumable event delivery, webhooks, exports, MCP application interface             | Partial foundations; several production adapters and workers are still planned                                                                                                                                                                          |
+| Production credential lifecycle, durable remote state and encrypted plan storage                | Planned                                                                                                                                                                                                                                                 |
+| Infrastructure Apply and Destroy                                                                | Planned as separate governed commands                                                                                                                                                                                                                   |
+| Household semantics, conversational Agent, proposal compiler, simulation, continuous adaptation | Planned product work                                                                                                                                                                                                                                    |
 
 “Implemented foundation” means the behavior has tested domain/application
 contracts and, where stated, adapters. It does not imply a public production
 service. See the
 [current implementation audit](docs/concepts/current-state-audit.md) for exact
 evidence and missing composition work.
+
+The [Home Assistant integration](docs/concepts/home-assistant-integration.md)
+documents the executable source-build data path and its remaining release,
+composition, query, and control gates.
+The separate
+[governed Home Assistant power control](docs/concepts/home-assistant-governed-control.md)
+page explains the fixed semantic action, confirmation and receipt model, and
+why the current source foundation is not yet an end-user control product.
 
 ## Safety rules
 
@@ -119,6 +131,8 @@ PostgreSQL instance, edge device, Broker, or cloud account.
 - [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md)
 - [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md)
 - [IoT telemetry](docs/concepts/iot-telemetry.md)
+- [Home Assistant integration](docs/concepts/home-assistant-integration.md)
+- [Governed Home Assistant power control](docs/concepts/home-assistant-governed-control.md)
 - [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md)
 - [Governed capability jobs](docs/concepts/governed-capability-jobs.md)
 - [MCP application interface](docs/concepts/mcp-application-interface.md)

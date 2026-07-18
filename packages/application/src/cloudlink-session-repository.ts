@@ -1,5 +1,6 @@
 import type {
   CloudLinkSession,
+  CloudLinkSessionChallengeId,
   CloudLinkSessionEpoch,
   CloudLinkSessionId,
   CloudLinkStreamCursor,
@@ -37,6 +38,97 @@ export interface CloudLinkSessionScope {
   readonly projectId: ProjectId;
 }
 
+export interface GatewayCredentialClaim {
+  readonly gatewayId: GatewayId;
+  readonly credentialId: string;
+  readonly generation: GatewayCredentialBinding["generation"];
+}
+
+export interface GatewayCredentialClaimResolver {
+  resolveClaim(
+    claim: GatewayCredentialClaim,
+  ): Promise<GatewayCredentialBinding | undefined>;
+}
+
+export interface CloudLinkSessionChallengeRequestState {
+  readonly gatewayId: GatewayId;
+  readonly credentialId: string;
+  readonly credentialGeneration: GatewayCredentialBinding["generation"];
+  readonly offeredProtocolVersions: readonly ProtocolVersion[];
+  readonly clientNonce: string;
+  readonly resumeCursors: readonly CloudLinkStreamCursor[];
+}
+
+export interface CloudLinkSessionChallengeAuthentication {
+  readonly keyId: string;
+  readonly algorithm: "Ed25519";
+  readonly signature: string;
+}
+
+export interface CloudLinkSessionChallengeRecord {
+  readonly binding: GatewayCredentialBinding;
+  readonly request: CloudLinkSessionChallengeRequestState;
+  readonly challengeId: CloudLinkSessionChallengeId;
+  readonly cloudNonce: string;
+  readonly issuedAtMs: string;
+  readonly expiresAtMs: string;
+  readonly cloudAuthentication: CloudLinkSessionChallengeAuthentication;
+}
+
+export interface IssueCloudLinkSessionChallengeRepositoryInput {
+  readonly candidate: CloudLinkSessionChallengeRecord;
+  readonly evaluationTimeMs: string;
+  readonly rateLimitWindowMs: number;
+  readonly rateLimitMaximumRequests: number;
+}
+
+export type IssueCloudLinkSessionChallengeRepositoryResult =
+  | Readonly<{
+      outcome: "issued" | "replayed";
+      challenge: CloudLinkSessionChallengeRecord;
+    }>
+  | Readonly<{ outcome: "rate-limited" | "request-conflict" }>;
+
+export interface AcceptCloudLinkSessionChallengeRepositoryInput {
+  readonly binding: GatewayCredentialBinding;
+  readonly challengeId: CloudLinkSessionChallengeId;
+  readonly authenticationFingerprint: string;
+  readonly evaluationTimeMs: string;
+  readonly sessionId: CloudLinkSessionId;
+  readonly protocolVersion: ProtocolVersion;
+  readonly openedAt: UtcInstant;
+  readonly gatewayKeyId: string;
+  readonly heartbeatIntervalMs: string;
+}
+
+export type AcceptCloudLinkSessionChallengeRepositoryResult =
+  | Readonly<{
+      outcome: "opened";
+      session: CloudLinkSession;
+      fencedSessionId?: CloudLinkSessionId;
+    }>
+  | Readonly<{ outcome: "replayed"; session: CloudLinkSession }>
+  | Readonly<{
+      outcome:
+        | "not-found"
+        | "expired"
+        | "consumed-conflict"
+        | "binding-conflict";
+    }>;
+
+export interface CloudLinkSessionChallengeRepository {
+  issue(
+    input: IssueCloudLinkSessionChallengeRepositoryInput,
+  ): Promise<IssueCloudLinkSessionChallengeRepositoryResult>;
+  find(
+    binding: GatewayCredentialBinding,
+    challengeId: CloudLinkSessionChallengeId,
+  ): Promise<CloudLinkSessionChallengeRecord | undefined>;
+  acceptAndOpen(
+    input: AcceptCloudLinkSessionChallengeRepositoryInput,
+  ): Promise<AcceptCloudLinkSessionChallengeRepositoryResult>;
+}
+
 export interface OpenCloudLinkSessionRepositoryInput {
   readonly binding: GatewayCredentialBinding;
   readonly requestId: string;
@@ -68,6 +160,7 @@ export interface RecordCloudLinkDurableCursorRepositoryInput {
 
 export type RecordCloudLinkDurableCursorRepositoryResult =
   | "not-found"
+  | "position-gap"
   | "recorded"
   | "replayed"
   | "stale-session";

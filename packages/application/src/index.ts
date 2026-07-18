@@ -16,11 +16,13 @@ export {
   ProviderCatalog,
 } from "./provider-catalog.js";
 export {
+  ACCEPT_GATEWAY_SIGNED_CLOUDLINK_SESSION_COMMAND,
   ACKNOWLEDGE_ALARM_COMMAND,
   CLAIM_GATEWAY_ENROLLMENT_COMMAND,
   CANCEL_GOVERNED_JOB_COMMAND,
   CONFIRM_GOVERNED_JOB_COMMAND,
   CREATE_GOVERNED_JOB_COMMAND,
+  CREATE_INTEGRATION_POWER_CONTROL_COMMAND,
   CREATE_WEBHOOK_SUBSCRIPTION_COMMAND,
   DISABLE_WEBHOOK_SUBSCRIPTION_COMMAND,
   ENQUEUE_WEBHOOK_DELIVERY_COMMAND,
@@ -34,10 +36,15 @@ export {
   GET_WEBHOOK_SUBSCRIPTION_QUERY,
   GET_ALARM_PROJECTION_QUERY,
   GET_TELEMETRY_HISTORY_QUERY,
+  GET_INTEGRATION_PROJECTION_QUERY,
+  LIST_INTEGRATION_PROJECTIONS_QUERY,
   GET_GATEWAY_ENROLLMENT_QUERY,
   ISSUE_GATEWAY_ENROLLMENT_COMMAND,
   INGEST_TELEMETRY_BATCH_COMMAND,
+  REPORT_INTEGRATION_OBSERVATIONS_COMMAND,
+  REPORT_INTEGRATION_TOPOLOGY_COMMAND,
   INGEST_GOVERNED_JOB_RECEIPT_COMMAND,
+  INGEST_INTEGRATION_CONTROL_RECEIPT_COMMAND,
   INGEST_ALARM_FACT_COMMAND,
   OPEN_CLOUDLINK_SESSION_COMMAND,
   CANCEL_EDGE_DEPLOYMENT_COMMAND,
@@ -53,6 +60,7 @@ export {
   ROLLBACK_EDGE_DEPLOYMENT_COMMAND,
   START_EDGE_DEPLOYMENT_COMMAND,
   RECORD_CLOUDLINK_HEARTBEAT_COMMAND,
+  REQUEST_CLOUDLINK_SESSION_CHALLENGE_COMMAND,
   REDRIVE_WEBHOOK_DELIVERY_COMMAND,
   REPORT_GATEWAY_RUNTIME_MANIFEST_COMMAND,
   REPORT_DATA_EXPORT_OUTCOME_COMMAND,
@@ -60,6 +68,94 @@ export {
   SEARCH_AUDIT_EVENTS_QUERY,
   REGISTER_GATEWAY_COMMAND,
 } from "./capability-definition.js";
+export {
+  CreateIntegrationPowerControl,
+  IngestIntegrationControlReceipt,
+  PublishIntegrationControlOffers,
+  ReofferIntegrationPowerControls,
+} from "./integration-control.js";
+export type {
+  IntegrationControlApplicationClock,
+  IntegrationControlApplicationResult,
+  IntegrationControlFailure,
+  IntegrationControlPublishView,
+  IntegrationControlReceiptView,
+  IntegrationControlReofferView,
+  IntegrationPowerControlView,
+} from "./integration-control.js";
+export type {
+  IntegrationControlActionIntent,
+  IntegrationControlActionOffer,
+  IntegrationControlDelivery,
+  IntegrationControlDurableAcknowledgement,
+  IntegrationControlIntentDigestor,
+  IntegrationControlOfferAuthentication,
+  IntegrationControlOfferPublisher,
+  IntegrationControlOfferSigner,
+  IntegrationControlOfferSigningProjection,
+  IntegrationControlReceiptAuthenticationInput,
+  IntegrationControlReceiptAuthenticator,
+  IntegrationControlReceiptEvidence,
+  IntegrationControlProjectionReader,
+  IntegrationControlRepository,
+  IntegrationControlRuntimeProtocolReader,
+  IntegrationControlSessionReader,
+  IntegrationControlScope,
+  IntegrationIntentAndOfferPersistenceInput,
+  IntegrationIntentAndOfferPersistenceResult,
+  IntegrationOfferOutboxRecord,
+  IntegrationOfferPublishedResult,
+  IntegrationReceiptPersistenceInput,
+  IntegrationReceiptPersistenceResult,
+  IntegrationReofferPersistenceInput,
+  IntegrationReofferPersistenceResult,
+  IntegrationStoredIntent,
+} from "./integration-control-repository.js";
+export {
+  GetIntegrationProjection,
+  ReportIntegrationObservations,
+  ReportIntegrationTopology,
+} from "./integration-projection.js";
+export { ListIntegrationProjections } from "./list-integration-projections.js";
+export type {
+  IntegrationProjectionCatalogFailure,
+  IntegrationProjectionCatalogFailureCode,
+  IntegrationProjectionCatalogItem,
+  IntegrationProjectionCatalogResult,
+  IntegrationProjectionCatalogView,
+} from "./list-integration-projections.js";
+export type {
+  IntegrationProjectionCatalog,
+  IntegrationProjectionCatalogPosition,
+  IntegrationProjectionCatalogQuery,
+  IntegrationProjectionCatalogRecord,
+} from "./integration-projection-catalog.js";
+export type {
+  IntegrationProjectionApplicationResult,
+  IntegrationProjectionFailure,
+  IntegrationProjectionQueryResult,
+  IntegrationProjectionView,
+  ReportIntegrationProjectionValue,
+} from "./integration-projection.js";
+export { IntegrationProjectionStorageUnavailableError } from "./integration-projection-repository.js";
+export type {
+  IntegrationCloudLinkDelivery,
+  IntegrationCloudLinkDurableAcknowledgement,
+  IntegrationCloudLinkMessageKind,
+  IntegrationCloudLinkSessionFence,
+  IntegrationCloudLinkSessionFenceVerifier,
+  IntegrationObservationPersistenceInput,
+  IntegrationObservationPersistenceReceipt,
+  IntegrationObservationPersistenceResult,
+  IntegrationPayloadDigestor,
+  IntegrationProjectionRecord,
+  IntegrationProjectionRepository,
+  IntegrationProjectionScope,
+  IntegrationTopologyPersistenceInput,
+  IntegrationTopologyHistoryRecord,
+  IntegrationTopologyPersistenceReceipt,
+  IntegrationTopologyPersistenceResult,
+} from "./integration-projection-repository.js";
 export { SearchAuditEvents } from "./audit-query.js";
 export type {
   AuditApplicationFailure,
@@ -238,6 +334,18 @@ export type {
   IssuedEnrollmentToken,
 } from "./gateway-identity-repository.js";
 export {
+  AcceptGatewaySignedCloudLinkSession,
+  RequestCloudLinkSessionChallenge,
+} from "./cloudlink-session-challenge.js";
+export type {
+  CloudLinkGatewayHelloAuthenticationInput,
+  CloudLinkGatewayHelloAuthenticator,
+  CloudLinkSessionChallengeMaterialGenerator,
+  CloudLinkSessionChallengeSigner,
+  CloudLinkSessionChallengeSigningProjection,
+  CloudLinkSessionChallengeView,
+} from "./cloudlink-session-challenge.js";
+export {
   GetCurrentCloudLinkSession,
   OpenCloudLinkSession,
   RecordCloudLinkDurableCursor,
@@ -252,17 +360,54 @@ export type {
 } from "./cloudlink-session.js";
 export type {
   CloudLinkSessionIdGenerator,
+  CloudLinkSessionChallengeAuthentication,
+  CloudLinkSessionChallengeRecord,
+  CloudLinkSessionChallengeRepository,
+  CloudLinkSessionChallengeRequestState,
   CloudLinkSessionReplaceResult,
   CloudLinkSessionRepository,
   CloudLinkSessionScope,
   GatewayCredentialAssertion,
+  GatewayCredentialClaim,
+  GatewayCredentialClaimResolver,
   GatewayCredentialVerificationResult,
   GatewayCredentialVerifier,
   OpenCloudLinkSessionRepositoryInput,
   OpenCloudLinkSessionRepositoryResult,
+  AcceptCloudLinkSessionChallengeRepositoryInput,
+  AcceptCloudLinkSessionChallengeRepositoryResult,
+  IssueCloudLinkSessionChallengeRepositoryInput,
+  IssueCloudLinkSessionChallengeRepositoryResult,
   RecordCloudLinkDurableCursorRepositoryInput,
   RecordCloudLinkDurableCursorRepositoryResult,
 } from "./cloudlink-session-repository.js";
+export {
+  AuthenticateGatewaySignedCloudLinkUplink,
+  decodeGatewaySignedCloudLinkBusinessDelivery,
+  isGatewaySignedCloudLinkUplinkAuthenticationFact,
+  validateGatewaySignedCloudLinkAuthenticationConsumption,
+} from "./cloudlink-uplink-authentication.js";
+export type {
+  CloudLinkBusinessPayloadDigestor,
+  CloudLinkUplinkCryptographicVerification,
+  CloudLinkUplinkCryptographicVerifier,
+  CloudLinkUplinkCryptographicVerifierInput,
+  CloudLinkUplinkEvaluationClock,
+  CloudLinkUplinkMessageAuthentication,
+  CloudLinkUplinkSessionReader,
+  CloudLinkUplinkSigningProjection,
+  GatewaySignedCloudLinkUplinkAuthenticationFailureCode,
+  GatewaySignedCloudLinkUplinkAuthenticationFact,
+  GatewaySignedCloudLinkUplinkAuthenticationResult,
+  GatewaySignedCloudLinkAuthenticationConsumptionResult,
+  GatewaySignedCloudLinkBusinessDelivery,
+} from "./cloudlink-uplink-authentication.js";
+export type {
+  AcceptCloudLinkHeartbeatAuthenticationInput,
+  CloudLinkUplinkAuthenticationRepository,
+  CloudLinkUplinkAuthenticationRepositoryResult,
+  CloudLinkUplinkAuthenticationScope,
+} from "./cloudlink-uplink-authentication-repository.js";
 export { DeliverCloudLinkDurableAcknowledgements } from "./cloudlink-durable-ack.js";
 export type {
   CloudLinkDurableAckDeliveryInput,
@@ -284,9 +429,11 @@ export type {
 export {
   GetGatewayRuntimeManifest,
   ReportGatewayRuntimeManifest,
+  RestoreGatewayRuntimeProtocols,
 } from "./runtime-manifest.js";
 export type {
   ReportRuntimeManifestValue,
+  RestoredRuntimeProtocolsView,
   RuntimeManifestApplicationFailure,
   RuntimeManifestApplicationResult,
   RuntimeManifestQueryResult,
