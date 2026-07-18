@@ -1,7 +1,7 @@
 ---
 title: Pre-release CloudLink MQTT v1
 description: Review alpha.3 Broker evidence and the PostgreSQL telemetry ACK slice without overstating full CloudLink authentication or crash durability
-updated: 2026-07-16
+updated: 2026-07-17
 status: mixed
 ---
 
@@ -86,26 +86,52 @@ appear only when commissioning established it.
 The alpha.3 hello declares either `gateway-signed` or
 `trusted-connector-broker-attestation` origin. Gateway-signed hello carries the
 exact challenge ID, Gateway key ID, and structurally validated Ed25519
-signature object. This proves the frozen codec shape, not production message
-origin or production key lifecycle. One successful hello is insufficient when
-a different publisher can later inject into a shared namespace.
+signature object. The reviewed AetherContracts v1alpha1 authentication profile
+also defines the challenge request and the exact JCS challenge and
+session-establishment transcripts.
 
-Generic customer-selected Broker mode therefore requires a replay-bounded
-Cloud challenge and Gateway signature, followed by a session-bound Gateway
-signature on every uplink. Cloud challenges use the experimental Cloud
-signature transcript; alpha.3 durable ACKs are unsigned. The alternative is
-trusted Broker attestation supplied by a trusted adapter outside the payload
-for every publish.
-Payload-supplied attestation is untrusted, and topic identity is untrusted.
-Production key provisioning, rotation, revocation, and verifier ownership keep
-the authentication gate a proposal.
+The experimental Cloud implementation now decodes the challenge request,
+checks an exact active commissioned credential claim, creates a strong UUID
+and 32-byte nonce, applies a short TTL and a fixed per-Gateway request window,
+persists before publishing, and signs with an independently referenced Cloud
+Ed25519 key. An exact unexpired retry returns the persisted challenge bytes.
+The matching hello verifies the independently referenced Gateway key, exact
+request/challenge binding, strict expiry, and atomically consumes the challenge,
+fences the prior same-scope session, and opens or replays one session.
+Challenge, hello, and acceptance publication failures retain committed state
+for exact retry. Credential identifiers, nonces, signatures, and raw
+transcripts are excluded from result errors and application request
+identifiers.
 
-| Mode                               | Requirement                                              | Status                                             |
-| ---------------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| Reachable customer-selected Broker | Dedicated namespace, TLS, challenge/per-message proof    | Transport adapter implemented; origin auth planned |
-| AetherCloud-managed Broker         | Same CloudLink application/session boundary              | Broker product/principal integration planned       |
-| Private customer Broker            | Site connector preserving identity, spool/ACK, and audit | Planned                                            |
-| Legacy AetherEdge MQTT             | Separate namespace, never silently decoded as CloudLink  | Retained during migration                          |
+This is handshake evidence, not complete production message-origin
+authentication. The current credential and public-key lookups are not locked
+atomically with challenge consumption, because a production credential/key
+lifecycle does not yet exist. Revocation or rotation racing acceptance is
+therefore an explicit experimental TOCTOU limitation. One successful hello is
+also insufficient when a different publisher can later inject into a shared
+namespace.
+
+Generic customer-selected Broker mode therefore still requires a
+session-bound Gateway signature on every business uplink after the implemented
+replay-bounded handshake. That per-uplink dependency is not implemented, so a
+Gateway-signed session can receive `session-accepted` but all later business
+uplinks fail closed without invoking an application command. Alpha.3 durable
+ACKs remain unsigned.
+
+MQTT topic identity is untrusted. The separate trusted-connector profile is
+explicit and default-reject: trusted Broker attestation can open a session only
+when a configured external resolver supplies matching out-of-band evidence.
+The hello signature is never reused as credential proof and payload-supplied
+attestation remains untrusted. Production per-publish trusted adapter evidence,
+key provisioning, rotation, revocation, verifier ownership, and Broker
+qualification remain open gates.
+
+| Mode                               | Requirement                                              | Status                                                                                     |
+| ---------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Reachable customer-selected Broker | Dedicated namespace, TLS, challenge/per-message proof    | Experimental handshake implemented; business uplinks fail closed pending per-message proof |
+| AetherCloud-managed Broker         | Same CloudLink application/session boundary              | Broker product/principal integration planned                                               |
+| Private customer Broker            | Site connector preserving identity, spool/ACK, and audit | Planned                                                                                    |
+| Legacy AetherEdge MQTT             | Separate namespace, never silently decoded as CloudLink  | Retained during migration                                                                  |
 
 MQTT PUBACK is transport evidence only and never authorizes deletion from the
 AetherEdge spool.
@@ -116,21 +142,21 @@ The consumer lock pins the complete public manifest: all 25 public fixture
 bytes execute in both products, and pending imports are empty. Local
 fixture/gate files are evidence overlays only.
 
-| Gate                                                                  | State                                                                                 |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Shared-Broker message-origin authentication                           | In progress                                                                           |
-| Single envelope/time/identity/digest/unsigned-ACK profile             | Implemented alpha.3; production auth remains experimental                             |
-| Cross-repository fixtures                                             | Passed for the alpha.3 public manifest                                                |
-| Real-Broker dual Edge/Cloud harness                                   | Local Mosquitto and AWS IoT Core alpha evidence; authentication gate remains proposal |
-| ACK loss, restart, duplicate, conflict, and data-loss fault injection | Implemented alpha evidence; process crash durability excluded                         |
-| PostgreSQL crash-durable ACK/outbox                                   | Telemetry acceptance PostgreSQL slice implemented and verified; full gate blocked     |
-| Legacy cutover                                                        | Blocked until every preceding gate passes                                             |
+| Gate                                                                  | State                                                                                   |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Shared-Broker message-origin authentication                           | Experimental v1alpha1 handshake implemented; per-uplink proof and key lifecycle blocked |
+| Single envelope/time/identity/digest/unsigned-ACK profile             | Implemented alpha.3; production auth remains experimental                               |
+| Cross-repository fixtures                                             | Passed for the alpha.3 public manifest                                                  |
+| Real-Broker dual Edge/Cloud harness                                   | Local Mosquitto and AWS IoT Core alpha evidence; authentication gate remains proposal   |
+| ACK loss, restart, duplicate, conflict, and data-loss fault injection | Implemented alpha evidence; process crash durability excluded                           |
+| PostgreSQL crash-durable ACK/outbox                                   | Telemetry acceptance PostgreSQL slice implemented and verified; full gate blocked       |
+| Legacy cutover                                                        | Blocked until every preceding gate passes                                               |
 
 The telemetry acceptance transaction, exact ACK outbox, and bounded delivery
 use case are implemented. The full crash-durable CloudLink gate remains blocked:
-production composition is planned, and credential/session persistence,
-data-loss facts, multi-sample mapping, and alpha.3 production authentication
-remain incomplete. Legacy remains default. Cloud outage cannot change Edge
+production composition is planned, and atomic credential/key lifecycle,
+per-uplink authentication, data-loss facts, multi-sample mapping, and alpha.3
+production authentication remain incomplete. Legacy remains default. Cloud outage cannot change Edge
 authority or stop acquisition, rules, alarms, safety interlocks, or local
 control. There is no physical control in this slice.
 
@@ -151,7 +177,7 @@ outcome. It records Cloud restart continuity as unknown; it does not prove
 production process-crash durability. For current behavior and production
 limits, read [CloudLink reliability and lifecycle](../concepts/cloudlink-and-core-state-machines.md).
 For protocol compatibility and version pinning, use the public
-[AetherContracts compatibility guide](https://docs.aetheriot.workers.dev/aethercontracts/compatibility/).
+[AetherContracts compatibility guide](https://docs.aetheriot.workers.dev/en/aethercontracts/compatibility/).
 
 ## Opt-in AWS IoT Core mTLS harness
 

@@ -1,7 +1,7 @@
 ---
 title: AetherCloud invariants
 description: Non-negotiable authority, tenancy, safety, and documentation rules for every change
-updated: 2026-07-16
+updated: 2026-07-17
 status: normative
 ---
 
@@ -177,3 +177,61 @@ These rules are more stable than the current directory layout.
 63. Contract consumption never follows `main`, `latest`, a floating tag, or a
     version range and never falls back to a sibling checkout. Legacy remains
     default, and contract adoption adds no physical-control operation.
+64. Delegated integration credentials and provider URLs remain edge-local
+    secret references. They never enter topology, observations, CloudLink
+    payloads, cloud persistence, audit details, logs, prompts, or Agent context.
+65. Integration observations are accepted only against the exact current
+    topology generation, declared entity and point, declared scalar type, and
+    quality/value rule. Missing or conflicting context triggers
+    resynchronization or rejection, never guessed state.
+66. AetherCloud labels delegated integration state as an edge-reported copy and
+    never as live authority. Provider control requires a separate governed
+    capability and Receipt path; topology ingestion cannot become arbitrary
+    service execution.
+67. Integration Control remains disabled unless an operator explicitly enables
+    it. Every offer binds the exact current topology generation, active
+    CloudLink session and credential generation, and a persisted Runtime
+    Manifest declaration.
+68. Integration Control accepts only the fixed `device.power.set.v1` semantic
+    action for a Boolean `is_on` point on a current `light`, `switch`, or `fan`.
+    Provider service names, URLs, tokens, and arbitrary service data are
+    forbidden.
+69. Provider acceptance never proves job success or physical completion.
+    Unknown physical outcomes remain unknown, and any received control Receipt
+    prevents automatic repetition of the physical effect.
+70. CloudLink Integration Control requires explicit enablement of both
+    `aether.cloudlink.integration.v1alpha1` and
+    `aether.cloudlink.integration-control.v1alpha1`, complete control
+    dependencies, and restoration of the persisted Runtime Manifest. Read-only
+    Integration never enables control implicitly.
+71. An Integration Control MQTT publication or Broker acknowledgement is only
+    transport evidence. A durable CloudLink ACK is emitted only after the exact
+    current-session Receipt, audit evidence, and contiguous delivery cursor are
+    atomically persisted.
+72. MCP callers cannot provide Integration Control policy-decision or
+    confirmation references. The optional tool requires a separately injected
+    trusted governance resolver. Optional projection catalog and detail
+    resources remain absent until their separate application queries are
+    injected.
+73. Integration projection discovery is a Tenant/Project-scoped read port
+    separate from the projection write repository. It uses bounded,
+    Gateway/Integration-ordered keyset pagination and returns summaries only;
+    provider payloads, arbitrary topology fields, source addresses, and secrets
+    are forbidden.
+74. An Integration projection catalog is discovery over edge-reported copies,
+    not a live device inventory. Receive time is freshness evidence and never
+    proof of current physical state.
+75. A CloudLink challenge request is an eligibility claim, never credential
+    proof. The challenge is short lived, rate limited per Tenant/Project/Gateway,
+    persisted before publication, and an exact retry returns the persisted
+    signed bytes.
+76. Cloud and Gateway session keys use independent references. Gateway hello
+    verification binds the exact persisted challenge and request transcript;
+    the hello signature is consumed only as establishment evidence and is never
+    reused as a general credential.
+77. Gateway-signed business uplinks fail closed until their session-bound
+    per-uplink authentication is implemented. Trusted-connector origin remains
+    an explicit out-of-band composition and default-reject.
+78. Credential identifiers, nonces, signatures, private keys, and raw
+    authentication transcripts never enter logs, error results, audit payloads,
+    prompts, Agent context, or application request identifiers.

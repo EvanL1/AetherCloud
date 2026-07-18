@@ -17,6 +17,7 @@
     "test": "node --test tests/*.test.mjs && vitest run",
     "test:opentofu-integration": "AETHER_CLOUD_RUN_OPENTOFU_INTEGRATION=1 vitest run --config vitest.opentofu.config.ts",
     "test:mqtt-integration": "AETHER_CLOUD_RUN_MQTT_INTEGRATION=1 vitest run --config vitest.mqtt.config.ts",
+    "test:home-assistant-e2e": "AETHER_CLOUD_RUN_HOME_ASSISTANT_E2E=1 tsx scripts/run-home-assistant-e2e-harness.ts",
     "test:cloudlink-dual": "tsx scripts/run-cloudlink-dual-harness.ts",
     "test:cloudlink-alpha-harness": "pnpm test:cloudlink-dual",
     "test:cloudlink-aws-iot": "AETHER_CLOUD_RUN_AWS_IOT_INTEGRATION=1 tsx scripts/run-cloudlink-aws-iot-harness.ts",

@@ -1,7 +1,7 @@
 ---
 title: Repository layout
 description: Place code in the correct application, domain, adapter, or composition-root package
-updated: 2026-07-15
+updated: 2026-07-17
 status: mixed
 ---
 
@@ -26,8 +26,10 @@ packages/
 adapters/
   fleet/memory/          implemented Gateway repository/token test adapters
   fleet/postgres/        implemented Gateway SQL/migration/driver adapter; production composition planned
-  cloudlink/memory/      implemented session and heartbeat test adapter
+  cloudlink/memory/      implemented session, challenge, and heartbeat test adapter
+  cloudlink/postgres/    implemented session/challenge SQL adapter; production composition planned
   cloudlink/mqtt/        experimental strict codec and MQTT.js transport adapter
+  cloudlink/node-crypto/ experimental Ed25519 challenge and hello authentication adapter
   runtime/memory/        implemented Runtime Manifest history test adapter
   telemetry/memory/      implemented atomic telemetry conformance adapter
   alarm/memory/          implemented alarm projection conformance adapter

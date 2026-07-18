@@ -361,6 +361,20 @@ describe("CloudLink session application", () => {
         position: "7",
       }),
     ).resolves.toMatchObject({ ok: true, replayed: true });
+    repository.cursorResult = "position-gap";
+    await expect(
+      useCase.execute(validCommandContext, {
+        credential,
+        sessionId,
+        sessionEpoch: "9",
+        streamId: "manifest",
+        streamEpoch: "1",
+        position: "9",
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "cloudlink-cursor-gap" },
+    });
     repository.cursorResult = "stale-session";
     await expect(
       useCase.execute(validCommandContext, {

@@ -16,6 +16,53 @@ import {
 
 const gatewayId = "33333333-3333-4333-8333-333333333333";
 const topicPrefix = "aethercloud";
+const canonicalSignature = Buffer.alloc(64, 0xa5).toString("base64url");
+
+function nonCanonicalSignatureAlias(value: string): string {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const last = value.at(-1);
+  if (last === undefined) throw new Error("signature must not be empty");
+  const index = alphabet.indexOf(last);
+  if (index < 0 || index % 16 !== 0) {
+    throw new Error("test signature must use a canonical two-bit tail");
+  }
+  const aliasTail = alphabet.at(index + 1);
+  if (aliasTail === undefined) {
+    throw new Error("test signature alias tail must exist");
+  }
+  return `${value.slice(0, -1)}${aliasTail}`;
+}
+
+function messageAuthentication() {
+  return {
+    key_id: "gateway-session-key-17",
+    algorithm: "Ed25519",
+    signature: canonicalSignature,
+  };
+}
+
+function challengeRequest(): Record<string, unknown> {
+  return {
+    schema: "aether.cloudlink.session-challenge-request.v1",
+    protocol: "aether.cloudlink",
+    message_kind: "session-challenge-request",
+    gateway_id: gatewayId,
+    credential_binding: {
+      credential_id: "development-binding-17",
+      generation: "3",
+    },
+    offered_protocol_versions: ["1.0"],
+    client_nonce: "A".repeat(43),
+    resume: [
+      {
+        stream_id: "telemetry",
+        stream_epoch: "4",
+        acknowledged_position: "18",
+      },
+    ],
+  };
+}
 
 function payload(value: unknown): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(value));
@@ -35,6 +82,15 @@ function fixtureObject(name: string): Record<string, unknown> {
     string,
     unknown
   >;
+}
+
+function integrationFixture(name: string): Uint8Array {
+  return readFileSync(
+    new URL(
+      `../../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/cloudlink-integration/v1alpha1/${name}`,
+      import.meta.url,
+    ),
+  );
 }
 
 describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
@@ -152,6 +208,39 @@ describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
     });
   });
 
+  it("strictly decodes a challenge request on the existing Gateway up/session route", () => {
+    expect(
+      decodeCloudLinkMqttInbound(
+        `${topicPrefix}/v1/gateways/${gatewayId}/up/session`,
+        payload(challengeRequest()),
+        { topicPrefix },
+      ),
+    ).toEqual({
+      ok: true,
+      value: challengeRequest(),
+    });
+
+    expect(
+      decodeCloudLinkMqttInbound(
+        `${topicPrefix}/v1/gateways/${gatewayId}/up/telemetry`,
+        payload(challengeRequest()),
+        { topicPrefix },
+      ),
+    ).toMatchObject({
+      ok: false,
+      failure: { code: "invalid-topic-binding" },
+    });
+
+    expect(
+      decodeCloudLinkContractMessage(
+        payload({ ...challengeRequest(), credential_proof: "not-authority" }),
+      ),
+    ).toMatchObject({
+      ok: false,
+      failure: { contract_code: "UNKNOWN_FIELD" },
+    });
+  });
+
   it.each([
     ["heartbeat.valid.json", "heartbeat"],
     ["runtime-manifest-report.valid.json", "manifest"],
@@ -165,6 +254,187 @@ describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
         { topicPrefix },
       ),
     ).toMatchObject({ ok: true });
+  });
+
+  it("strictly decodes message_authentication on heartbeat and every core or Integration delivery", () => {
+    for (const name of [
+      "heartbeat.valid.json",
+      "runtime-manifest-report.valid.json",
+      "telemetry-batch.valid.json",
+      "data-loss.valid.json",
+    ]) {
+      const message = fixtureObject(name);
+      message.message_authentication = messageAuthentication();
+      expect(
+        decodeCloudLinkContractMessage(payload(message)),
+        name,
+      ).toMatchObject({
+        ok: true,
+        value: { message_authentication: messageAuthentication() },
+      });
+    }
+
+    for (const name of [
+      "integration-topology.valid.json",
+      "integration-observations.valid.json",
+    ]) {
+      const message = JSON.parse(
+        new TextDecoder().decode(integrationFixture(name)),
+      ) as Record<string, unknown>;
+      message.message_authentication = messageAuthentication();
+      expect(
+        decodeCloudLinkContractMessage(payload(message)),
+        name,
+      ).toMatchObject({
+        ok: true,
+        value: { message_authentication: messageAuthentication() },
+      });
+    }
+  });
+
+  it("rejects unknown authentication members, overlong key IDs, and non-canonical base64url aliases", () => {
+    const heartbeat = fixtureObject("heartbeat.valid.json");
+    heartbeat.message_authentication = {
+      ...messageAuthentication(),
+      payload_attestation: "forbidden",
+    };
+    expect(decodeCloudLinkContractMessage(payload(heartbeat))).toMatchObject({
+      ok: false,
+      failure: { contract_code: "UNKNOWN_FIELD" },
+    });
+
+    const delivery = fixtureObject("telemetry-batch.valid.json");
+    delivery.message_authentication = {
+      ...messageAuthentication(),
+      key_id: "k".repeat(129),
+    };
+    expect(decodeCloudLinkContractMessage(payload(delivery))).toMatchObject({
+      ok: false,
+      failure: { contract_code: "FIELD_BOUND" },
+    });
+
+    const alias = nonCanonicalSignatureAlias(canonicalSignature);
+    expect(Buffer.from(alias, "base64url")).toEqual(
+      Buffer.from(canonicalSignature, "base64url"),
+    );
+    delivery.message_authentication = {
+      ...messageAuthentication(),
+      signature: alias,
+    };
+    expect(decodeCloudLinkContractMessage(payload(delivery))).toMatchObject({
+      ok: false,
+      failure: { contract_code: "AUTHENTICATION_INVALID" },
+    });
+  });
+
+  it("decodes the pinned Integration extension but activates MQTT routes only when explicitly enabled", () => {
+    expect(
+      decodeCloudLinkContractMessage(
+        integrationFixture("integration-topology.valid.json"),
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        message_kind: "integration-topology-snapshot",
+        payload: {
+          integration_id: "home-assistant.home",
+          snapshot_generation: "1",
+        },
+      },
+    });
+    expect(
+      decodeCloudLinkContractMessage(
+        integrationFixture("integration-observations.valid.json"),
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        message_kind: "integration-observation-batch",
+        payload: { batch_id: "batch-0001" },
+      },
+    });
+
+    const topologyTopic = `${topicPrefix}/v1/gateways/${gatewayId}/up/integration/topology`;
+    expect(
+      decodeCloudLinkMqttInbound(
+        topologyTopic,
+        integrationFixture("integration-topology.valid.json"),
+        { topicPrefix },
+      ),
+    ).toMatchObject({
+      ok: false,
+      failure: { code: "unsupported-message" },
+    });
+    expect(
+      decodeCloudLinkMqttInbound(
+        topologyTopic,
+        integrationFixture("integration-topology.valid.json"),
+        {
+          topicPrefix,
+          enabledExtensions: ["aether.cloudlink.integration.v1alpha1"],
+        },
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: { message_kind: "integration-topology-snapshot" },
+    });
+    expect(
+      decodeCloudLinkMqttInbound(
+        `${topicPrefix}/v1/gateways/${gatewayId}/up/integration/observations`,
+        integrationFixture("integration-observations.valid.json"),
+        {
+          topicPrefix,
+          enabledExtensions: ["aether.cloudlink.integration.v1alpha1"],
+        },
+      ),
+    ).toMatchObject({
+      ok: true,
+      value: { message_kind: "integration-observation-batch" },
+    });
+  });
+
+  it("rejects Integration secrets and outer/payload batch binding conflicts", () => {
+    expect(
+      decodeCloudLinkContractMessage(
+        integrationFixture("integration-topology-secret.invalid.json"),
+      ),
+    ).toMatchObject({
+      ok: false,
+      failure: { contract_code: "UNKNOWN_FIELD" },
+    });
+
+    const observations = JSON.parse(
+      new TextDecoder().decode(
+        integrationFixture("integration-observations.valid.json"),
+      ),
+    ) as Record<string, unknown>;
+    (observations.delivery as Record<string, unknown>).batch_id =
+      "different-batch";
+    expect(decodeCloudLinkContractMessage(payload(observations))).toMatchObject(
+      {
+        ok: false,
+        failure: { code: "invalid-payload" },
+      },
+    );
+  });
+
+  it("rejects duplicate Integration JSON keys before digest or domain decoding", () => {
+    const topology = new TextDecoder().decode(
+      integrationFixture("integration-topology.valid.json"),
+    );
+    const duplicated = topology.replace(
+      '"integration_id": "home-assistant.home",',
+      '"integration_id": "other", "integration_id": "home-assistant.home",',
+    );
+    expect(
+      decodeCloudLinkContractMessage(new TextEncoder().encode(duplicated)),
+    ).toMatchObject({
+      ok: false,
+      failure: {
+        code: "invalid-json",
+        contract_code: "DUPLICATE_JSON_KEY",
+      },
+    });
   });
 
   it.each([
@@ -296,6 +566,34 @@ describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
     expect(JSON.stringify(result)).not.toContain("secret-proof-value");
   });
 
+  it("enforces the common 128-character key identifier bound", () => {
+    const hello = fixtureObject("session-hello.valid.json");
+    const helloSignature = hello.gateway_signature as Record<string, unknown>;
+    hello.gateway_key_id = "g".repeat(128);
+    helloSignature.key_id = "g".repeat(128);
+    expect(decodeCloudLinkContractMessage(payload(hello))).toMatchObject({
+      ok: true,
+    });
+    hello.gateway_key_id = "g".repeat(129);
+    helloSignature.key_id = "g".repeat(129);
+    expect(decodeCloudLinkContractMessage(payload(hello))).toMatchObject({
+      ok: false,
+      failure: { contract_code: "FIELD_BOUND" },
+    });
+
+    const challenge = fixtureObject("session-challenge.valid.json");
+    const cloudSignature = challenge.cloud_signature as Record<string, unknown>;
+    cloudSignature.key_id = "c".repeat(128);
+    expect(decodeCloudLinkContractMessage(payload(challenge))).toMatchObject({
+      ok: true,
+    });
+    cloudSignature.key_id = "c".repeat(129);
+    expect(decodeCloudLinkContractMessage(payload(challenge))).toMatchObject({
+      ok: false,
+      failure: { contract_code: "FIELD_BOUND" },
+    });
+  });
+
   it("builds the complete broker-neutral topic set and validates downlinks", () => {
     expect(mqttUplinkFilters(topicPrefix)).toEqual([
       `${topicPrefix}/v1/gateways/+/up/session`,
@@ -303,6 +601,37 @@ describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
       `${topicPrefix}/v1/gateways/+/up/manifest`,
       `${topicPrefix}/v1/gateways/+/up/telemetry`,
       `${topicPrefix}/v1/gateways/+/up/data-loss`,
+    ]);
+    expect(
+      mqttUplinkFilters(topicPrefix, ["aether.cloudlink.integration.v1alpha1"]),
+    ).toEqual([
+      `${topicPrefix}/v1/gateways/+/up/session`,
+      `${topicPrefix}/v1/gateways/+/up/heartbeat`,
+      `${topicPrefix}/v1/gateways/+/up/manifest`,
+      `${topicPrefix}/v1/gateways/+/up/telemetry`,
+      `${topicPrefix}/v1/gateways/+/up/data-loss`,
+      `${topicPrefix}/v1/gateways/+/up/integration/topology`,
+      `${topicPrefix}/v1/gateways/+/up/integration/observations`,
+    ]);
+    expect(
+      mqttUplinkFilters(topicPrefix, [
+        "aether.cloudlink.integration-control.v1alpha1",
+      ]),
+    ).toEqual(mqttUplinkFilters(topicPrefix));
+    expect(
+      mqttUplinkFilters(topicPrefix, [
+        "aether.cloudlink.integration.v1alpha1",
+        "aether.cloudlink.integration-control.v1alpha1",
+      ]),
+    ).toEqual([
+      `${topicPrefix}/v1/gateways/+/up/session`,
+      `${topicPrefix}/v1/gateways/+/up/heartbeat`,
+      `${topicPrefix}/v1/gateways/+/up/manifest`,
+      `${topicPrefix}/v1/gateways/+/up/telemetry`,
+      `${topicPrefix}/v1/gateways/+/up/data-loss`,
+      `${topicPrefix}/v1/gateways/+/up/integration/topology`,
+      `${topicPrefix}/v1/gateways/+/up/integration/observations`,
+      `${topicPrefix}/v1/gateways/+/up/integration-control/receipts`,
     ]);
     expect(mqttDownlinkTopic(topicPrefix, gatewayId, "ack")).toBe(
       `${topicPrefix}/v1/gateways/${gatewayId}/down/ack`,

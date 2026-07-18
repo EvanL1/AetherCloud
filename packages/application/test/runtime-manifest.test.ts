@@ -5,6 +5,7 @@ import {
   GetGatewayRuntimeManifest,
   REPORT_GATEWAY_RUNTIME_MANIFEST_COMMAND,
   ReportGatewayRuntimeManifest,
+  RestoreGatewayRuntimeProtocols,
   type ApplicationClock,
   type GatewayCredentialVerifier,
   type GatewayCredentialVerificationResult,
@@ -382,6 +383,125 @@ describe("runtime manifest application", () => {
     ).toMatchObject({
       ok: false,
       failure: { code: "permission-denied" },
+    });
+  });
+
+  it("restores the current protocol declaration from an active Gateway credential", async () => {
+    const repository = new StubRuntimeManifestRepository();
+    await makeUseCase({ repository }).execute(commandContext, input());
+    const credentialVerifier = new StubCredentialVerifier();
+    const restore = new RestoreGatewayRuntimeProtocols({
+      repository,
+      credentialVerifier,
+    });
+
+    await expect(restore.execute({ credential })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        status: "present",
+        tenantId,
+        projectId,
+        gatewayId,
+        credentialGeneration: "3",
+        manifestGeneration: "7",
+        protocols: manifest.protocols,
+      },
+    });
+    expect(credentialVerifier.calls).toBe(1);
+  });
+
+  it("restores from a composition-owned Gateway-signed binding without invoking the legacy credential verifier", async () => {
+    const repository = new StubRuntimeManifestRepository();
+    await makeUseCase({ repository }).execute(commandContext, input());
+    const credentialVerifier = new StubCredentialVerifier();
+    const restore = new RestoreGatewayRuntimeProtocols({
+      repository,
+      credentialVerifier,
+    });
+
+    await expect(
+      restore.execute({
+        gatewaySignedBinding: {
+          tenantId,
+          projectId,
+          gatewayId,
+          credentialGeneration: "3",
+        },
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: {
+        status: "present",
+        tenantId,
+        projectId,
+        gatewayId,
+        credentialGeneration: "3",
+        protocols: manifest.protocols,
+      },
+    });
+    expect(credentialVerifier.calls).toBe(0);
+  });
+
+  it("restores an explicit absent declaration without granting any protocol", async () => {
+    const credentialVerifier = new StubCredentialVerifier();
+    const restore = new RestoreGatewayRuntimeProtocols({
+      repository: new StubRuntimeManifestRepository(),
+      credentialVerifier,
+    });
+
+    const result = await restore.execute({ credential });
+
+    expect(result).toEqual({
+      ok: true,
+      value: {
+        status: "absent",
+        tenantId,
+        projectId,
+        gatewayId,
+        credentialGeneration: "3",
+      },
+    });
+    expect(credentialVerifier.calls).toBe(1);
+  });
+
+  it("fails protocol restoration closed for malformed, rejected, and inactive credentials", async () => {
+    const malformedVerifier = new StubCredentialVerifier();
+    const malformed = new RestoreGatewayRuntimeProtocols({
+      repository: new StubRuntimeManifestRepository(),
+      credentialVerifier: malformedVerifier,
+    });
+    const rejected = new RestoreGatewayRuntimeProtocols({
+      repository: new StubRuntimeManifestRepository(),
+      credentialVerifier: new StubCredentialVerifier({
+        ok: false,
+        failure: {
+          code: "invalid-gateway-credential",
+          message: "do not disclose details",
+        },
+      }),
+    });
+    const inactive = new RestoreGatewayRuntimeProtocols({
+      repository: new StubRuntimeManifestRepository(),
+      credentialVerifier: new StubCredentialVerifier({
+        ok: true,
+        value: binding("suspended"),
+      }),
+    });
+
+    await expect(
+      malformed.execute({ credential, injectedScope: { tenantId } }),
+    ).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "invalid-input" },
+    });
+    expect(malformedVerifier.calls).toBe(0);
+    await expect(rejected.execute({ credential })).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "invalid-gateway-credential" },
+    });
+    await expect(inactive.execute({ credential })).resolves.toMatchObject({
+      ok: false,
+      failure: { code: "gateway-credential-inactive" },
     });
   });
 });

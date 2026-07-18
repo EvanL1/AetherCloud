@@ -1,0 +1,16 @@
+{
+  "name": "@aether-cloud/integration-aether-contracts-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@aether-cloud/integration-projection-memory-adapter": "workspace:*"
+  }
+}

@@ -47,6 +47,13 @@ import type {
   GatewayCredentialAssertion,
   GatewayCredentialVerifier,
 } from "./cloudlink-session-repository.js";
+import {
+  decodeGatewaySignedCloudLinkBusinessDelivery,
+  isGatewaySignedCloudLinkUplinkAuthenticationFact,
+  validateGatewaySignedCloudLinkAuthenticationConsumption,
+  type CloudLinkBusinessPayloadDigestor,
+  type GatewaySignedCloudLinkUplinkAuthenticationFact,
+} from "./cloudlink-uplink-authentication.js";
 import type { ApplicationClock } from "./gateway-identity-repository.js";
 import type {
   TelemetryBatchDigestor,
@@ -58,6 +65,7 @@ import { TelemetryStorageUnavailableError } from "./telemetry-repository.js";
 type TelemetryApplicationFailureCode =
   | "command-expired"
   | "gateway-credential-inactive"
+  | "gateway-signed-authentication-invalid"
   | "invalid-gateway-credential"
   | "invalid-input"
   | "invalid-telemetry-repository-result"
@@ -108,6 +116,20 @@ interface QueryContext {
 }
 
 class TelemetryInputError extends Error {}
+
+type TelemetryIngestAuthentication =
+  | Readonly<{
+      kind: "credential";
+      credential: GatewayCredentialAssertion;
+    }>
+  | Readonly<{
+      kind: "gateway-signed";
+      fact: GatewaySignedCloudLinkUplinkAuthenticationFact;
+      payload: Readonly<Record<string, unknown>>;
+      delivery: NonNullable<
+        ReturnType<typeof decodeGatewaySignedCloudLinkBusinessDelivery>
+      >;
+    }>;
 
 const sha256Pattern = /^[0-9a-f]{64}$/;
 
@@ -384,8 +406,140 @@ function decodeTelemetryRecord(input: unknown): TelemetryRecord {
   throw new TelemetryInputError("telemetry record kind is unsupported");
 }
 
+function decodeCloudLinkPointFact(
+  input: unknown,
+  position: string,
+): TelemetryRecord {
+  const record = requireRecord(input, "CloudLink point fact");
+  const hasModel = record.model !== undefined;
+  requireExactKeys(
+    record,
+    [
+      "instance_id",
+      ...(hasModel ? ["model"] : []),
+      "point_id",
+      "point_kind",
+      "quality",
+      "source_timestamp_ms",
+      "value",
+    ],
+    "CloudLink point fact",
+  );
+  if (typeof record.value !== "number" || !Number.isFinite(record.value)) {
+    throw new TelemetryInputError(
+      "CloudLink point value must be a finite number",
+    );
+  }
+  let model: ThingModelReference | undefined;
+  if (hasModel) {
+    const rawModel = requireRecord(record.model, "CloudLink point model");
+    requireExactKeys(
+      rawModel,
+      ["model_id", "revision"],
+      "CloudLink point model",
+    );
+    model = {
+      modelId: requireString(rawModel.model_id, "model_id", 128),
+      revision: parseThingModelRevision(rawModel.revision),
+    };
+  }
+  return {
+    kind: "point-sample",
+    position: parseTelemetryStreamPosition(
+      (BigInt(parseStreamPosition(position)) - 1n).toString(),
+    ),
+    sourceTimestampMs: parseSourceTimestampMs(record.source_timestamp_ms),
+    instanceId: parseEdgeInstanceId(record.instance_id),
+    pointKind: decodePointKind(record.point_kind),
+    pointId: parseEdgePointId(record.point_id),
+    quality: parseTelemetryQuality(record.quality),
+    value: { type: "float64", value: record.value },
+    ...(model === undefined ? {} : { model }),
+  };
+}
+
 function decodeIngestInput(input: unknown) {
   const record = requireRecord(input, "telemetry ingest input");
+  if (record.gatewaySignedAuthentication !== undefined) {
+    requireExactKeys(
+      record,
+      [
+        "cloudLinkDelivery",
+        "cloudLinkPayload",
+        "gatewaySignedAuthentication",
+        "retentionClass",
+      ],
+      "Gateway-signed telemetry ingest input",
+    );
+    const fact = record.gatewaySignedAuthentication;
+    const delivery = decodeGatewaySignedCloudLinkBusinessDelivery(
+      record.cloudLinkDelivery,
+    );
+    const payload = requireRecord(
+      record.cloudLinkPayload,
+      "CloudLink telemetry payload",
+    );
+    requireExactKeys(
+      payload,
+      ["samples", "topology"],
+      "CloudLink telemetry payload",
+    );
+    const topology = requireRecord(
+      payload.topology,
+      "CloudLink telemetry topology",
+    );
+    requireExactKeys(
+      topology,
+      ["publication_epoch", "snapshot_digest"],
+      "CloudLink telemetry topology",
+    );
+    if (
+      !isGatewaySignedCloudLinkUplinkAuthenticationFact(fact) ||
+      delivery === undefined ||
+      delivery.messageKind !== "telemetry-batch" ||
+      !Array.isArray(payload.samples) ||
+      payload.samples.length !== 1
+    ) {
+      throw new TelemetryInputError(
+        "Gateway-signed telemetry authentication is invalid",
+      );
+    }
+    const batch = defineTelemetryBatch({
+      streamId: parseTelemetryStreamId(delivery.streamId),
+      streamEpoch: parseTelemetryStreamEpoch(delivery.streamEpoch),
+      topology: {
+        publicationEpoch: parseTopologyPublicationEpoch(
+          topology.publication_epoch,
+        ),
+        snapshotDigest: parseTopologySnapshotDigest(topology.snapshot_digest),
+      },
+      retentionClass: parseRetentionClass(record.retentionClass),
+      replay: false,
+      records: payload.samples.map((sample) =>
+        decodeCloudLinkPointFact(sample, delivery.position),
+      ),
+    });
+    return {
+      authentication: {
+        kind: "gateway-signed",
+        fact,
+        payload: Object.freeze({ ...payload }),
+        delivery,
+      } satisfies TelemetryIngestAuthentication,
+      batch,
+      durableAcknowledgement: {
+        sessionId: delivery.sessionId,
+        sessionEpoch: delivery.sessionEpoch,
+        credentialGeneration: delivery.credentialGeneration,
+        streamId: delivery.streamId,
+        streamEpoch: delivery.streamEpoch,
+        acknowledgedPosition: delivery.position,
+        acceptedTelemetryPosition: batch.lastPosition,
+        batchId: delivery.batchId,
+        digest: delivery.digest,
+      } satisfies DecodedDurableAcknowledgementIntent,
+    };
+  }
   const hasDurableAcknowledgement = record.durableAcknowledgement !== undefined;
   requireExactKeys(
     record,
@@ -419,7 +573,10 @@ function decodeIngestInput(input: unknown) {
     throw new TelemetryInputError("replay must be boolean");
   }
   return {
-    credential: decodeCredential(record.credential),
+    authentication: {
+      kind: "credential",
+      credential: decodeCredential(record.credential),
+    } satisfies TelemetryIngestAuthentication,
     batch: defineTelemetryBatch({
       streamId: parseTelemetryStreamId(record.streamId),
       streamEpoch: parseTelemetryStreamEpoch(record.streamEpoch),
@@ -601,17 +758,22 @@ export class IngestTelemetryBatch {
   readonly #digestor: TelemetryBatchDigestor;
   readonly #repository: TelemetryRepository;
   readonly #clock: ApplicationClock;
+  readonly #businessPayloadDigestor:
+    | CloudLinkBusinessPayloadDigestor
+    | undefined;
 
   constructor(dependencies: {
     readonly credentialVerifier: GatewayCredentialVerifier;
     readonly digestor: TelemetryBatchDigestor;
     readonly repository: TelemetryRepository;
     readonly clock: ApplicationClock;
+    readonly businessPayloadDigestor?: CloudLinkBusinessPayloadDigestor;
   }) {
     this.#credentialVerifier = dependencies.credentialVerifier;
     this.#digestor = dependencies.digestor;
     this.#repository = dependencies.repository;
     this.#clock = dependencies.clock;
+    this.#businessPayloadDigestor = dependencies.businessPayloadDigestor;
   }
 
   async execute(
@@ -626,11 +788,49 @@ export class IngestTelemetryBatch {
     const now = this.#clock.now();
     const timeFailure = validateCommandTime(decoded.value.context, now);
     if (timeFailure !== undefined) return { ok: false, failure: timeFailure };
-    const verified = await verifyActiveCredential(
-      this.#credentialVerifier,
-      decoded.value.input.credential,
-    );
+    const verified =
+      decoded.value.input.authentication.kind === "gateway-signed"
+        ? {
+            ok: true as const,
+            value: Object.freeze({
+              tenantId: decoded.value.input.authentication.fact.tenantId,
+              projectId: decoded.value.input.authentication.fact.projectId,
+              gatewayId: decoded.value.input.authentication.fact.gatewayId,
+              generation:
+                decoded.value.input.authentication.fact.credentialGeneration,
+              status: "active" as const,
+            }),
+          }
+        : await verifyActiveCredential(
+            this.#credentialVerifier,
+            decoded.value.input.authentication.credential,
+          );
     if (!verified.ok) return verified;
+    if (decoded.value.input.authentication.kind === "gateway-signed") {
+      if (this.#businessPayloadDigestor === undefined) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          "Gateway-signed telemetry validation is unavailable",
+        );
+      }
+      const consumed =
+        await validateGatewaySignedCloudLinkAuthenticationConsumption({
+          kind: "delivery",
+          fact: decoded.value.input.authentication.fact,
+          delivery: decoded.value.input.authentication.delivery,
+          payload: decoded.value.input.authentication.payload,
+          nowMs: String(Date.parse(now)),
+          digestor: this.#businessPayloadDigestor,
+        });
+      if (!consumed.ok) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          consumed.failure === "MESSAGE_EXPIRED"
+            ? "Gateway-signed telemetry delivery expired before consumption"
+            : "Gateway-signed telemetry authentication is invalid",
+        );
+      }
+    }
     const payloadDigest = await this.#digestor.digest(
       decoded.value.input.batch,
     );

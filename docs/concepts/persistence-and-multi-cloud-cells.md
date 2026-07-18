@@ -1,7 +1,7 @@
 ---
 title: PostgreSQL persistence and multi-cloud cells
-description: Place Gateway and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently
-updated: 2026-07-16
+description: Place Gateway, CloudLink session, and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently
+updated: 2026-07-17
 status: mixed
 ---
 
@@ -96,6 +96,30 @@ delivers the Outbox. Production roles, credentials, pool sizing, timeouts,
 backup/restore testing, managed-provider profiles, and continuously provisioned
 integration infrastructure remain planned.
 
+## Implemented CloudLink session persistence slice
+
+`PostgresCloudLinkSessionRepository` implements both application-owned session
+and session-challenge ports. A Tenant/Project/Gateway head row is locked before
+session, cursor, or challenge mutation, so concurrent processes cannot allocate
+the same epoch, lose a cursor during handoff, or open two current sessions.
+
+Challenge issue persists the exact generated challenge and returns that record
+on an unexpired exact retry. Bounded request counters, one-pending-challenge
+uniqueness, request conflict checks, and closed JSON constraints are enforced in
+the same Tenant transaction. Challenge acceptance locks the Gateway head before
+the challenge row, applies the strict `now < expiry` boundary, consumes one
+authentication fingerprint idempotently, fences the prior session, increments
+the unsigned 64-bit epoch without wrapping, and opens the replacement session
+before commit.
+
+All tables use composite Tenant/Project/Gateway keys, parameterized SQL, forced
+Row-Level Security, bounded identifiers, and lossless `numeric(20,0)` protocol
+integers. Default tests use a fake executor. The opt-in PostgreSQL test exercises
+concurrent issue and acceptance, restart-visible state, constraints, and Tenant
+isolation with a non-superuser/non-`BYPASSRLS` role. The package is not installed
+in a production composition root, and migration orchestration, credentials,
+pool sizing, monitoring, and backup/restore evidence remain planned.
+
 ## Implemented telemetry and CloudLink ACK slice
 
 `PostgresTelemetryRepository` implements the first crash-durable telemetry
@@ -116,10 +140,9 @@ The opt-in PostgreSQL 18 tests use a non-superuser/non-`BYPASSRLS` application
 role and inject failures on both sides of commit. A pre-commit failure leaves no
 telemetry fact and no ACK. A post-commit uncertain result leaves one committed
 fact, and a worker later publishes the identical ACK; replay does not create a
-second fact. This evidence covers accepted telemetry only. Production database
-and worker composition, CloudLink session/epoch persistence, data-loss facts,
-multi-sample mapping, and a full production crash-durable release gate remain
-planned.
+second fact. This evidence covers accepted telemetry only. Production database,
+session adapter, and worker composition, data-loss facts, multi-sample mapping,
+and a full production crash-durable release gate remain planned.
 
 Read [Gateway identity and enrollment](gateway-identity-and-enrollment.md) for
 the tenant-scoped identity and persistence boundary visible to gateway users.

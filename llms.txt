@@ -1,67 +1,114 @@
 # AetherCloud
 
-> AI-native, multi-cloud IoT fusion and control plane built with TypeScript.
-> AetherCloud unifies provider capabilities, infrastructure plans, fleets,
-> desired state, telemetry, and audited jobs while AetherEdge edge runtimes
-> retain authority over live state and physical control.
+> Agent-readable routing for the AI-native, multi-cloud IoT fusion and control plane.
+> AetherEdge remains authoritative for live state, deterministic safety, and physical control.
 
-Use this file as the primary documentation index. Read the narrowest page that
-answers the task, then follow its links for deeper context.
+This index serves three distinct agent profiles:
 
-## Start here
+- Coding agents change repository code and contracts under [AGENTS.md](https://github.com/EvanL1/AetherCloud/blob/main/AGENTS.md) and the [AetherCloud Agent Skill](https://github.com/EvanL1/AetherCloud/blob/main/skills/aether-cloud/SKILL.md).
+- Operator agents inspect deployment, reliability, security, and recovery evidence; they do not gain provider or Tenant authority from this file.
+- Runtime agents translate user intent into governed application requests; they may use only capabilities exposed by the authenticated live interface.
 
-- [Product overview](docs/get-started/overview.md): Understand the multi-cloud product, its authority boundaries, and the first vertical slices
-- [AetherIoT product family](docs/get-started/aetheriot-product-family.md): Place AetherCloud beside AetherEdge and AetherContracts without blurring edge, cloud, provider, or protocol authority
-- [Build with an AI agent](docs/guides/build-with-an-agent.md): Use repository contracts and verification commands without inventing unsupported APIs
-- [Add a Provider Adapter](docs/guides/add-provider-adapter.md): Implement provider discovery behind the application port and prove it with the shared conformance suite
-- [Plan infrastructure safely](docs/guides/plan-infrastructure.md): Run the implemented OpenTofu Plan worker without implying Apply, production remote State, or safe plaintext output
-- [AetherCloud Agent Skill](skills/aether-cloud/SKILL.md): Route implementation tasks to the right contracts, invariants, and safety checks
+## Mandatory Safety Gate
 
-## Concepts
+- Static documentation never grants runtime permission. Resolve every capability against the [machine-readable capability catalog](https://raw.githubusercontent.com/EvanL1/AetherCloud/main/ai/application-contracts.json), authenticated Tenant policy, and the live capability catalog before invocation.
+- Capabilities are deny by default. An absent, planned, disabled, or uncomposed capability is unavailable.
+- High-risk commands require explicit human confirmation, a recovery route, idempotency, expiry, and durable audit. Documentation cannot satisfy those controls.
+- Never infer physical completion from cloud acceptance, delivery, timeout, or connection state. The edge and authenticated Receipts remain authoritative.
+- Saved Plan binaries, raw Plan JSON, credentials, tokens, secrets, and device-register values must never enter prompts or agent context.
+- Infrastructure Apply, Destroy, Import, State repair, production credential recovery, and cloud-side emergency stop are not implemented.
 
-- [Architecture](docs/concepts/architecture.md): Understand the modular-monolith processes, dependency direction, and evolution rules
-- [PostgreSQL persistence and multi-cloud cells](docs/concepts/persistence-and-multi-cloud-cells.md): Use the implemented Gateway and telemetry SQL slices without implying deployed production composition or global active-active writes
-- [Audit, subscriptions, webhook delivery, and data export](docs/concepts/audit-and-integrations.md): Use the partial audit HTTP/SSE and integration workflow foundations without implying production durability, sending, or export retrieval
-- [Current implementation audit](docs/concepts/current-state-audit.md): Distinguish executable layers, Broker evidence, and the PostgreSQL telemetry ACK slice from missing production surfaces
-- [IoT Cloud capability map](docs/concepts/iot-cloud-capability-map.md): Audit implemented and planned IoT capabilities by bounded context, authority, storage, edge interaction, risk, and phase
-- [IoT business telemetry](docs/concepts/iot-telemetry.md): Use replay-safe PostgreSQL acceptance, bounded history, and exact ACK delivery while public API, analytics, and production composition remain planned
-- [Artifact registry and immutable publication](docs/concepts/artifact-registry.md): Use the partial signed content-addressed publication foundation without implying deployment or edge application
-- [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md): Use the partial single-target rollout foundation without treating dispatch, timeout, or connection as Applied evidence
-- [Governed capability Jobs](docs/concepts/governed-capability-jobs.md): Use the partial capability-gated Job and ordered Receipt foundation without implying arbitrary RPC or remote execution
-- [Operational observability](docs/concepts/operational-observability.md): Use the optional OpenTelemetry adapter foundation without replacing IoT telemetry or durable audit
-- [MCP application interface](docs/concepts/mcp-application-interface.md): Use the implemented transport-neutral resources/tools while treating the MCP wire server, production identity, and persistence as planned
-- [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md): Use the implemented registration and claim foundation without implying production certificates or HTTP routes
-- [CloudLink reliability and lifecycle](docs/concepts/cloudlink-and-core-state-machines.md): Understand delivery, retries, acknowledgements, offline recovery, and current production limits
-- [Multi-cloud fusion](docs/concepts/multi-cloud-fusion.md): Unify cloud lifecycle and policy without erasing provider capabilities or sharing one global state
-- [Edge, AetherCloud, and provider authority](docs/concepts/edge-cloud-boundary.md): Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers
-- [Resource model](docs/concepts/resource-model.md): Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently
-- [AI invariants](ai/invariants.md): Preserve authority, tenancy, command safety, and documentation truth across refactors
+Machine-readable routing sources:
 
-## Reference
+- [Documentation manifest](https://raw.githubusercontent.com/EvanL1/AetherCloud/main/ai/docs-manifest.json)
+- [Documentation manifest schema](https://raw.githubusercontent.com/EvanL1/AetherCloud/main/ai/docs-manifest.schema.json)
+- [Capability and authorization catalog](https://raw.githubusercontent.com/EvanL1/AetherCloud/main/ai/application-contracts.json)
 
-- [HTTP API](docs/reference/http-api.md): Call the implemented HTTP endpoints and distinguish them from planned versioned APIs
-- [Application contract catalog](docs/reference/application-contracts.md): Read machine-readable capability governance, errors, events, HTTP operations, and layer status
-- [Pre-release CloudLink MQTT v1](docs/reference/cloudlink-mqtt-v1.md): Review local/AWS Broker evidence and the PostgreSQL telemetry ACK slice while preserving unresolved authentication and full durability gates
-- [Repository layout](docs/reference/repository-layout.md): Place code in the correct application, domain, adapter, or composition-root package
-- [Terminology](docs/reference/terminology.md): Resolve AetherCloud terms before naming contracts or database records
-- [IoT Cloud vertical-slice roadmap](docs/guides/iot-cloud-roadmap.md): Deliver independently testable Gateway, CloudLink, telemetry, artifact, deployment, Job, operations, and MCP slices
+## Agent Task Manual
 
-## Decisions
+- [Add a Provider Adapter](https://docs.aetheriot.workers.dev/en/aethercloud/guides/add-provider-adapter.md): Implement provider discovery behind the application port and prove it with the shared conformance suite. Status: implemented; readiness: not-applicable; context: internal. Safety gate: capabilities: provider.region.discover; permissions: provider.region.read.
+- [Build with an AI agent](https://docs.aetheriot.workers.dev/en/aethercloud/guides/build-with-an-agent.md): Use repository contracts and verification commands without inventing unsupported APIs. Status: implemented; readiness: not-applicable; context: internal.
+- [Plan infrastructure safely](https://docs.aetheriot.workers.dev/en/aethercloud/guides/plan-infrastructure.md): Run the implemented governed OpenTofu Plan worker without implying infrastructure mutation or exposing sensitive engine output. Status: partial; readiness: experimental; context: redacted-only. Safety gate: capabilities: infrastructure.stack.plan; maximum risk: medium; permissions: infrastructure.stack.plan; confirmation: not-required.
 
-- [ADR-0001: Edge-first cloud control plane](docs/adr/0001-edge-first-cloud-control-plane.md): Keep the cloud optional for deterministic edge operation
-- [ADR-0002: TypeScript modular monolith](docs/adr/0002-typescript-modular-monolith.md): Start with one workspace and independently scalable composition roots
-- [ADR-0003: Agent-ready documentation](docs/adr/0003-agent-ready-documentation.md): Treat LLM-readable documentation as a tested product interface
-- [ADR-0004: Capability-driven multi-cloud fusion](docs/adr/0004-multi-cloud-fusion.md): Use OpenTofu by default, preserve provider modules, and isolate infrastructure state by deployment stack
-- [ADR-0005: Gateway identity and enrollment](docs/adr/0005-gateway-identity-and-enrollment.md): Separate registration, bootstrap claims, credential binding, revocation, and recovery
-- [ADR-0006: CloudLink sessions and durable delivery](docs/adr/0006-cloudlink-durable-delivery.md): Fence sessions and deliver exact telemetry ACKs only after durable acceptance
-- [ADR-0007: Durable IoT telemetry ingestion](docs/adr/0007-durable-iot-telemetry.md): Accept replayed batches atomically in PostgreSQL and recover the identical durable ACK
-- [ADR-0008: OpenTelemetry operational observability](docs/adr/0008-operational-observability.md): Keep traces and metrics outside IoT data authority and audit
-- [ADR-0009: Immutable artifact publication](docs/adr/0009-immutable-artifact-publication.md): Keep immutable revision content separate from channels, deployment intent, and edge application evidence
-- [ADR-0010: Desired, Reported, and Applied deployment](docs/adr/0010-desired-reported-applied-deployment.md): Preserve cloud intent, edge observation, applied evidence, and unknown as separate facts
-- [ADR-0011: Governed capability Jobs and Receipts](docs/adr/0011-governed-capability-jobs.md): Deny undeclared capabilities and preserve uncertainty, cancellation intent, ordered Receipts, and edge outcomes
-- [ADR-0012: Durable audit and outbound integrations](docs/adr/0012-durable-audit-and-outbound-integrations.md): Separate committed outcomes from audit streams, outbound attempts, dead letters, and immutable exports
-- [ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells](docs/adr/0013-postgresql-control-plane-persistence.md): Use PostgreSQL Gateway and telemetry slices as portable cell authority while keeping analytics, provider profiles, and failover explicit
-- [ADR-0014: Experimental CloudLink MQTT transport binding](docs/adr/0014-cloudlink-mqtt-transport-binding.md): Use an operator-selected broker without trusting MQTT topic identity or weakening application acknowledgements
-- [ADR-0015: CloudLink interoperability release gates](docs/adr/0015-cloudlink-interoperability-release-gates.md): Record alpha.3 Broker and telemetry ACK evidence while keeping full authentication, durability, and legacy cutover gated
-- [ADR-0016: Pinned AetherContracts consumption](docs/adr/0016-pinned-aethercontracts-consumption.md): Consume one exact public release offline while separating distribution integrity from codec and interoperability conformance
-- [ADR-0017: Adopt AetherIoT product-family naming](docs/adr/0017-aetheriot-product-family-naming.md): Name the edge product AetherEdge while preserving AetherCloud authority, stable software identifiers, and immutable contract evidence
+## Deployment and Operations
+
+- [CloudLink reliability and lifecycle](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/cloudlink-and-core-state-machines.md): Understand delivery, retries, acknowledgements, offline recovery, and current production limits. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: cloudlink.session.open, cloudlink.session.heartbeat, fleet.cloudlink.session.get; maximum risk: low; permissions: cloudlink.session.heartbeat, cloudlink.session.open, fleet.cloudlink.session.read; confirmation: not-required.
+- [Desired, Reported, and Applied deployment](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/desired-reported-applied-deployment.md): Roll out immutable artifact intent without treating dispatch, connection, or timeout as edge application evidence. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: deployment.rollout.start, deployment.rollout.mark-unknown, deployment.rollout.rollback, deployment.rollout.get; maximum risk: high; permissions: deployment.rollout.read, deployment.rollout.reconcile, deployment.rollout.rollback, deployment.rollout.start; confirmation: explicit, not-required.
+- [Home Assistant integration](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/home-assistant-integration.md): Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, safety boundary, and remaining release gates. Status: partial; readiness: experimental; context: public. Safety gate: capabilities: integration.topology.report, integration.observations.report, integration.projection.list, integration.projection.get; maximum risk: low; permissions: integration.observations.report, integration.projection.read, integration.topology.report; confirmation: not-required.
+- [Operational observability](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/operational-observability.md): Instrument AetherCloud with OpenTelemetry without turning operational signals into IoT data or audit. Status: partial; readiness: experimental; context: internal.
+- [PostgreSQL persistence and multi-cloud cells](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/persistence-and-multi-cloud-cells.md): Place Gateway, CloudLink session, and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently. Status: partial; readiness: not-production-ready; context: internal.
+
+## Safety and Governance
+
+- [AetherCloud invariants](https://github.com/EvanL1/AetherCloud/blob/main/ai/invariants.md): Non-negotiable authority, tenancy, safety, and documentation rules for every change. Status: implemented; readiness: not-applicable; context: public.
+- [Audit, subscriptions, webhook delivery, and data export](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/audit-and-integrations.md): Expose Tenant-scoped evidence and durable integration workflows without bypassing application use cases or leaking destination secrets. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: audit.event.search, integration.webhook.delivery.redrive, integration.webhook.subscription.create, data.export.request; maximum risk: high; permissions: audit.event.read, data.export.create, integration.webhook.redrive, integration.webhook.subscription.create; confirmation: explicit.
+- [Edge, AetherCloud, and provider authority](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/edge-cloud-boundary.md): Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers. Status: implemented; readiness: not-applicable; context: public.
+- [Gateway identity and enrollment](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/gateway-identity-and-enrollment.md): Build tenant-scoped Gateway identity from registration and short-lived bootstrap claims. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: fleet.gateway.register, fleet.gateway.enrollment.issue, fleet.gateway.enrollment.claim, fleet.gateway.enrollment.get; maximum risk: high; permissions: fleet.gateway.create, fleet.gateway.enrollment.claim, fleet.gateway.enrollment.issue, fleet.gateway.enrollment.read; confirmation: explicit, not-required.
+- [Governed capability Jobs](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/governed-capability-jobs.md): Request versioned edge capabilities without arbitrary RPC, unsafe retry, or cloud claims about physical outcomes. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: edge.job.create, edge.job.confirm, edge.job.mark-unknown, edge.job.get; maximum risk: high; permissions: edge.job.confirm, edge.job.create, edge.job.read, edge.job.reconcile; confirmation: explicit, not-required.
+- [Governed Home Assistant power control](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/home-assistant-governed-control.md): Understand the experimental conversation-to-edge power action, its safety checks, evidence model, and current delivery limits. Status: partial; readiness: experimental; context: redacted-only. Safety gate: capabilities: integration.device.power.set, integration.control.receipt.ingest; maximum risk: high; permissions: integration.control.receipt.ingest, integration.device.control; confirmation: explicit, not-required.
+
+## Recovery
+
+- [CloudLink offline and reconnect recovery](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/cloudlink-offline-and-reconnect.md): Preserve edge authority and reconcile sessions, cursors, and acknowledgements after CloudLink interruption. Status: partial; readiness: not-production-ready; context: redacted-only. Safety gate: capabilities: cloudlink.session.open, cloudlink.session.heartbeat, fleet.cloudlink.session.get; maximum risk: low; permissions: cloudlink.session.heartbeat, cloudlink.session.open, fleet.cloudlink.session.read; confirmation: not-required.
+- [Credential revocation and re-enrollment recovery](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/credential-revocation-and-reenrollment.md): Contain a suspected Gateway credential and recover identity without reusing claims or weakening Tenant boundaries. Status: planned; readiness: not-production-ready; context: redacted-only.
+- [Database backup and restore recovery](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/database-backup-and-restore.md): Plan a controlled PostgreSQL cell restore without inventing production backup automation or cross-cell authority. Status: planned; readiness: not-production-ready; context: redacted-only.
+- [Emergency capability revocation](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/emergency-revoke.md): Remove cloud command exposure during a safety incident without claiming a cloud-side physical emergency stop. Status: planned; readiness: not-production-ready; context: redacted-only.
+- [Infrastructure lock failure recovery](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/infrastructure-lock-failure.md): Fail closed on missing or uncertain State-lock evidence and require a fresh Plan after operator recovery. Status: partial; readiness: not-production-ready; context: redacted-only. Safety gate: capabilities: infrastructure.stack.plan; maximum risk: medium; permissions: infrastructure.stack.plan; confirmation: not-required.
+- [Integration safe degradation](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/integration-safe-degradation.md): Degrade an unhealthy device integration to bounded read-only or unavailable behavior while preserving stale-data labels. Status: partial; readiness: experimental; context: redacted-only. Safety gate: capabilities: integration.topology.report, integration.observations.report, integration.projection.list, integration.projection.get, integration.webhook.subscription.disable; maximum risk: low; permissions: integration.observations.report, integration.projection.read, integration.topology.report, integration.webhook.subscription.disable; confirmation: not-required.
+- [Unknown command outcome recovery](https://docs.aetheriot.workers.dev/en/aethercloud/recovery/unknown-command-outcome.md): Resolve timed-out or ambiguous commands from authoritative evidence without blindly repeating physical effects. Status: partial; readiness: not-production-ready; context: redacted-only. Safety gate: capabilities: edge.job.mark-unknown, edge.job.get, edge.job.receipt.ingest, deployment.rollout.mark-unknown; maximum risk: low; permissions: deployment.rollout.reconcile, edge.job.read, edge.job.receipt.ingest, edge.job.reconcile; confirmation: not-required.
+
+## Platform Reference
+
+- [AetherCloud overview](https://docs.aetheriot.workers.dev/en/aethercloud/get-started/overview.md): Understand the multi-cloud product, its authority boundaries, and the first vertical slices. Status: partial; readiness: not-applicable; context: public.
+- [Application contract catalog](https://docs.aetheriot.workers.dev/en/aethercloud/reference/application-contracts.md): Discover capability governance, bounded Integration discovery, errors, events, transports, and implementation layers from one machine-readable catalog. Status: partial; readiness: not-applicable; context: public.
+- [Architecture](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/architecture.md): Understand the modular-monolith processes, dependency direction, and evolution rules. Status: implemented; readiness: not-applicable; context: public.
+- [MCP application interface](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/mcp-application-interface.md): Expose capability metadata, bounded Integration discovery, exact Tenant resources, and governed tools without creating an agent-only data path. Status: partial; readiness: not-production-ready; context: redacted-only.
+- [Terminology](https://docs.aetheriot.workers.dev/en/aethercloud/reference/terminology.md): Resolve AetherCloud terms before naming contracts or database records. Status: implemented; readiness: not-applicable; context: public.
+
+## Compatibility and Status
+
+- [AetherIoT product family](https://docs.aetheriot.workers.dev/en/aethercloud/get-started/aetheriot-product-family.md): Place AetherCloud beside AetherEdge and AetherContracts without blurring edge, cloud, provider, or protocol authority. Status: implemented; readiness: not-applicable; context: public.
+- [Current implementation audit](https://github.com/EvanL1/AetherCloud/blob/main/docs/concepts/current-state-audit.md): Distinguish executable AetherCloud layers, Broker evidence, and durable PostgreSQL CloudLink, telemetry, and Integration slices from missing production surfaces. Status: partial; readiness: not-production-ready; context: internal.
+- [IoT Cloud capability map](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/iot-cloud-capability-map.md): Map AetherCloud bounded contexts, authority, use cases, storage, edge interaction, risk, and delivery phase. Status: partial; readiness: not-production-ready; context: public.
+- [IoT Cloud vertical-slice roadmap](https://docs.aetheriot.workers.dev/en/aethercloud/guides/iot-cloud-roadmap.md): Deliver AetherCloud product value through independently testable cloud-edge slices. Status: planned; readiness: not-production-ready; context: public.
+
+## Optional
+
+### Deployment and Operations
+
+- [IoT business telemetry](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/iot-telemetry.md): Document replay-safe PostgreSQL telemetry acceptance and exact CloudLink ACK delivery without replacing edge live-state authority. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: telemetry.batch.ingest, telemetry.history.query; maximum risk: low; permissions: telemetry.batch.ingest, telemetry.history.read; confirmation: not-required.
+- [Simplified Chinese translation of Home Assistant integration](https://github.com/EvanL1/AetherCloud/blob/main/docs/zh-CN/concepts/home-assistant-integration.md): Localized copy of Home Assistant integration for Simplified Chinese agent contexts. Status: partial; readiness: experimental; context: public. Safety gate: capabilities: integration.topology.report, integration.observations.report, integration.projection.list, integration.projection.get; maximum risk: low; permissions: integration.observations.report, integration.projection.read, integration.topology.report; confirmation: not-required.
+
+### Safety and Governance
+
+- [Simplified Chinese translation of Governed Home Assistant power control](https://github.com/EvanL1/AetherCloud/blob/main/docs/zh-CN/concepts/home-assistant-governed-control.md): Localized copy of Governed Home Assistant power control for Simplified Chinese agent contexts. Status: partial; readiness: experimental; context: redacted-only. Safety gate: capabilities: integration.device.power.set, integration.control.receipt.ingest; maximum risk: high; permissions: integration.control.receipt.ingest, integration.device.control; confirmation: explicit, not-required.
+
+### Platform Reference
+
+- [Artifact registry and immutable publication](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/artifact-registry.md): Publish signed content-addressed revisions without confusing release metadata, deployment intent, or edge acceptance. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: artifact.revision.publish, artifact.revision.get; maximum risk: high; permissions: artifact.revision.publish, artifact.revision.read; confirmation: explicit.
+- [HTTP API reference](https://docs.aetheriot.workers.dev/en/aethercloud/reference/http-api.md): Call the implemented HTTP endpoints and distinguish them from planned versioned APIs. Status: partial; readiness: experimental; context: public.
+- [Multi-cloud fusion](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/multi-cloud-fusion.md): Unify cloud lifecycle and policy without erasing provider capabilities or sharing one global state. Status: partial; readiness: not-production-ready; context: public. Safety gate: capabilities: provider.region.discover; permissions: provider.region.read.
+- [Pre-release CloudLink MQTT v1](https://docs.aetheriot.workers.dev/en/aethercloud/reference/cloudlink-mqtt-v1.md): Review alpha.3 Broker evidence and the PostgreSQL telemetry ACK slice without overstating full CloudLink authentication or crash durability. Status: partial; readiness: experimental; context: redacted-only.
+- [Repository layout](https://docs.aetheriot.workers.dev/en/aethercloud/reference/repository-layout.md): Place code in the correct application, domain, adapter, or composition-root package. Status: implemented; readiness: not-applicable; context: internal.
+- [Resource model](https://docs.aetheriot.workers.dev/en/aethercloud/concepts/resource-model.md): Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently. Status: partial; readiness: not-applicable; context: public.
+- [Simplified Chinese translation of MCP application interface](https://github.com/EvanL1/AetherCloud/blob/main/docs/zh-CN/concepts/mcp-application-interface.md): Localized copy of MCP application interface for Simplified Chinese agent contexts. Status: partial; readiness: not-production-ready; context: redacted-only.
+
+### Decisions
+
+- [ADR-0001: Edge-first cloud control plane](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0001-edge-first-cloud-control-plane.md): Keep the cloud optional for deterministic edge operation. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0002: TypeScript modular monolith](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0002-typescript-modular-monolith.md): Start with one workspace and independently scalable composition roots. Status: implemented; readiness: not-applicable; context: public.
+- [ADR-0003: Agent-ready documentation](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0003-agent-ready-documentation.md): Treat LLM-readable documentation as a tested product interface. Status: implemented; readiness: not-applicable; context: public.
+- [ADR-0004: Capability-driven multi-cloud fusion](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0004-multi-cloud-fusion.md): Use OpenTofu by default, preserve provider modules, and isolate infrastructure state by deployment stack. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0005: Gateway identity and enrollment](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0005-gateway-identity-and-enrollment.md): Separate gateway registration, bootstrap claims, credential binding, revocation, and recovery. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0006: CloudLink sessions and durable delivery](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0006-cloudlink-durable-delivery.md): Fence authenticated sessions and acknowledge cloud-edge data only after durable acceptance. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0007: Durable IoT telemetry ingestion](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0007-durable-iot-telemetry.md): Accept replayed edge telemetry atomically and acknowledge only after durable business acceptance. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0008: OpenTelemetry operational observability](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0008-operational-observability.md): Keep vendor-neutral traces and metrics outside domain authority, business telemetry, and audit. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0009: Immutable artifact publication](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0009-immutable-artifact-publication.md): Separate content-addressed revisions, governed release channels, deployment intent, and edge application evidence. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0010: Desired, reported, and applied deployment](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0010-desired-reported-applied-deployment.md): Preserve cloud intent, edge observations, applied evidence, unknown outcomes, and cancellation as separate facts. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0011: Governed capability Jobs and Receipts](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0011-governed-capability-jobs.md): Admit only declared edge capabilities and preserve confirmation, uncertainty, cancellation, ordering, and edge outcomes as separate evidence. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0012: Durable audit and outbound integrations](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0012-durable-audit-and-outbound-integrations.md): Separate committed business outcomes from resumable audit queries, webhook attempts, dead letters, and immutable data exports. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0013: PostgreSQL control-plane persistence and multi-cloud cells](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0013-postgresql-control-plane-persistence.md): Use PostgreSQL as the portable transactional authority while provider profiles place independent control-plane cells. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0014: Experimental CloudLink MQTT transport binding](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0014-cloudlink-mqtt-transport-binding.md): Bind the provisional CloudLink candidate to operator-selected MQTT without weakening identity or durable acknowledgement boundaries. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0015: CloudLink interoperability release gates](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0015-cloudlink-interoperability-release-gates.md): Gate a pinned public core on shared-Broker identity, complete fixtures, dual-harness fault injection, and crash-durable acknowledgements before legacy cutover. Status: partial; readiness: not-applicable; context: public.
+- [ADR-0016: Pinned AetherContracts consumption](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0016-pinned-aethercontracts-consumption.md): Consume one digest-pinned public contract release while keeping product codecs local and conformance claims evidence-based. Status: implemented; readiness: not-applicable; context: public.
+- [ADR-0017: Adopt AetherIoT product-family naming](https://github.com/EvanL1/AetherCloud/blob/main/docs/adr/0017-aetheriot-product-family-naming.md): Name the edge product AetherEdge while preserving AetherCloud authority, stable software identifiers, and immutable contract evidence. Status: implemented; readiness: not-applicable; context: public.

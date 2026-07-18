@@ -10,6 +10,8 @@ export interface CommandDefinition {
   readonly authorization:
     | "enrollment-token"
     | "gateway-credential"
+    | "gateway-credential-claim"
+    | "gateway-session-challenge"
     | "tenant-permission";
 }
 
@@ -73,6 +75,30 @@ export const OPEN_CLOUDLINK_SESSION_COMMAND = Object.freeze({
   authorization: "gateway-credential",
 } as const satisfies CommandDefinition);
 
+export const REQUEST_CLOUDLINK_SESSION_CHALLENGE_COMMAND = Object.freeze({
+  kind: "command",
+  name: "cloudlink.session.challenge.request",
+  permission: "cloudlink.session.challenge.request",
+  risk: "low",
+  confirmation: "not-required",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "gateway-credential-claim",
+} as const satisfies CommandDefinition);
+
+export const ACCEPT_GATEWAY_SIGNED_CLOUDLINK_SESSION_COMMAND = Object.freeze({
+  kind: "command",
+  name: "cloudlink.session.gateway-signed.accept",
+  permission: "cloudlink.session.gateway-signed.accept",
+  risk: "low",
+  confirmation: "not-required",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "gateway-session-challenge",
+} as const satisfies CommandDefinition);
+
 export const RECORD_CLOUDLINK_HEARTBEAT_COMMAND = Object.freeze({
   kind: "command",
   name: "cloudlink.session.heartbeat",
@@ -126,6 +152,66 @@ export const GET_TELEMETRY_HISTORY_QUERY = Object.freeze({
   name: "telemetry.history.query",
   permission: "telemetry.history.read",
 } as const satisfies QueryDefinition);
+
+export const REPORT_INTEGRATION_TOPOLOGY_COMMAND = Object.freeze({
+  kind: "command",
+  name: "integration.topology.report",
+  permission: "integration.topology.report",
+  risk: "low",
+  confirmation: "not-required",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "gateway-credential",
+} as const satisfies CommandDefinition);
+
+export const REPORT_INTEGRATION_OBSERVATIONS_COMMAND = Object.freeze({
+  kind: "command",
+  name: "integration.observations.report",
+  permission: "integration.observations.report",
+  risk: "low",
+  confirmation: "not-required",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "gateway-credential",
+} as const satisfies CommandDefinition);
+
+export const GET_INTEGRATION_PROJECTION_QUERY = Object.freeze({
+  kind: "query",
+  name: "integration.projection.get",
+  permission: "integration.projection.read",
+} as const satisfies QueryDefinition);
+
+export const LIST_INTEGRATION_PROJECTIONS_QUERY = Object.freeze({
+  kind: "query",
+  name: "integration.projection.list",
+  permission: "integration.projection.read",
+} as const satisfies QueryDefinition);
+
+export const CREATE_INTEGRATION_POWER_CONTROL_COMMAND = Object.freeze({
+  kind: "command",
+  name: "integration.device.power.set",
+  permission: "integration.device.control",
+  risk: "high",
+  confirmation: "explicit",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "tenant-permission",
+} as const satisfies CommandDefinition);
+
+export const INGEST_INTEGRATION_CONTROL_RECEIPT_COMMAND = Object.freeze({
+  kind: "command",
+  name: "integration.control.receipt.ingest",
+  permission: "integration.control.receipt.ingest",
+  risk: "low",
+  confirmation: "not-required",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "gateway-credential",
+} as const satisfies CommandDefinition);
 
 export const INGEST_ALARM_FACT_COMMAND = Object.freeze({
   kind: "command",

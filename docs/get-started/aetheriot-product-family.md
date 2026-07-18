@@ -41,10 +41,10 @@ consumer closure may retain the historical AetherIot name. Repository renaming
 does not change their conformance status.
 
 The common documentation entry point is
-[docs.aetheriot.workers.dev](https://docs.aetheriot.workers.dev/). Its primary
+[docs.aetheriot.workers.dev](https://docs.aetheriot.workers.dev/en/). Its primary
 sections are Overview, AetherEdge, AetherCloud, AetherContracts, Tutorials,
 Compatibility, and Roadmap. Product repositories remain authoritative for
 implementation details.
 
-The public [AetherIot to AetherEdge migration guide](https://docs.aetheriot.workers.dev/migration/aetheriot-to-aetheredge/)
+The public [AetherIot to AetherEdge migration guide](https://docs.aetheriot.workers.dev/en/migration/aetheriot-to-aetheredge/)
 explains repository URL changes and the identifiers that remain stable.

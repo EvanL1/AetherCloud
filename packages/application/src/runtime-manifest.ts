@@ -1,6 +1,7 @@
 import {
   InvalidDomainValueError,
   defineRuntimeManifestObservation,
+  parseGatewayCredentialGeneration,
   parseGatewayId,
   parseProjectId,
   parseRuntimeManifestGeneration,
@@ -9,6 +10,8 @@ import {
 } from "@aether-cloud/domain";
 import type {
   AetherRuntimeManifestV1,
+  GatewayCredentialBinding,
+  GatewayCredentialGeneration,
   GatewayId,
   ProjectId,
   RuntimeManifestObservation,
@@ -24,6 +27,14 @@ import type {
   GatewayCredentialAssertion,
   GatewayCredentialVerifier,
 } from "./cloudlink-session-repository.js";
+import {
+  decodeGatewaySignedCloudLinkBusinessDelivery,
+  isGatewaySignedCloudLinkUplinkAuthenticationFact,
+  validateGatewaySignedCloudLinkAuthenticationConsumption,
+  type CloudLinkBusinessPayloadDigestor,
+  type GatewaySignedCloudLinkBusinessDelivery,
+  type GatewaySignedCloudLinkUplinkAuthenticationFact,
+} from "./cloudlink-uplink-authentication.js";
 import type { ApplicationClock } from "./gateway-identity-repository.js";
 import type {
   RuntimeManifestIntegrityVerifier,
@@ -35,12 +46,26 @@ type RuntimeManifestFailureCode =
   | "command-expired"
   | "gateway-credential-inactive"
   | "idempotency-conflict"
+  | "gateway-signed-authentication-invalid"
   | "invalid-gateway-credential"
   | "invalid-input"
+  | "invalid-runtime-manifest-repository-result"
   | "permission-denied"
   | "runtime-manifest-generation-conflict"
   | "runtime-manifest-integrity-failed"
   | "runtime-manifest-not-found";
+
+type ManifestReportAuthentication =
+  | Readonly<{
+      kind: "credential";
+      credential: GatewayCredentialAssertion;
+    }>
+  | Readonly<{
+      kind: "gateway-signed";
+      fact: GatewaySignedCloudLinkUplinkAuthenticationFact;
+      delivery: GatewaySignedCloudLinkBusinessDelivery;
+      payload: Readonly<Record<string, unknown>>;
+    }>;
 
 export interface RuntimeManifestApplicationFailure {
   readonly code: RuntimeManifestFailureCode;
@@ -77,6 +102,27 @@ export interface RuntimeManifestView {
 export interface ReportRuntimeManifestValue extends RuntimeManifestView {
   readonly disposition: "accepted-late" | "accepted-latest" | "replayed";
 }
+
+interface RestoredRuntimeProtocolScope {
+  readonly tenantId: TenantId;
+  readonly projectId: ProjectId;
+  readonly gatewayId: GatewayId;
+  readonly credentialGeneration: GatewayCredentialGeneration;
+}
+
+export type RestoredRuntimeProtocolsView =
+  | Readonly<
+      RestoredRuntimeProtocolScope & {
+        readonly status: "absent";
+      }
+    >
+  | Readonly<
+      RestoredRuntimeProtocolScope & {
+        readonly status: "present";
+        readonly manifestGeneration: string;
+        readonly protocols: readonly string[];
+      }
+    >;
 
 interface ManifestCommandContext {
   readonly requestId: string;
@@ -351,17 +397,22 @@ export class ReportGatewayRuntimeManifest {
   readonly #repository: RuntimeManifestRepository;
   readonly #credentialVerifier: GatewayCredentialVerifier;
   readonly #integrityVerifier: RuntimeManifestIntegrityVerifier;
+  readonly #businessPayloadDigestor:
+    | CloudLinkBusinessPayloadDigestor
+    | undefined;
   readonly #clock: ApplicationClock;
 
   constructor(dependencies: {
     readonly repository: RuntimeManifestRepository;
     readonly credentialVerifier: GatewayCredentialVerifier;
     readonly integrityVerifier: RuntimeManifestIntegrityVerifier;
+    readonly businessPayloadDigestor?: CloudLinkBusinessPayloadDigestor;
     readonly clock: ApplicationClock;
   }) {
     this.#repository = dependencies.repository;
     this.#credentialVerifier = dependencies.credentialVerifier;
     this.#integrityVerifier = dependencies.integrityVerifier;
+    this.#businessPayloadDigestor = dependencies.businessPayloadDigestor;
     this.#clock = dependencies.clock;
   }
 
@@ -372,6 +423,71 @@ export class ReportGatewayRuntimeManifest {
     const decoded = decodeSafely(() => {
       const context = decodeCommandContext(rawContext);
       const input = requireRecord(rawInput, "runtime manifest report");
+      if (input.gatewaySignedAuthentication !== undefined) {
+        requireExactKeys(
+          input,
+          [
+            "cloudLinkDelivery",
+            "cloudLinkPayload",
+            "gatewaySignedAuthentication",
+          ],
+          "Gateway-signed runtime manifest report",
+        );
+        const fact = input.gatewaySignedAuthentication;
+        const delivery = decodeGatewaySignedCloudLinkBusinessDelivery(
+          input.cloudLinkDelivery,
+        );
+        const payload = requireRecord(
+          input.cloudLinkPayload,
+          "CloudLink runtime manifest payload",
+        );
+        requireExactKeys(
+          payload,
+          ["manifest", "observed_at_ms"],
+          "CloudLink runtime manifest payload",
+        );
+        if (
+          !isGatewaySignedCloudLinkUplinkAuthenticationFact(fact) ||
+          delivery === undefined ||
+          delivery.messageKind !== "runtime-manifest-report"
+        ) {
+          throw new RuntimeManifestInputError(
+            "Gateway-signed runtime manifest authentication is invalid",
+          );
+        }
+        const observedAtMs = requireString(
+          payload.observed_at_ms,
+          "observed_at_ms",
+          20,
+        );
+        if (!/^(?:0|[1-9][0-9]*)$/.test(observedAtMs)) {
+          throw new RuntimeManifestInputError(
+            "observed_at_ms must be a canonical timestamp",
+          );
+        }
+        const milliseconds = Number(observedAtMs);
+        const observedDate = new Date(milliseconds);
+        if (
+          !Number.isSafeInteger(milliseconds) ||
+          Number.isNaN(observedDate.valueOf())
+        ) {
+          throw new RuntimeManifestInputError(
+            "observed_at_ms is outside the supported timestamp range",
+          );
+        }
+        return {
+          context,
+          authentication: {
+            kind: "gateway-signed",
+            fact,
+            delivery,
+            payload: Object.freeze({ ...payload }),
+          } satisfies ManifestReportAuthentication,
+          generation: parseRuntimeManifestGeneration(delivery.position),
+          observedAt: parseUtcInstant(observedDate.toISOString()),
+          manifest: decodeManifest(payload.manifest),
+        };
+      }
       requireExactKeys(
         input,
         ["credential", "generation", "manifest", "observedAt"],
@@ -379,7 +495,10 @@ export class ReportGatewayRuntimeManifest {
       );
       return {
         context,
-        credential: decodeCredential(input.credential),
+        authentication: {
+          kind: "credential",
+          credential: decodeCredential(input.credential),
+        } satisfies ManifestReportAuthentication,
         generation: parseRuntimeManifestGeneration(input.generation),
         observedAt: parseUtcInstant(input.observedAt),
         manifest: decodeManifest(input.manifest),
@@ -392,9 +511,22 @@ export class ReportGatewayRuntimeManifest {
     if (decoded.value.observedAt > now) {
       return failure("invalid-input", "observedAt cannot be in the future");
     }
-    const verified = await this.#credentialVerifier.verify(
-      decoded.value.credential,
-    );
+    const verified =
+      decoded.value.authentication.kind === "gateway-signed"
+        ? {
+            ok: true as const,
+            value: Object.freeze({
+              tenantId: decoded.value.authentication.fact.tenantId,
+              projectId: decoded.value.authentication.fact.projectId,
+              gatewayId: decoded.value.authentication.fact.gatewayId,
+              generation:
+                decoded.value.authentication.fact.credentialGeneration,
+              status: "active" as const,
+            }),
+          }
+        : await this.#credentialVerifier.verify(
+            decoded.value.authentication.credential,
+          );
     if (!verified.ok) {
       return failure(
         "invalid-gateway-credential",
@@ -406,6 +538,31 @@ export class ReportGatewayRuntimeManifest {
         "gateway-credential-inactive",
         "Gateway credential is not active",
       );
+    }
+    if (decoded.value.authentication.kind === "gateway-signed") {
+      if (this.#businessPayloadDigestor === undefined) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          "Gateway-signed runtime manifest validation is unavailable",
+        );
+      }
+      const consumed =
+        await validateGatewaySignedCloudLinkAuthenticationConsumption({
+          kind: "delivery",
+          fact: decoded.value.authentication.fact,
+          delivery: decoded.value.authentication.delivery,
+          payload: decoded.value.authentication.payload,
+          nowMs: String(Date.parse(now)),
+          digestor: this.#businessPayloadDigestor,
+        });
+      if (!consumed.ok) {
+        return failure(
+          "gateway-signed-authentication-invalid",
+          consumed.failure === "MESSAGE_EXPIRED"
+            ? "Gateway-signed runtime manifest expired before consumption"
+            : "Gateway-signed runtime manifest authentication is invalid",
+        );
+      }
     }
     if (!(await this.#integrityVerifier.verify(decoded.value.manifest))) {
       return failure(
@@ -491,5 +648,115 @@ export class GetGatewayRuntimeManifest {
     return observation === undefined
       ? failure("runtime-manifest-not-found", "runtime manifest was not found")
       : { ok: true, value: toView(observation) };
+  }
+}
+
+export class RestoreGatewayRuntimeProtocols {
+  readonly #repository: RuntimeManifestRepository;
+  readonly #credentialVerifier: GatewayCredentialVerifier;
+
+  constructor(dependencies: {
+    readonly repository: RuntimeManifestRepository;
+    readonly credentialVerifier: GatewayCredentialVerifier;
+  }) {
+    this.#repository = dependencies.repository;
+    this.#credentialVerifier = dependencies.credentialVerifier;
+  }
+
+  async execute(
+    rawInput: unknown,
+  ): Promise<RuntimeManifestQueryResult<RestoredRuntimeProtocolsView>> {
+    const decoded = decodeSafely(() => {
+      const input = requireRecord(rawInput, "runtime protocol restoration");
+      if (input.gatewaySignedBinding !== undefined) {
+        requireExactKeys(
+          input,
+          ["gatewaySignedBinding"],
+          "runtime protocol restoration",
+        );
+        const binding = requireRecord(
+          input.gatewaySignedBinding,
+          "Gateway-signed runtime protocol binding",
+        );
+        requireExactKeys(
+          binding,
+          ["credentialGeneration", "gatewayId", "projectId", "tenantId"],
+          "Gateway-signed runtime protocol binding",
+        );
+        return {
+          kind: "gateway-signed" as const,
+          binding: Object.freeze({
+            tenantId: parseTenantId(binding.tenantId),
+            projectId: parseProjectId(binding.projectId),
+            gatewayId: parseGatewayId(binding.gatewayId),
+            generation: parseGatewayCredentialGeneration(
+              binding.credentialGeneration,
+            ),
+            status: "active" as const,
+          }) satisfies GatewayCredentialBinding,
+        };
+      }
+      requireExactKeys(input, ["credential"], "runtime protocol restoration");
+      return {
+        kind: "credential" as const,
+        credential: decodeCredential(input.credential),
+      };
+    });
+    if (!decoded.ok) return decoded;
+
+    let verifiedBinding: GatewayCredentialBinding;
+    if (decoded.value.kind === "gateway-signed") {
+      verifiedBinding = decoded.value.binding;
+    } else {
+      const verified = await this.#credentialVerifier.verify(
+        decoded.value.credential,
+      );
+      if (!verified.ok) {
+        return failure(
+          "invalid-gateway-credential",
+          "Gateway credential was rejected",
+        );
+      }
+      if (verified.value.status !== "active") {
+        return failure(
+          "gateway-credential-inactive",
+          "Gateway credential is not active",
+        );
+      }
+      verifiedBinding = verified.value;
+    }
+
+    const scope = {
+      tenantId: verifiedBinding.tenantId,
+      projectId: verifiedBinding.projectId,
+      gatewayId: verifiedBinding.gatewayId,
+      credentialGeneration: verifiedBinding.generation,
+    } as const;
+    const observation = await this.#repository.findCurrent(
+      verifiedBinding,
+      verifiedBinding.gatewayId,
+    );
+    if (observation === undefined) {
+      return { ok: true, value: { ...scope, status: "absent" } };
+    }
+    if (
+      observation.tenantId !== verifiedBinding.tenantId ||
+      observation.projectId !== verifiedBinding.projectId ||
+      observation.gatewayId !== verifiedBinding.gatewayId
+    ) {
+      return failure(
+        "invalid-runtime-manifest-repository-result",
+        "runtime manifest repository returned a mismatched Gateway scope",
+      );
+    }
+    return {
+      ok: true,
+      value: {
+        ...scope,
+        status: "present",
+        manifestGeneration: observation.generation,
+        protocols: Object.freeze([...observation.manifest.protocols]),
+      },
+    };
   }
 }
