@@ -105,41 +105,8 @@ why the current source foundation is not yet an end-user control product.
 - Infrastructure Apply and Destroy do not exist in the current port.
 - Cross-tenant access requires an explicit platform-level use case and audit.
 
-## Development
+## Contributing
 
-Requirements:
-
-- Node.js 24
-- pnpm 11
-
-```bash
-pnpm install
-pnpm check
-pnpm dev:api
-```
-
-The development API listens on 127.0.0.1:3000 by default. GET /health is the
-initial readiness endpoint. The default verification path requires no
-PostgreSQL instance, edge device, Broker, or cloud account.
-
-## Documentation
-
-- [Product overview](docs/get-started/overview.md)
-- [AetherIoT product family](docs/get-started/aetheriot-product-family.md)
-- [Architecture and dependency rules](docs/concepts/architecture.md)
-- [Edge, cloud, and provider authority](docs/concepts/edge-cloud-boundary.md)
-- [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md)
-- [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md)
-- [IoT telemetry](docs/concepts/iot-telemetry.md)
-- [Home Assistant integration](docs/concepts/home-assistant-integration.md)
-- [Governed Home Assistant power control](docs/concepts/home-assistant-governed-control.md)
-- [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md)
-- [Governed capability jobs](docs/concepts/governed-capability-jobs.md)
-- [MCP application interface](docs/concepts/mcp-application-interface.md)
-- [Audit and integrations](docs/concepts/audit-and-integrations.md)
-- [Plan infrastructure safely](docs/guides/plan-infrastructure.md)
-- [Build with an AI agent](docs/guides/build-with-an-agent.md)
-- [Application contract catalog](docs/reference/application-contracts.md)
-
-Agents and coding tools should begin with [llms.txt](llms.txt) and the
-repository-owned [AetherCloud Agent Skill](skills/aether-cloud/SKILL.md).
+Development setup and verification live in
+[CONTRIBUTING.md](CONTRIBUTING.md). Repository rules for agents and
+contributors live in [AGENTS.md](AGENTS.md).

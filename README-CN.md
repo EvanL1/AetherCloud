@@ -78,38 +78,6 @@ AetherCloud 是 [AetherIoT 平台](docs/get-started/aetheriot-product-family.md)
 - 当前基础设施端口不提供应用和销毁操作。
 - 跨租户访问必须使用明确的平台级用例并留下审计记录。
 
-## 开发
+## 参与开发
 
-环境要求：
-
-- Node.js 24
-- pnpm 11
-
-```bash
-pnpm install
-pnpm check
-pnpm dev:api
-```
-
-开发接口默认监听 127.0.0.1:3000，GET /health 是初始就绪检查。默认验证流程不依赖 PostgreSQL、边缘设备、消息代理或云账号。
-
-## 文档入口
-
-- [产品总览](docs/get-started/overview.md)
-- [AetherIoT 产品关系](docs/get-started/aetheriot-product-family.md)
-- [架构与依赖规则](docs/concepts/architecture.md)
-- [边缘、云端与云服务商的权责边界](docs/concepts/edge-cloud-boundary.md)
-- [网关身份与注册](docs/concepts/gateway-identity-and-enrollment.md)
-- [CloudLink 与核心状态机](docs/concepts/cloudlink-and-core-state-machines.md)
-- [物联网遥测](docs/concepts/iot-telemetry.md)
-- [Home Assistant 集成](docs/zh-CN/concepts/home-assistant-integration.md)
-- [受治理的 Home Assistant 电源控制](docs/zh-CN/concepts/home-assistant-governed-control.md)
-- [期望、上报与已应用部署](docs/concepts/desired-reported-applied-deployment.md)
-- [受治理的能力任务](docs/concepts/governed-capability-jobs.md)
-- [智能体应用接口](docs/zh-CN/concepts/mcp-application-interface.md)
-- [审计与集成](docs/concepts/audit-and-integrations.md)
-- [安全规划基础设施](docs/guides/plan-infrastructure.md)
-- [使用智能体参与开发](docs/guides/build-with-an-agent.md)
-- [应用契约目录](docs/reference/application-contracts.md)
-
-智能体和代码工具应从 [llms.txt](llms.txt) 以及仓库自带的 [AetherCloud 智能体技能](skills/aether-cloud/SKILL.md)开始读取。
+开发环境与验证流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。面向智能体与贡献者的仓库规则见 [AGENTS.md](AGENTS.md)。

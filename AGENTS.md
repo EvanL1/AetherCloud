@@ -1,7 +1,8 @@
 # AetherCloud Agent Instructions
 
 This file is the canonical instruction source for coding agents in this
-repository.
+repository. `CLAUDE.md` and `GEMINI.md` are symlinks to it, so every agent
+reads and edits the same instructions.
 
 ## Product direction
 
@@ -81,6 +82,29 @@ domain <- ports <- application <- interfaces/composition roots
 - Update a document's frontmatter, manifest entry, and `llms.txt` description
   together.
 - Documentation must distinguish implemented behavior from planned contracts.
+
+## Key documentation
+
+These are the shortest paths to the most used pages. `llms.txt` and
+`ai/docs-manifest.json` remain the complete catalog. `README.md` is a growth
+surface and deliberately does not carry this index.
+
+- [Product overview](docs/get-started/overview.md)
+- [AetherIoT product family](docs/get-started/aetheriot-product-family.md)
+- [Architecture and dependency rules](docs/concepts/architecture.md)
+- [Edge, cloud, and provider authority](docs/concepts/edge-cloud-boundary.md)
+- [Gateway identity and enrollment](docs/concepts/gateway-identity-and-enrollment.md)
+- [CloudLink and core state machines](docs/concepts/cloudlink-and-core-state-machines.md)
+- [IoT telemetry](docs/concepts/iot-telemetry.md)
+- [Home Assistant integration](docs/concepts/home-assistant-integration.md)
+- [Governed Home Assistant power control](docs/concepts/home-assistant-governed-control.md)
+- [Desired, Reported, and Applied deployment](docs/concepts/desired-reported-applied-deployment.md)
+- [Governed capability jobs](docs/concepts/governed-capability-jobs.md)
+- [MCP application interface](docs/concepts/mcp-application-interface.md)
+- [Audit and integrations](docs/concepts/audit-and-integrations.md)
+- [Plan infrastructure safely](docs/guides/plan-infrastructure.md)
+- [Build with an AI agent](docs/guides/build-with-an-agent.md)
+- [Application contract catalog](docs/reference/application-contracts.md)
 
 ## Safety
 
