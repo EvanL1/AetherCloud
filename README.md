@@ -20,6 +20,10 @@ The complete end-user conversational experience is **in development**. This
 repository currently provides tested domain and application foundations for
 that direction; it does not yet ship a production household Agent.
 
+> **Want something you can run today?** Start with the
+> [AetherEdge quickstart](https://github.com/EvanL1/AetherEdge#try-it-in-five-minutes) — the
+> deterministic edge runtime this control plane commissions behavior to.
+
 AetherCloud is one product in the
 [AetherIoT platform](docs/get-started/aetheriot-product-family.md), alongside
 [AetherEdge](https://github.com/EvanL1/AetherEdge) and
