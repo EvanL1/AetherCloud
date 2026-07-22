@@ -16,3 +16,5 @@ coverage/
 *.plan
 *.plan.json
 aether.plan
+
+tsconfig.tsbuildinfo
