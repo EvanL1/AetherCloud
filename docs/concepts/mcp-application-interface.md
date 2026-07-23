@@ -1,7 +1,7 @@
 ---
 title: MCP application interface
 description: Expose capability metadata, bounded Integration discovery, exact Tenant resources, and governed tools without creating an agent-only data path
-updated: 2026-07-17
+updated: 2026-07-23
 status: mixed
 ---
 
@@ -70,10 +70,17 @@ to the application decoder. It cannot weaken capability metadata.
 
 The resource/tool registry, bounded catalog and exact detail delegation,
 external decoding, capability-status resource, and behavior tests are
-implemented. There is no MCP SDK transport, stdio server, Streamable HTTP
-endpoint, OAuth flow, session composition root, rate limiter, or production
-identity composition yet. Consequently the package is an executable interface
-foundation, not a network server that an MCP client can connect to today.
+implemented. The API app now mounts this interface as a stateless MCP
+Streamable HTTP endpoint at `POST /api/v1/mcp` behind the same HTTP Bearer
+authenticator as the rest of the API: one JSON-RPC message per request,
+`application/json` responses, no SSE stream, no session id, and 405 for
+non-POST methods. `initialize`, `ping`, `tools/list`, `tools/call`,
+`resources/list`, `resources/templates/list`, and `resources/read` are served;
+tool failures return in-band `isError` results and the authenticated subject
+is passed to every interface call unchanged. There is still no stdio server,
+OAuth flow, rate limiter, or production identity composition; the configured
+static-token authenticator remains a development credential, not a tenant
+identity provider.
 
 Adding a wire transport must be a thin composition root around this interface.
 It must translate MCP protocol errors and content without changing the

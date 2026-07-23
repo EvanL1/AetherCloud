@@ -358,6 +358,9 @@ importers:
       '@aether-cloud/audit-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/audit/memory
+      '@aether-cloud/mcp-interface':
+        specifier: workspace:*
+        version: link:../mcp
       fastify:
         specifier: 5.10.0
         version: 5.10.0
