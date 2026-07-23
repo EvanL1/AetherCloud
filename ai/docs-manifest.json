@@ -540,14 +540,14 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "redacted-only",
-      "updated": "2026-07-17",
+      "updated": "2026-07-23",
       "priority": "core",
       "implemented_layers": [
         "transport-neutral-interface",
-        "application-delegation"
+        "application-delegation",
+        "mcp-wire-server"
       ],
       "missing_layers": [
-        "mcp-wire-server",
         "production-identity",
         "rate-limiting",
         "public-service-composition"

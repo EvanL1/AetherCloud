@@ -1,6 +1,9 @@
 import { getPlatformProfile } from "@aether-cloud/application";
 import type { SearchAuditEvents } from "@aether-cloud/application";
 import Fastify from "fastify";
+
+import { registerMcpHttp } from "./mcp-http.js";
+import type { McpHttpDependencies } from "./mcp-http.js";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
 export interface HttpAuthenticatedSubject {
@@ -33,6 +36,7 @@ export interface AuditHttpDependencies {
 export interface BuildAppOptions {
   readonly version: string;
   readonly audit?: AuditHttpDependencies;
+  readonly mcp?: McpHttpDependencies;
 }
 
 const healthResponseSchema = {
@@ -267,6 +271,11 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     () => getPlatformProfile(),
   );
 
+  const mcp = options.mcp;
+  if (mcp !== undefined) {
+    registerMcpHttp(app, mcp, options.version);
+  }
+
   const audit = options.audit;
   if (audit !== undefined) {
     app.get(
@@ -391,3 +400,5 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   return app;
 }
+
+export type { McpHttpDependencies, McpHttpInterface } from "./mcp-http.js";

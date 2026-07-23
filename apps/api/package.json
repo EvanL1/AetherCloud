@@ -10,6 +10,7 @@
   "dependencies": {
     "@aether-cloud/application": "workspace:*",
     "@aether-cloud/audit-memory-adapter": "workspace:*",
+    "@aether-cloud/mcp-interface": "workspace:*",
     "fastify": "5.10.0"
   }
 }
