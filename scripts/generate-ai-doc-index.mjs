@@ -115,7 +115,7 @@ function isPublishedEnglishUserDocument(document) {
 function canonicalUrlForDocument(document) {
   if (isPublishedEnglishUserDocument(document)) {
     const slug = document.path.slice("docs/".length, -".md".length);
-    return `${publicDocsBase}/en/aethercloud/${slug}.md`;
+    return `${publicDocsBase}/aethercloud/${slug}.md`;
   }
   return `${githubBlobBase}/${document.path}`;
 }

@@ -6,7 +6,7 @@
     {
       "id": "overview",
       "path": "docs/get-started/overview.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/get-started/overview.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/get-started/overview.md",
       "title": "AetherCloud overview",
       "description": "Understand the multi-cloud product, its authority boundaries, and the first vertical slices",
       "locale": "en",
@@ -23,7 +23,7 @@
     {
       "id": "aetheriot-product-family",
       "path": "docs/get-started/aetheriot-product-family.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/get-started/aetheriot-product-family.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/get-started/aetheriot-product-family.md",
       "title": "AetherIoT product family",
       "description": "Place AetherCloud beside AetherEdge and AetherContracts without blurring edge, cloud, provider, or protocol authority",
       "locale": "en",
@@ -40,7 +40,7 @@
     {
       "id": "architecture",
       "path": "docs/concepts/architecture.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/architecture.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/architecture.md",
       "title": "Architecture",
       "description": "Understand the modular-monolith processes, dependency direction, and evolution rules",
       "locale": "en",
@@ -57,7 +57,7 @@
     {
       "id": "persistence-and-multi-cloud-cells",
       "path": "docs/concepts/persistence-and-multi-cloud-cells.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/persistence-and-multi-cloud-cells.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/persistence-and-multi-cloud-cells.md",
       "title": "PostgreSQL persistence and multi-cloud cells",
       "description": "Place Gateway, CloudLink session, and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently",
       "locale": "en",
@@ -87,7 +87,7 @@
     {
       "id": "audit-and-integrations",
       "path": "docs/concepts/audit-and-integrations.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/audit-and-integrations.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/audit-and-integrations.md",
       "title": "Audit, subscriptions, webhook delivery, and data export",
       "description": "Expose Tenant-scoped evidence and durable integration workflows without bypassing application use cases or leaking destination secrets",
       "locale": "en",
@@ -140,7 +140,7 @@
     {
       "id": "edge-cloud-boundary",
       "path": "docs/concepts/edge-cloud-boundary.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/edge-cloud-boundary.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/edge-cloud-boundary.md",
       "title": "Edge, AetherCloud, and provider authority",
       "description": "Assign live, desired, and actual state across edge runtimes, AetherCloud, and infrastructure providers",
       "locale": "en",
@@ -157,7 +157,7 @@
     {
       "id": "gateway-identity-and-enrollment",
       "path": "docs/concepts/gateway-identity-and-enrollment.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/gateway-identity-and-enrollment.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/gateway-identity-and-enrollment.md",
       "title": "Gateway identity and enrollment",
       "description": "Build tenant-scoped Gateway identity from registration and short-lived bootstrap claims",
       "locale": "en",
@@ -202,7 +202,7 @@
     {
       "id": "iot-cloud-capability-map",
       "path": "docs/concepts/iot-cloud-capability-map.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/iot-cloud-capability-map.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/iot-cloud-capability-map.md",
       "title": "IoT Cloud capability map",
       "description": "Map AetherCloud bounded contexts, authority, use cases, storage, edge interaction, risk, and delivery phase",
       "locale": "en",
@@ -219,7 +219,7 @@
     {
       "id": "iot-telemetry",
       "path": "docs/concepts/iot-telemetry.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/iot-telemetry.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/iot-telemetry.md",
       "title": "IoT business telemetry",
       "description": "Document replay-safe PostgreSQL telemetry acceptance and exact CloudLink ACK delivery without replacing edge live-state authority",
       "locale": "en",
@@ -239,7 +239,7 @@
     {
       "id": "home-assistant-integration",
       "path": "docs/concepts/home-assistant-integration.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/home-assistant-integration.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/home-assistant-integration.md",
       "title": "Home Assistant integration",
       "description": "Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, safety boundary, and remaining release gates",
       "locale": "en",
@@ -317,7 +317,7 @@
     {
       "id": "home-assistant-governed-control",
       "path": "docs/concepts/home-assistant-governed-control.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/home-assistant-governed-control.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/home-assistant-governed-control.md",
       "title": "Governed Home Assistant power control",
       "description": "Understand the experimental conversation-to-edge power action, its safety checks, evidence model, and current delivery limits",
       "locale": "en",
@@ -401,7 +401,7 @@
     {
       "id": "artifact-registry",
       "path": "docs/concepts/artifact-registry.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/artifact-registry.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/artifact-registry.md",
       "title": "Artifact registry and immutable publication",
       "description": "Publish signed content-addressed revisions without confusing release metadata, deployment intent, or edge acceptance",
       "locale": "en",
@@ -421,7 +421,7 @@
     {
       "id": "desired-reported-applied-deployment",
       "path": "docs/concepts/desired-reported-applied-deployment.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/desired-reported-applied-deployment.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/desired-reported-applied-deployment.md",
       "title": "Desired, Reported, and Applied deployment",
       "description": "Roll out immutable artifact intent without treating dispatch, connection, or timeout as edge application evidence",
       "locale": "en",
@@ -450,7 +450,7 @@
     {
       "id": "governed-capability-jobs",
       "path": "docs/concepts/governed-capability-jobs.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/governed-capability-jobs.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/governed-capability-jobs.md",
       "title": "Governed capability Jobs",
       "description": "Request versioned edge capabilities without arbitrary RPC, unsafe retry, or cloud claims about physical outcomes",
       "locale": "en",
@@ -479,7 +479,7 @@
     {
       "id": "cloudlink-and-core-state-machines",
       "path": "docs/concepts/cloudlink-and-core-state-machines.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/cloudlink-and-core-state-machines.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/cloudlink-and-core-state-machines.md",
       "title": "CloudLink reliability and lifecycle",
       "description": "Understand delivery, retries, acknowledgements, offline recovery, and current production limits",
       "locale": "en",
@@ -507,7 +507,7 @@
     {
       "id": "multi-cloud-fusion",
       "path": "docs/concepts/multi-cloud-fusion.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/multi-cloud-fusion.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/multi-cloud-fusion.md",
       "title": "Multi-cloud fusion",
       "description": "Unify cloud lifecycle and policy without erasing provider capabilities or sharing one global state",
       "locale": "en",
@@ -525,7 +525,7 @@
     {
       "id": "mcp-application-interface",
       "path": "docs/concepts/mcp-application-interface.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/mcp-application-interface.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/mcp-application-interface.md",
       "title": "MCP application interface",
       "description": "Expose capability metadata, bounded Integration discovery, exact Tenant resources, and governed tools without creating an agent-only data path",
       "locale": "en",
@@ -587,7 +587,7 @@
     {
       "id": "operational-observability",
       "path": "docs/concepts/operational-observability.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/operational-observability.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/operational-observability.md",
       "title": "Operational observability",
       "description": "Instrument AetherCloud with OpenTelemetry without turning operational signals into IoT data or audit",
       "locale": "en",
@@ -604,7 +604,7 @@
     {
       "id": "resource-model",
       "path": "docs/concepts/resource-model.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/concepts/resource-model.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/resource-model.md",
       "title": "Resource model",
       "description": "Use cloud connection, deployment stack, fleet, and edge resource vocabulary consistently",
       "locale": "en",
@@ -621,7 +621,7 @@
     {
       "id": "build-with-an-agent",
       "path": "docs/guides/build-with-an-agent.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/guides/build-with-an-agent.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/guides/build-with-an-agent.md",
       "title": "Build with an AI agent",
       "description": "Use repository contracts and verification commands without inventing unsupported APIs",
       "locale": "en",
@@ -639,7 +639,7 @@
     {
       "id": "add-provider-adapter",
       "path": "docs/guides/add-provider-adapter.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/guides/add-provider-adapter.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/guides/add-provider-adapter.md",
       "title": "Add a Provider Adapter",
       "description": "Implement provider discovery behind the application port and prove it with the shared conformance suite",
       "locale": "en",
@@ -658,7 +658,7 @@
     {
       "id": "plan-infrastructure",
       "path": "docs/guides/plan-infrastructure.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/guides/plan-infrastructure.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/guides/plan-infrastructure.md",
       "title": "Plan infrastructure safely",
       "description": "Run the implemented governed OpenTofu Plan worker without implying infrastructure mutation or exposing sensitive engine output",
       "locale": "en",
@@ -698,7 +698,7 @@
     {
       "id": "iot-cloud-roadmap",
       "path": "docs/guides/iot-cloud-roadmap.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/guides/iot-cloud-roadmap.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/guides/iot-cloud-roadmap.md",
       "title": "IoT Cloud vertical-slice roadmap",
       "description": "Deliver AetherCloud product value through independently testable cloud-edge slices",
       "locale": "en",
@@ -715,7 +715,7 @@
     {
       "id": "http-api",
       "path": "docs/reference/http-api.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/reference/http-api.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/http-api.md",
       "title": "HTTP API reference",
       "description": "Call the implemented HTTP endpoints and distinguish them from planned versioned APIs",
       "locale": "en",
@@ -732,7 +732,7 @@
     {
       "id": "application-contracts",
       "path": "docs/reference/application-contracts.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/reference/application-contracts.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/application-contracts.md",
       "title": "Application contract catalog",
       "description": "Discover capability governance, bounded Integration discovery, errors, events, transports, and implementation layers from one machine-readable catalog",
       "locale": "en",
@@ -752,7 +752,7 @@
     {
       "id": "cloudlink-mqtt-v1",
       "path": "docs/reference/cloudlink-mqtt-v1.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/reference/cloudlink-mqtt-v1.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/cloudlink-mqtt-v1.md",
       "title": "Pre-release CloudLink MQTT v1",
       "description": "Review alpha.3 Broker evidence and the PostgreSQL telemetry ACK slice without overstating full CloudLink authentication or crash durability",
       "locale": "en",
@@ -774,7 +774,7 @@
     {
       "id": "repository-layout",
       "path": "docs/reference/repository-layout.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/reference/repository-layout.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/repository-layout.md",
       "title": "Repository layout",
       "description": "Place code in the correct application, domain, adapter, or composition-root package",
       "locale": "en",
@@ -791,7 +791,7 @@
     {
       "id": "terminology",
       "path": "docs/reference/terminology.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/reference/terminology.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/terminology.md",
       "title": "Terminology",
       "description": "Resolve AetherCloud terms before naming contracts or database records",
       "locale": "en",
@@ -1114,7 +1114,7 @@
     {
       "id": "credential-revocation-and-reenrollment",
       "path": "docs/recovery/credential-revocation-and-reenrollment.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/credential-revocation-and-reenrollment.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/credential-revocation-and-reenrollment.md",
       "title": "Credential revocation and re-enrollment recovery",
       "description": "Contain a suspected Gateway credential and recover identity without reusing claims or weakening Tenant boundaries",
       "locale": "en",
@@ -1133,7 +1133,7 @@
     {
       "id": "cloudlink-offline-and-reconnect",
       "path": "docs/recovery/cloudlink-offline-and-reconnect.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/cloudlink-offline-and-reconnect.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/cloudlink-offline-and-reconnect.md",
       "title": "CloudLink offline and reconnect recovery",
       "description": "Preserve edge authority and reconcile sessions, cursors, and acknowledgements after CloudLink interruption",
       "locale": "en",
@@ -1156,7 +1156,7 @@
     {
       "id": "unknown-command-outcome",
       "path": "docs/recovery/unknown-command-outcome.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/unknown-command-outcome.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/unknown-command-outcome.md",
       "title": "Unknown command outcome recovery",
       "description": "Resolve timed-out or ambiguous commands from authoritative evidence without blindly repeating physical effects",
       "locale": "en",
@@ -1180,7 +1180,7 @@
     {
       "id": "database-backup-and-restore",
       "path": "docs/recovery/database-backup-and-restore.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/database-backup-and-restore.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/database-backup-and-restore.md",
       "title": "Database backup and restore recovery",
       "description": "Plan a controlled PostgreSQL cell restore without inventing production backup automation or cross-cell authority",
       "locale": "en",
@@ -1199,7 +1199,7 @@
     {
       "id": "emergency-revoke",
       "path": "docs/recovery/emergency-revoke.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/emergency-revoke.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/emergency-revoke.md",
       "title": "Emergency capability revocation",
       "description": "Remove cloud command exposure during a safety incident without claiming a cloud-side physical emergency stop",
       "locale": "en",
@@ -1217,7 +1217,7 @@
     {
       "id": "integration-safe-degradation",
       "path": "docs/recovery/integration-safe-degradation.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/integration-safe-degradation.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/integration-safe-degradation.md",
       "title": "Integration safe degradation",
       "description": "Degrade an unhealthy device integration to bounded read-only or unavailable behavior while preserving stale-data labels",
       "locale": "en",
@@ -1245,7 +1245,7 @@
     {
       "id": "infrastructure-lock-failure",
       "path": "docs/recovery/infrastructure-lock-failure.md",
-      "canonical_url": "https://docs.aetheriot.dev/en/aethercloud/recovery/infrastructure-lock-failure.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/recovery/infrastructure-lock-failure.md",
       "title": "Infrastructure lock failure recovery",
       "description": "Fail closed on missing or uncertain State-lock evidence and require a fresh Plan after operator recovery",
       "locale": "en",

@@ -7,7 +7,7 @@ status: mixed
 
 # Governed Home Assistant power control
 
-[Simplified Chinese](https://docs.aetheriot.dev/aethercloud/concepts/home-assistant-governed-control/)
+[Simplified Chinese](https://docs.aetheriot.dev/zh/aethercloud/concepts/home-assistant-governed-control/)
 
 A future AetherCloud Agent can turn a request such as “switch off the bedroom
 light” into one narrow, typed action. It does not send a Home Assistant service
