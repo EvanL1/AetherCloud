@@ -7,7 +7,7 @@ status: mixed
 
 # Home Assistant integration
 
-[Simplified Chinese](https://docs.aetheriot.dev/aethercloud/concepts/home-assistant-integration/)
+[Simplified Chinese](https://docs.aetheriot.dev/zh/aethercloud/concepts/home-assistant-integration/)
 
 Home Assistant is integrated at AetherEdge, close to the home network and
 devices. AetherCloud does not connect to a person's Home Assistant instance,
@@ -153,6 +153,6 @@ unknown topology, or treats `unknown` and `unavailable` as fabricated strings.
 - production OAuth onboarding and token rotation.
 
 The setup and durable publishing procedure is documented in the
-[AetherEdge Home Assistant guide](https://docs.aetheriot.dev/en/guides/home-assistant/).
+[AetherEdge Home Assistant guide](https://docs.aetheriot.dev/guides/home-assistant/).
 These remaining gaps are product gates. Passing the repository tests must not
 be described as a supported production deployment.
