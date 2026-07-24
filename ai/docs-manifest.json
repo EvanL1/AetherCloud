@@ -571,7 +571,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "redacted-only",
-      "updated": "2026-07-17",
+      "updated": "2026-07-24",
       "priority": "optional",
       "implemented_layers": [
         "transport-neutral-interface",

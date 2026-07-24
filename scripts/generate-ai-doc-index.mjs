@@ -9,7 +9,7 @@ const outputPath = join(root, "llms.txt");
 const githubBlobBase = "https://github.com/EvanL1/AetherCloud/blob/main";
 const githubRawBase =
   "https://raw.githubusercontent.com/EvanL1/AetherCloud/main";
-const publicDocsBase = "https://docs.aetheriot.workers.dev";
+const publicDocsBase = "https://docs.aetheriot.dev";
 const manifestSchemaUrl = `${githubRawBase}/ai/docs-manifest.schema.json`;
 
 const roles = new Set([

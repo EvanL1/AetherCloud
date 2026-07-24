@@ -11,7 +11,7 @@ const root = resolve(import.meta.dirname, "..");
 const githubBlobBase = "https://github.com/EvanL1/AetherCloud/blob/main";
 const githubRawBase =
   "https://raw.githubusercontent.com/EvanL1/AetherCloud/main";
-const publicDocsBase = "https://docs.aetheriot.workers.dev";
+const publicDocsBase = "https://docs.aetheriot.dev";
 const manifestSchemaUrl = `${githubRawBase}/ai/docs-manifest.schema.json`;
 
 const requiredDocuments = [
@@ -761,7 +761,7 @@ test("integration documentation preserves audit, delivery, SSRF, and export boun
   assert.match(source, /planned/i);
 });
 
-test("MCP documentation exposes governance without inventing a wire server", () => {
+test("MCP documentation exposes governance and the shipped wire transport honestly", () => {
   const source = read("docs/concepts/mcp-application-interface.md");
 
   assert.match(source, /same `SearchAuditEvents`/);
@@ -771,7 +771,10 @@ test("MCP documentation exposes governance without inventing a wire server", () 
   );
   assert.match(source, /mcp-tool-not-implemented/);
   assert.match(source, /does not own business state/i);
-  assert.match(source, /no\s+MCP SDK transport/i);
+  assert.match(source, /POST \/api\/v1\/mcp/);
+  assert.match(source, /no SSE stream, no session id/i);
+  assert.match(source, /still no stdio server/i);
+  assert.match(source, /development credential/i);
   assert.match(source, /implemented/i);
   assert.match(source, /planned/i);
 });
