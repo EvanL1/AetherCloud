@@ -177,7 +177,7 @@ outcome. It records Cloud restart continuity as unknown; it does not prove
 production process-crash durability. For current behavior and production
 limits, read [CloudLink reliability and lifecycle](../concepts/cloudlink-and-core-state-machines.md).
 For protocol compatibility and version pinning, use the public
-[AetherContracts compatibility guide](https://docs.aetheriot.workers.dev/en/aethercontracts/compatibility/).
+[AetherContracts compatibility guide](https://docs.aetheriot.dev/en/aethercontracts/compatibility/).
 
 ## Opt-in AWS IoT Core mTLS harness
 
