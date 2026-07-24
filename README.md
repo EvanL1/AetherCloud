@@ -2,7 +2,7 @@
 
 [中文说明](README-CN.md)
 
-**Documentation website:** [docs.aetheriot.workers.dev/en/aethercloud](https://docs.aetheriot.workers.dev/en/aethercloud/)
+**Documentation website:** [docs.aetheriot.dev/en/aethercloud](https://docs.aetheriot.dev/en/aethercloud/)
 
 **The evolving agent and control plane for AetherIoT.**
 
