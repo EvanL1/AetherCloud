@@ -1,0 +1,1 @@
+../../adapters/integration-projection/postgres/migrations/0003_integration_projection.sql

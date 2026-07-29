@@ -1,7 +1,7 @@
 ---
 title: HTTP API reference
 description: Call the implemented HTTP endpoints and distinguish them from planned versioned APIs
-updated: 2026-07-15
+updated: 2026-07-29
 status: implemented
 ---
 
@@ -113,8 +113,10 @@ human-readable message, and correlation identity:
 }
 ```
 
-Audit routes return `400 invalid-input`, `401 unauthenticated`, or
-`403 permission-denied` as applicable and also emit `x-correlation-id`.
+Audit routes return `400 invalid-input`, `401 unauthenticated`,
+`403 permission-denied`, or `503 storage-unavailable` as applicable and also
+emit `x-correlation-id`. PostgreSQL transport and row-decoding failures are
+sanitized into the typed `503` outcome.
 
 ## Authentication
 
@@ -126,8 +128,13 @@ or infrastructure instances. Audit routes require `Authorization: Bearer
 `AETHER_CLOUD_API_PERMISSIONS`; missing configuration denies every protected
 request. Exact tokens are compared in constant time.
 
-This configured bearer adapter and the in-memory audit store are suitable for
-local composition and contract tests, not production identity or durability.
-Production routes still resolve Tenant context from an authenticated identity
-before invoking an application use case. A body, path, or query Tenant identity
-is never proof of access.
+`AETHER_CLOUD_AUDIT_STORE` explicitly selects `memory` or `postgres`. PostgreSQL
+mode requires `AETHER_CLOUD_POSTGRES_URL` to name the dedicated
+`aethercloud_app` role and require CA-verified TLS; it applies Tenant context
+inside each transaction before querying the forced-RLS Audit table. The memory
+mode remains suitable only for local composition and contract tests.
+
+The configured bearer adapter is still not production identity. Production
+routes must resolve Tenant context from an authenticated identity before
+invoking an application use case. A body, path, or query Tenant identity is
+never proof of access.

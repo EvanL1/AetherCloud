@@ -1,6 +1,8 @@
 node_modules
 dist
 coverage
+.serena
+supabase/.temp
 contracts/aether-contracts
 aether-contracts.lock.json
 contracts/cloudlink/v1/*.schema.json

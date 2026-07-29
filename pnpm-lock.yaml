@@ -66,6 +66,15 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/domain
 
+  adapters/audit/postgres:
+    dependencies:
+      '@aether-cloud/application':
+        specifier: workspace:*
+        version: link:../../../packages/application
+      '@aether-cloud/domain':
+        specifier: workspace:*
+        version: link:../../../packages/domain
+
   adapters/cloudlink/memory:
     dependencies:
       '@aether-cloud/application':
@@ -358,12 +367,21 @@ importers:
       '@aether-cloud/audit-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/audit/memory
+      '@aether-cloud/audit-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/audit/postgres
+      '@aether-cloud/fleet-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/fleet/postgres
       '@aether-cloud/mcp-interface':
         specifier: workspace:*
         version: link:../mcp
       fastify:
         specifier: 5.10.0
         version: 5.10.0
+      tsx:
+        specifier: 4.21.0
+        version: 4.21.0
 
   apps/cloudlink:
     dependencies:

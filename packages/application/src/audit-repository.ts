@@ -22,10 +22,13 @@ export interface AuditEventSearch {
   readonly to?: UtcInstant;
 }
 
-export interface AuditEventSearchResult {
-  readonly events: readonly AuditEvent[];
-  readonly nextCursor: AuditSequence | undefined;
-}
+export type AuditEventSearchResult =
+  | Readonly<{
+      outcome: "found";
+      events: readonly AuditEvent[];
+      nextCursor?: AuditSequence;
+    }>
+  | Readonly<{ outcome: "storage-unavailable" }>;
 
 export interface AuditEventRepository {
   search(

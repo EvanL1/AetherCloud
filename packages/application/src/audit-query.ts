@@ -15,7 +15,7 @@ import type {
 } from "./audit-repository.js";
 
 export interface AuditApplicationFailure {
-  readonly code: "invalid-input" | "permission-denied";
+  readonly code: "invalid-input" | "permission-denied" | "storage-unavailable";
   readonly message: string;
 }
 
@@ -280,6 +280,12 @@ export class SearchAuditEvents {
       decodedContext.value,
       decodedSearch.value,
     );
+    if (found.outcome === "storage-unavailable") {
+      return failure(
+        "storage-unavailable",
+        "Audit storage is temporarily unavailable",
+      );
+    }
     return {
       ok: true,
       value: Object.freeze({

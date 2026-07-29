@@ -1,0 +1,1 @@
+../../adapters/fleet/postgres/migrations/0001_gateway_identity.sql

@@ -1,20 +1,20 @@
 ---
 title: Current implementation audit
 description: Distinguish executable AetherCloud layers, Broker evidence, and durable PostgreSQL CloudLink, telemetry, and Integration slices from missing production surfaces
-updated: 2026-07-17
+updated: 2026-07-29
 status: mixed
 ---
 
 # Current implementation audit
 
-This audit is evidence-based as of 2026-07-17. `Implemented` below always names
+This audit is evidence-based as of 2026-07-29. `Implemented` below always names
 the executable layer. It does not imply a public API, durable production
 adapter, or complete AetherEdge integration unless those layers are named.
 
 ## Repository baseline
 
-The repository is on `main`. The pre-change HEAD for this audit is `d731ecb`;
-the earlier bootstrap baseline is `d698a97`. Existing tracked and untracked
+The repository is on `main`. The pre-change HEAD for the current deployment
+slice is `6d30ddd`; the earlier bootstrap baseline is `d698a97`. Existing tracked and untracked
 workspace changes remain user-owned project state and are not permission to
 reset, replace, or delete them.
 
@@ -46,11 +46,11 @@ documentation contract tests before this capability expansion began.
 | Artifact Registry foundation               | Artifact domain/application modules and `adapters/artifacts/memory`                                                                                                                | Immutable lifecycle, digest/content/signature checks, channel conflict, query, and atomic memory audit/outbox implemented; production stores/HTTP planned                                                                                                                                                                                                                                                                                                                            |
 | Desired/Reported/Applied deployment        | Edge deployment domain/application modules and `adapters/deployment/memory`                                                                                                        | Published-Artifact Desired intent, report/applied separation, pause/resume/cancel/rollback/unknown, query, and atomic memory audit/outbox implemented; scheduler/wire/PostgreSQL/HTTP planned                                                                                                                                                                                                                                                                                        |
 | Governed capability Jobs and Receipts      | Governed Job domain/application modules and `adapters/jobs/memory`                                                                                                                 | Capability-gated creation, confirmation, queue/offer, unknown/cancel intent, ordered authenticated Receipts, query, and atomic memory audit/outbox implemented; delivery/wire/PostgreSQL/HTTP/MCP planned                                                                                                                                                                                                                                                                            |
-| Audit search                               | Audit domain/application modules and `adapters/audit/memory`                                                                                                                       | Tenant/Project-scoped append-only values, bounded cursor query, and memory adapter implemented; PostgreSQL durability planned                                                                                                                                                                                                                                                                                                                                                        |
+| Audit search                               | Audit domain/application modules plus `adapters/audit/memory` and `adapters/audit/postgres`                                                                                        | Tenant/Project-scoped values, bounded cursor query, memory/PostgreSQL adapters, typed storage failure, forced-RLS transaction, and deployed Railway-to-Supabase read composition implemented; production IAM and live notification planned                                                                                                                                                                                                                                           |
 | Webhook subscriptions and delivery         | Integration domain/application modules and `adapters/integration/memory`                                                                                                           | Stable destination references, allowlists, bounded retry/dead-letter/redrive, and atomic memory evidence implemented; production sender, secrets, workers, and PostgreSQL planned                                                                                                                                                                                                                                                                                                    |
 | Data export                                | Data Export domain/application modules and `adapters/integration/memory`                                                                                                           | Governed asynchronous request/outcome/query and immutable object-result metadata implemented; production object storage, worker, download, and PostgreSQL planned                                                                                                                                                                                                                                                                                                                    |
 | MCP application interface                  | `apps/mcp/src/mcp-interface.ts` and behavior tests                                                                                                                                 | Capability/Audit resources, Data Export/Job tools, and optional trusted-governance Integration Control plus bounded projection catalog/by-ID adapters delegate to application use cases; MCP SDK transport/root, production identity, rate limiting, and public service composition remain planned                                                                                                                                                                                   |
-| API process                                | `apps/api/src/app.ts` and `apps/api/test/app.test.ts`                                                                                                                              | Public health/platform plus authenticated audit JSON and finite resumable SSE snapshot routes implemented; production identity and durable audit adapter planned                                                                                                                                                                                                                                                                                                                     |
+| API process                                | `apps/api`, Railway configuration, and API behavior tests                                                                                                                          | Public health/platform plus authenticated Audit JSON and finite SSE routes implemented; deployed PostgreSQL Audit reads use a constrained role and verified TLS, while production identity remains planned                                                                                                                                                                                                                                                                           |
 | Agent documentation contract               | `llms.txt`, manifest, Skill, invariants, ADRs, and Node tests                                                                                                                      | Implemented repository interface                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 The infrastructure engine port is deliberately Plan-only. No executable Apply,
@@ -61,9 +61,10 @@ and Integration Control adapters are real SQL/driver boundaries with scripted
 transaction/migration tests and opt-in PostgreSQL 18 integration tests using a
 constrained application role. The Integration Control test covers concurrent
 deduplication, whole-transaction rollback, restart recovery, Tenant isolation,
-and database constraints. This is not evidence of a running managed database,
-production migration orchestration, credentials, worker deployment, public
-Agent service, or backup/restore.
+and database constraints. A Supabase PostgreSQL 17 baseline and Railway API now provide deployed Audit
+reads through a constrained role and verified TLS. This is not evidence of
+complete production migration orchestration, write-route composition, worker
+deployment, public Agent service, or backup/restore.
 
 ## Reviewed contracts without executable product surfaces
 
@@ -112,12 +113,12 @@ domain/application implementation at this audit point:
   CloudLink delivery, public HTTP and remaining MCP exposure, scheduling/expiry workers, large evidence
   storage, and the AetherEdge counterpart; the capability-gated
   domain/application/memory foundation is executable
-- PostgreSQL audit/outbox/delivery/export adapters, destination registry and
-  secrets, hardened webhook sender/signing/SSRF defence, retry and export
-  workers, live SSE/WebSocket fan-out, object storage and authorized export
-  download, quota, and MCP wire/composition root; current audit JSON/finite SSE,
-  transport-neutral MCP resources/tools, and integration memory foundations are
-  executable
+- production Audit write-route composition, outbox/delivery/export adapters,
+  destination registry and secrets, hardened webhook sender/signing/SSRF
+  defence, retry and export workers, live SSE/WebSocket fan-out, object storage
+  and authorized export download, quota, and MCP wire/composition root; current
+  PostgreSQL-backed Audit JSON/finite SSE, transport-neutral MCP resources/tools,
+  and integration memory foundations are executable
 - Collector deployment and OpenTelemetry instrumentation beyond the implemented
   telemetry-ingestion decorator
 
@@ -164,11 +165,15 @@ conformance tools and never satisfy that production durability gate.
 
 ## Verification evidence
 
-The completed foundation was verified on 2026-07-18 with the repository's
-default external-service-free path:
+The completed foundation was verified through 2026-07-29:
 
-- `pnpm check`: 761 Vitest behavior tests and 21 Node contract
-  tests passed; TypeScript, ESLint, and Prettier checks passed
+- Railway serves `https://api.aetheriot.dev`, with valid custom-domain TLS and
+  successful liveness plus authenticated PostgreSQL Audit queries
+- Supabase PostgreSQL 17 has the ordered baseline migrations, forced RLS,
+  non-owner/non-`BYPASSRLS` application role, pinned CA, and database SSL
+  enforcement; ephemeral migration credentials are absent from the API service
+- `pnpm check`: 783 Vitest behavior tests and 26 Node contract tests passed;
+  TypeScript, ESLint, and Prettier checks passed
 - `pnpm test:coverage`: 86.31% statements, 80.02% branches, 97.10% functions,
   and 87.59% lines
 - `pnpm test:mqtt-integration`: the opt-in MQTT.js transport test exchanged an

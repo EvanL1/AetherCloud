@@ -48,6 +48,7 @@ describe("SearchAuditEvents", () => {
         observedScope = scope;
         observedQuery = query;
         return Promise.resolve({
+          outcome: "found",
           events: [event],
           nextCursor: parseAuditSequence("7"),
         });
@@ -76,7 +77,7 @@ describe("SearchAuditEvents", () => {
   it("denies missing permission and rejects unbounded input", async () => {
     const query = new SearchAuditEvents({
       repository: {
-        search: () => Promise.resolve({ events: [], nextCursor: undefined }),
+        search: () => Promise.resolve({ outcome: "found", events: [] }),
       },
     });
 
@@ -93,7 +94,7 @@ describe("SearchAuditEvents", () => {
   it("validates every external context and bounded optional filter", async () => {
     const query = new SearchAuditEvents({
       repository: {
-        search: () => Promise.resolve({ events: [], nextCursor: undefined }),
+        search: () => Promise.resolve({ outcome: "found", events: [] }),
       },
     });
     for (const invalidContext of [
@@ -151,8 +152,8 @@ describe("SearchAuditEvents", () => {
         search: (_scope, search) => {
           observed = search;
           return Promise.resolve({
+            outcome: "found",
             events: [withEvidence],
-            nextCursor: undefined,
           });
         },
       },

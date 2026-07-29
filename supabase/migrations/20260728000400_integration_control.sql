@@ -1,0 +1,1 @@
+../../adapters/integration-control/postgres/migrations/0004_integration_control.sql

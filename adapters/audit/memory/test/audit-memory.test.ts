@@ -121,8 +121,8 @@ describe("InMemoryAuditEventStore", () => {
       { limit: 10, to: parseUtcInstant("2026-07-14T23:59:59.000Z") },
     ]) {
       expect(await store.search(scope, query)).toEqual({
+        outcome: "found",
         events: [],
-        nextCursor: undefined,
       });
     }
   });

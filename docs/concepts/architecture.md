@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: Understand the modular-monolith processes, dependency direction, and evolution rules
-updated: 2026-07-16
+updated: 2026-07-29
 status: mixed
 ---
 
@@ -36,9 +36,12 @@ long-lived edge sessions to request/response API workloads.
 - `web` is an authenticated client of the API and has no privileged data path.
 
 Only the API is a configured long-running process in the repository-foundation milestone.
-It now exposes authenticated audit JSON and finite resumable SSE snapshots in
-addition to public liveness/product metadata; its configured bearer identity
-and in-memory audit adapter are not production IAM or durability.
+It exposes authenticated audit JSON and finite resumable SSE snapshots in
+addition to public liveness/product metadata. The composition root explicitly
+selects a memory or PostgreSQL Audit repository; PostgreSQL mode uses bounded
+pool settings, Tenant transaction context, forced RLS, a non-owner application
+role, and CA-verified TLS. Its configured bearer identity is still not
+production IAM.
 `apps/mcp` is an implemented transport-neutral resource/tool interface, not a
 runnable MCP composition root. It delegates Audit, Data Export, and governed Job
 operations to application use cases; MCP SDK transport and identity composition
@@ -93,11 +96,13 @@ than exposing its internal records to another context.
 
 ## Data and messaging
 
-PostgreSQL is the default transactional AetherCloud product store. The first
-Gateway Identity SQL adapter and migration are implemented, while composition
-root wiring and every other PostgreSQL bounded-context adapter remain planned.
-Infrastructure state is different: each provider-scoped deployment stack uses its own remote,
-locked backend. Workers are stateless with respect to infrastructure state and
+PostgreSQL is the default transactional AetherCloud product store. Gateway,
+CloudLink session, telemetry, integration projection/control, and Audit query
+adapters now have migration or repository foundations. The API composition
+root can query Audit through PostgreSQL, while public write routes, full
+bounded-context production composition, and workers remain planned.
+Infrastructure state is different: each provider-scoped deployment stack uses
+its own remote, locked backend. Workers are stateless with respect to infrastructure state and
 consume saved JSON plans rather than scraping terminal output or raw state
 text.
 
@@ -220,8 +225,9 @@ service-account interface resolves Tenant context from authenticated identity;
 a Gateway interface resolves it from the verified claim or active credential.
 Body and path identifiers select resources only after that context exists.
 
-The planned PostgreSQL adapter combines application-enforced scope, composite
-Tenant keys, and row-level security as defense in depth. Cross-Tenant access is
+Implemented PostgreSQL adapters combine application-enforced scope, composite
+Tenant keys, and forced row-level security as defense in depth; contexts not
+yet composed for production must preserve the same boundary. Cross-Tenant access is
 available only through an explicit platform use case with separate permission
 and audit evidence.
 

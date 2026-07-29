@@ -51,7 +51,7 @@
       "implementation_status": "implemented",
       "production_readiness": "not-applicable",
       "context_sensitivity": "public",
-      "updated": "2026-07-16",
+      "updated": "2026-07-29",
       "priority": "core"
     },
     {
@@ -68,15 +68,18 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "internal",
-      "updated": "2026-07-17",
+      "updated": "2026-07-29",
       "priority": "core",
       "implemented_layers": [
         "postgresql-adapters",
         "migrations",
-        "integration-tests"
+        "integration-tests",
+        "audit-query-composition",
+        "supabase-migration-binding",
+        "railway-api-composition"
       ],
       "missing_layers": [
-        "production-database-composition",
+        "complete-production-database-composition",
         "backup-and-restore",
         "governed-failover"
       ],
@@ -102,7 +105,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "public",
-      "updated": "2026-07-15",
+      "updated": "2026-07-29",
       "priority": "core",
       "capability_refs": [
         "audit.event.search",
@@ -134,7 +137,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "internal",
-      "updated": "2026-07-17",
+      "updated": "2026-07-29",
       "priority": "core"
     },
     {
@@ -726,7 +729,7 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-15",
+      "updated": "2026-07-29",
       "priority": "optional"
     },
     {
@@ -746,7 +749,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-applicable",
       "context_sensitivity": "public",
-      "updated": "2026-07-17",
+      "updated": "2026-07-29",
       "priority": "core"
     },
     {
@@ -785,7 +788,7 @@
       "implementation_status": "implemented",
       "production_readiness": "not-applicable",
       "context_sensitivity": "internal",
-      "updated": "2026-07-17",
+      "updated": "2026-07-29",
       "priority": "optional"
     },
     {

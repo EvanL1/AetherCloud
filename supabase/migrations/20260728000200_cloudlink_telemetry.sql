@@ -1,0 +1,1 @@
+../../adapters/telemetry/postgres/migrations/0002_cloudlink_telemetry.sql

@@ -87,12 +87,11 @@ export class InMemoryAuditEventStore implements AuditEventRepository {
       });
     const events = Object.freeze(matching.slice(0, query.limit));
     const hasMore = matching.length > events.length;
+    const nextCursor = events.at(-1)?.sequence;
     return Promise.resolve({
+      outcome: "found",
       events,
-      nextCursor:
-        hasMore && events.length > 0
-          ? events[events.length - 1]?.sequence
-          : undefined,
+      ...(hasMore && nextCursor !== undefined ? { nextCursor } : {}),
     });
   }
 

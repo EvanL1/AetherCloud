@@ -73,7 +73,7 @@ describe("AetherCloud API", () => {
       search: (scope, query) => {
         observedScope = scope;
         observedQuery = query;
-        return Promise.resolve({ events: [], nextCursor: undefined });
+        return Promise.resolve({ outcome: "found", events: [] });
       },
     };
     const authenticator: HttpAuthenticator = {
@@ -125,7 +125,7 @@ describe("AetherCloud API", () => {
           repository: {
             search: () => {
               searched = true;
-              return Promise.resolve({ events: [], nextCursor: undefined });
+              return Promise.resolve({ outcome: "found", events: [] });
             },
           },
         }),
@@ -159,7 +159,7 @@ describe("AetherCloud API", () => {
 
   it("maps authentication and application authorization failures", async () => {
     const repository: AuditEventRepository = {
-      search: () => Promise.resolve({ events: [], nextCursor: undefined }),
+      search: () => Promise.resolve({ outcome: "found", events: [] }),
     };
     const unauthenticated = buildApp({
       version: "0.1.0",
@@ -213,6 +213,42 @@ describe("AetherCloud API", () => {
     });
   });
 
+  it("maps typed Audit storage failure to service unavailable", async () => {
+    const app = buildApp({
+      version: "0.1.0",
+      audit: {
+        query: new SearchAuditEvents({
+          repository: {
+            search: () => Promise.resolve({ outcome: "storage-unavailable" }),
+          },
+        }),
+        authenticator: {
+          authenticate: () =>
+            Promise.resolve({
+              ok: true,
+              value: {
+                tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                subjectId: "auditor-1",
+                permissions: ["audit.event.read"],
+              },
+            }),
+        },
+      },
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/audit/events?limit=10",
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      error: { code: "storage-unavailable" },
+    });
+  });
+
   it("offers a resumable finite SSE Audit feed through the same query", async () => {
     let observedQuery: unknown;
     const app = buildApp({
@@ -222,7 +258,7 @@ describe("AetherCloud API", () => {
           repository: {
             search: (_scope, query) => {
               observedQuery = query;
-              return Promise.resolve({ events: [], nextCursor: undefined });
+              return Promise.resolve({ outcome: "found", events: [] });
             },
           },
         }),

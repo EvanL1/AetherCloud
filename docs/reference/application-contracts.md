@@ -1,7 +1,7 @@
 ---
 title: Application contract catalog
 description: Discover capability governance, bounded Integration discovery, errors, events, transports, and implementation layers from one machine-readable catalog
-updated: 2026-07-17
+updated: 2026-07-29
 status: mixed
 ---
 
@@ -94,6 +94,7 @@ v1alpha1 challenge/hello path and its memory, PostgreSQL, Node.js Ed25519, and
 MQTT layers. They do not claim production authentication: atomic
 credential/key lifecycle, durable command audit, and per-uplink
 Gateway-signed authentication are missing, so later business uplinks fail
-closed. It does not claim a production live event stream,
-external webhook sender, export worker/download interface, production
-CloudLink process, migration runner, or deployed production database exists.
+closed. The deployed PostgreSQL Audit read composition does not imply a
+production live event stream, external webhook sender, export worker/download
+interface, production CloudLink process, complete migration orchestration, or
+production IAM.

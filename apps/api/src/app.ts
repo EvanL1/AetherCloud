@@ -1,5 +1,8 @@
 import { getPlatformProfile } from "@aether-cloud/application";
-import type { SearchAuditEvents } from "@aether-cloud/application";
+import type {
+  AuditApplicationFailure,
+  SearchAuditEvents,
+} from "@aether-cloud/application";
 import Fastify from "fastify";
 
 import { registerMcpHttp } from "./mcp-http.js";
@@ -220,7 +223,7 @@ function decodeAuditQuery(input: unknown): Record<string, unknown> {
 
 function sendError(
   reply: FastifyReply,
-  statusCode: 400 | 401 | 403,
+  statusCode: 400 | 401 | 403 | 503,
   code: string,
   message: string,
   correlationId: string,
@@ -228,6 +231,14 @@ function sendError(
   return reply.status(statusCode).send({
     error: { code, message, correlationId },
   });
+}
+
+function auditFailureStatus(
+  code: AuditApplicationFailure["code"],
+): 400 | 403 | 503 {
+  if (code === "permission-denied") return 403;
+  if (code === "storage-unavailable") return 503;
+  return 400;
 }
 
 function encodeAuditSse(
@@ -287,6 +298,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
             400: errorResponseSchema,
             401: errorResponseSchema,
             403: errorResponseSchema,
+            503: errorResponseSchema,
           },
         },
       },
@@ -322,11 +334,9 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
         }
         const result = await audit.query.execute(authentication.value, query);
         if (!result.ok) {
-          const status =
-            result.failure.code === "permission-denied" ? 403 : 400;
           return sendError(
             reply,
-            status,
+            auditFailureStatus(result.failure.code),
             result.failure.code,
             result.failure.message,
             correlationId,
@@ -380,10 +390,9 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
       }
       const result = await audit.query.execute(authentication.value, query);
       if (!result.ok) {
-        const status = result.failure.code === "permission-denied" ? 403 : 400;
         return sendError(
           reply,
-          status,
+          auditFailureStatus(result.failure.code),
           result.failure.code,
           result.failure.message,
           correlationId,

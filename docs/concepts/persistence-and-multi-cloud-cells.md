@@ -1,7 +1,7 @@
 ---
 title: PostgreSQL persistence and multi-cloud cells
 description: Place Gateway, CloudLink session, and telemetry transactional authority in one portable PostgreSQL cell while evolving analytics and provider profiles independently
-updated: 2026-07-17
+updated: 2026-07-29
 status: mixed
 ---
 
@@ -90,11 +90,32 @@ The current executable slice includes:
 - an opt-in PostgreSQL 18 integration test using a dedicated database and a
   non-superuser/non-`BYPASSRLS` application role.
 
-The SQL adapter and migration are implemented. No composition root currently
-opens a production database, runs migrations, exposes Gateway HTTP routes, or
-delivers the Outbox. Production roles, credentials, pool sizing, timeouts,
-backup/restore testing, managed-provider profiles, and continuously provisioned
-integration infrastructure remain planned.
+The SQL adapter and migration are implemented. The API production composition
+opens PostgreSQL only for the Audit query described below; it does not expose
+Gateway HTTP routes or compose Gateway writes. Outbox delivery,
+backup/restore testing, managed-provider profiles, and continuously
+provisioned integration infrastructure remain planned.
+
+## Implemented Audit query deployment slice
+
+`PostgresAuditEventRepository` implements the authorized Audit search port with
+parameterized filters, lossless cursor pagination, strict row decoding, Tenant
+transaction context, forced RLS, and a typed storage-unavailable result. The API
+selects memory or PostgreSQL explicitly and closes its bounded `pg` pool during
+shutdown.
+
+The Supabase deployment configuration binds the five adapter-owned baseline
+migrations into ordered migration history, keeps `aethercloud` outside the Data
+API schemas, provisions `aethercloud_app` as a non-owner/non-`BYPASSRLS` role,
+and pins the Supabase CA. Railway runs the API with that role over
+`verify-full` TLS. Database SSL enforcement is enabled. Administrator migration
+credentials are used only by an ephemeral migration service and are not left
+in the API environment.
+
+This proves the deployed Audit read path, not production IAM, Audit write-route
+composition, backup/restore, worker durability, or the other PostgreSQL
+adapters' production wiring. The configured bearer remains a bootstrap
+identity adapter.
 
 ## Implemented CloudLink session persistence slice
 

@@ -791,12 +791,14 @@
         "domain",
         "application",
         "memory-adapter",
+        "postgresql-audit-query-adapter",
+        "railway-postgresql-composition",
         "http-json",
         "http-sse-finite-snapshot",
         "mcp-resource-interface"
       ],
       "missing_layers": [
-        "postgresql-append-only-store",
+        "production-audit-write-composition",
         "production-identity",
         "live-event-notifier"
       ]

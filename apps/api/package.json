@@ -4,13 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "activate-postgres-role": "tsx src/activate-postgres-role.ts",
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts"
   },
   "dependencies": {
     "@aether-cloud/application": "workspace:*",
     "@aether-cloud/audit-memory-adapter": "workspace:*",
+    "@aether-cloud/audit-postgres-adapter": "workspace:*",
+    "@aether-cloud/fleet-postgres-adapter": "workspace:*",
     "@aether-cloud/mcp-interface": "workspace:*",
-    "fastify": "5.10.0"
+    "fastify": "5.10.0",
+    "tsx": "4.21.0"
   }
 }

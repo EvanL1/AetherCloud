@@ -1,7 +1,7 @@
 ---
 title: Audit, subscriptions, webhook delivery, and data export
 description: Expose Tenant-scoped evidence and durable integration workflows without bypassing application use cases or leaking destination secrets
-updated: 2026-07-15
+updated: 2026-07-29
 status: mixed
 ---
 
@@ -30,8 +30,11 @@ The following executable foundations exist:
 - an immutable `AuditEvent` domain value with canonical lossless sequence,
   subject, resource, outcome, governance, correlation, and optional evidence
   digests;
-- the authorized `SearchAuditEvents` application query and a Tenant/Project
-  scoped memory repository;
+- the authorized `SearchAuditEvents` application query with Tenant/Project
+  scoped memory and PostgreSQL repositories;
+- a PostgreSQL Audit query transaction that sets Tenant context, relies on
+  forced RLS, validates every returned row, paginates losslessly, and returns a
+  typed unavailable outcome;
 - authenticated `GET /api/v1/audit/events` and a finite resumable
   `GET /api/v1/audit/events/stream` SSE snapshot, both calling the same query;
 - `WebhookSubscription` create, disable, and get use cases using stable
@@ -88,13 +91,13 @@ registry are planned; the current memory sender is test-only.
 
 ## Missing production surface
 
-PostgreSQL append-only audit, transactional outbox consumption, a destination
-registry, secret rotation, production HTTP sender, signing, DNS/redirect SSRF
-defence, retry leasing, a live SSE notifier, WebSocket, object storage, export
-workers, retention/quota enforcement, and public webhook/export APIs are still
-planned. The current API uses an in-memory audit repository and a configured
-bearer identity, so it is an executable interface for local composition and
-contract tests rather than a production identity or durability boundary.
+Production Audit write-route composition, transactional outbox consumption, a
+destination registry, secret rotation, production HTTP sender, signing,
+DNS/redirect SSRF defence, retry leasing, a live SSE notifier, WebSocket,
+object storage, export workers, retention/quota enforcement, and public
+webhook/export APIs are still planned. The API can select the PostgreSQL Audit
+query repository with a non-owner forced-RLS role and verified TLS, but its
+configured bearer identity is not production IAM.
 
 Use the [HTTP API reference](../reference/http-api.md) and the
 [application contract catalog](../reference/application-contracts.md) to find

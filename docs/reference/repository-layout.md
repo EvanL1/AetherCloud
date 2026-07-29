@@ -1,7 +1,7 @@
 ---
 title: Repository layout
 description: Place code in the correct application, domain, adapter, or composition-root package
-updated: 2026-07-17
+updated: 2026-07-29
 status: mixed
 ---
 
@@ -37,6 +37,7 @@ adapters/
   deployment/memory/     implemented edge deployment conformance adapter
   jobs/memory/           implemented governed Job ledger conformance adapter
   audit/memory/          implemented append-only Audit query test adapter
+  audit/postgres/        implemented forced-RLS Audit query adapter
   integration/memory/    implemented webhook subscription/delivery and export test adapters
   observability/opentelemetry/ optional implemented operational-signal adapter
   providers/memory/      deterministic implemented test adapter
@@ -46,6 +47,8 @@ adapters/
   infrastructure/terraform/ planned Terraform CLI adapter
   persistence/          planned shared migration runner and object-store adapters
 infra/modules/           planned versioned provider-specific IaC modules
+deploy/certs/             pinned public CA certificates used by compositions
+supabase/                 CLI config and ordered bindings to adapter-owned SQL migrations
 contracts/cloudlink/     experimental JSON Schemas and golden fixtures
 ai/                      invariants and machine-readable documentation catalog
 skills/aether-cloud/     coding-agent workflow and routing
