@@ -145,7 +145,7 @@ describe("API runtime composition", () => {
         ...authenticatedEnvironment,
         AETHER_CLOUD_AUDIT_STORE: "memory",
         AETHER_CLOUD_AUTH_MODE: "configured",
-        AETHER_CLOUD_ALLOWED_WEB_ORIGINS: "https://aetheriot.dev",
+        AETHER_CLOUD_ALLOWED_WEB_ORIGINS: "https://cloud.aetheriot.dev",
         RAILWAY_ENVIRONMENT_NAME: "production",
       }),
     ).toThrow(/Supabase JWT authentication/);

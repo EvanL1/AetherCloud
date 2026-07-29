@@ -18,6 +18,43 @@ export interface AuditSearchResponse {
   readonly nextCursor: string | null;
 }
 
+export type FleetConnectionStatus =
+  | "connecting"
+  | "never-connected"
+  | "offline"
+  | "online"
+  | "stale";
+
+export interface FleetGatewayView {
+  readonly gatewayId: string;
+  readonly displayName: string;
+  readonly enrollmentState: "awaiting-claim" | "claimed" | "registered";
+  readonly revision: number;
+  readonly registeredAt: string;
+  readonly connection: Readonly<{
+    status: FleetConnectionStatus;
+    sessionState?: string;
+    lastSeenAt?: string;
+  }>;
+  readonly telemetry: Readonly<{
+    recordCount: string;
+    lastReceivedAt?: string;
+    latest?: Readonly<{
+      streamId: string;
+      streamEpoch: string;
+      position: string;
+      sourceTimestampMs: string;
+      kind: "device-event" | "point-sample";
+      payload: Readonly<Record<string, unknown>>;
+    }>;
+  }>;
+}
+
+export interface FleetListResponse {
+  readonly items: readonly FleetGatewayView[];
+  readonly nextCursor: string | null;
+}
+
 export interface AuditSearchInput {
   readonly limit: number;
   readonly action?: string;
@@ -123,6 +160,141 @@ export function decodeAuditSearchResponse(input: unknown): AuditSearchResponse {
   });
 }
 
+function fleetFailure(): never {
+  throw new Error("invalid Fleet response");
+}
+
+function fleetString(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string {
+  const value = input[field];
+  if (typeof value !== "string" || value.length === 0) return fleetFailure();
+  return value;
+}
+
+function optionalFleetString(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string | undefined {
+  const value = input[field];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0) return fleetFailure();
+  return value;
+}
+
+function decimal(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string {
+  const value = fleetString(input, field);
+  return /^(?:0|[1-9][0-9]*)$/.test(value) ? value : fleetFailure();
+}
+
+function fleetRecord(input: unknown): Readonly<Record<string, unknown>> {
+  return isRecord(input) ? input : fleetFailure();
+}
+
+function decodeFleetGateway(input: unknown): FleetGatewayView {
+  const gateway = fleetRecord(input);
+  const gatewayId = fleetString(gateway, "gatewayId");
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      gatewayId,
+    )
+  )
+    return fleetFailure();
+  const enrollmentState = fleetString(gateway, "enrollmentState");
+  if (
+    enrollmentState !== "registered" &&
+    enrollmentState !== "awaiting-claim" &&
+    enrollmentState !== "claimed"
+  )
+    return fleetFailure();
+  const revision = gateway.revision;
+  if (
+    typeof revision !== "number" ||
+    !Number.isSafeInteger(revision) ||
+    revision < 1
+  )
+    return fleetFailure();
+  const registeredAt = fleetString(gateway, "registeredAt");
+  if (Number.isNaN(Date.parse(registeredAt))) return fleetFailure();
+  const connection = fleetRecord(gateway.connection);
+  const status = fleetString(connection, "status");
+  if (
+    status !== "connecting" &&
+    status !== "never-connected" &&
+    status !== "offline" &&
+    status !== "online" &&
+    status !== "stale"
+  )
+    return fleetFailure();
+  const sessionState = optionalFleetString(connection, "sessionState");
+  const lastSeenAt = optionalFleetString(connection, "lastSeenAt");
+  if (lastSeenAt !== undefined && Number.isNaN(Date.parse(lastSeenAt)))
+    return fleetFailure();
+  const telemetry = fleetRecord(gateway.telemetry);
+  const lastReceivedAt = optionalFleetString(telemetry, "lastReceivedAt");
+  if (lastReceivedAt !== undefined && Number.isNaN(Date.parse(lastReceivedAt)))
+    return fleetFailure();
+  const latestInput = telemetry.latest;
+  let latest: FleetGatewayView["telemetry"]["latest"];
+  if (latestInput !== undefined) {
+    const candidate = fleetRecord(latestInput);
+    const kind = fleetString(candidate, "kind");
+    if (kind !== "device-event" && kind !== "point-sample")
+      return fleetFailure();
+    const payload = candidate.payload;
+    if (!isRecord(payload)) return fleetFailure();
+    latest = {
+      streamId: fleetString(candidate, "streamId"),
+      streamEpoch: decimal(candidate, "streamEpoch"),
+      position: decimal(candidate, "position"),
+      sourceTimestampMs: decimal(candidate, "sourceTimestampMs"),
+      kind,
+      payload,
+    };
+  }
+  return {
+    gatewayId,
+    displayName: fleetString(gateway, "displayName"),
+    enrollmentState,
+    revision,
+    registeredAt,
+    connection: {
+      status,
+      ...(sessionState === undefined ? {} : { sessionState }),
+      ...(lastSeenAt === undefined ? {} : { lastSeenAt }),
+    },
+    telemetry: {
+      recordCount: decimal(telemetry, "recordCount"),
+      ...(lastReceivedAt === undefined ? {} : { lastReceivedAt }),
+      ...(latest === undefined ? {} : { latest }),
+    },
+  };
+}
+
+export function decodeFleetListResponse(input: unknown): FleetListResponse {
+  const response = fleetRecord(input);
+  if (!Array.isArray(response.items)) return fleetFailure();
+  const nextCursor = response.nextCursor;
+  if (nextCursor !== null && typeof nextCursor !== "string")
+    return fleetFailure();
+  return Object.freeze({
+    items: Object.freeze(
+      response.items.map((item) => decodeFleetGateway(item)),
+    ),
+    nextCursor,
+  });
+}
+
+export function buildFleetListUrl(apiBaseUrl: string, limit: number): URL {
+  const url = new URL("/api/v1/fleet/gateways", apiBaseUrl);
+  url.searchParams.set("limit", String(limit));
+  return url;
+}
+
 export function buildAuditSearchUrl(
   apiBaseUrl: string,
   input: AuditSearchInput,
@@ -143,6 +315,40 @@ export class AetherCloudApiClient {
 
   constructor(apiBaseUrl: string) {
     this.#apiBaseUrl = apiBaseUrl;
+  }
+
+  async listFleetGateways(
+    accessToken: string,
+    signal?: AbortSignal,
+  ): Promise<FleetListResponse> {
+    const response = await fetch(buildFleetListUrl(this.#apiBaseUrl, 50), {
+      headers: { authorization: `Bearer ${accessToken}` },
+      ...(signal === undefined ? {} : { signal }),
+    });
+    if (!response.ok)
+      throw new Error(`Fleet API returned ${String(response.status)}`);
+    return decodeFleetListResponse(await response.json());
+  }
+
+  async registerGateway(
+    accessToken: string,
+    input: Readonly<{ gatewayId: string; displayName: string }>,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const response = await fetch(
+      new URL("/api/v1/fleet/gateways", this.#apiBaseUrl),
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey,
+        },
+        body: JSON.stringify(input),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Fleet API returned ${String(response.status)}`);
   }
 
   async searchAuditEvents(

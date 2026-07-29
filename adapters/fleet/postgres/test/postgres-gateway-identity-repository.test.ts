@@ -133,6 +133,30 @@ function registeredRow(): Record<string, unknown> {
   };
 }
 
+function fleetProjectionRow(): Record<string, unknown> {
+  return {
+    tenant_id: tenantId,
+    project_id: projectId,
+    gateway_id: gatewayId,
+    display_name: "North plant gateway",
+    revision: "3",
+    enrollment_state: "claimed",
+    registered_at: "2026-07-15T08:00:00.000Z",
+    session_state: "active",
+    session_activated_at: "2026-07-15T08:01:00.000Z",
+    last_heartbeat_at: "2026-07-15T08:02:00.000Z",
+    heartbeat_interval_ms: "30000",
+    telemetry_record_count: "7",
+    telemetry_last_received_at: "2026-07-15T08:02:01.000Z",
+    telemetry_stream_id: "points",
+    telemetry_stream_epoch: "1",
+    telemetry_position: "7",
+    telemetry_source_timestamp_ms: "1752566521000",
+    telemetry_record_kind: "point-sample",
+    telemetry_record_payload: { pointId: "temperature", value: "21.4" },
+  };
+}
+
 function awaitingClaimGateway() {
   const pending = issueGatewayEnrollmentClaim(registeredGateway(), {
     requestId: parseEnrollmentRequestId("issue-request-001"),
@@ -238,6 +262,69 @@ describe("PostgresGatewayIdentityRepository", () => {
     expect(client.calls[1]?.values).toEqual([tenantId]);
     expect(client.calls[2]?.values).toEqual([tenantId, projectId, gatewayId]);
     expect(client.released).toBe(true);
+  });
+
+  it("lists Fleet projections through RLS with session and latest telemetry", async () => {
+    const client = new ScriptedClient([
+      result(),
+      result(),
+      result([fleetProjectionRow()]),
+      result(),
+    ]);
+    const repository = new PostgresGatewayIdentityRepository(
+      new ScriptedPool(client),
+    );
+
+    const listed = await repository.list({ tenantId, projectId, limit: 25 });
+    expect(listed).toMatchObject({
+      outcome: "found",
+      gateways: [
+        {
+          gatewayId,
+          session: {
+            state: "active",
+            heartbeatIntervalMs: "30000",
+          },
+          telemetry: {
+            recordCount: "7",
+            latest: { position: "7" },
+          },
+        },
+      ],
+      nextCursor: null,
+    });
+    expect(client.calls[2]?.text).toContain("cloudlink_sessions");
+    expect(client.calls[2]?.text).toContain("telemetry_records");
+    expect(client.calls[2]?.values).toEqual([tenantId, projectId, null, 26]);
+  });
+
+  it("gets one Fleet projection and returns typed not-found", async () => {
+    const foundClient = new ScriptedClient([
+      result(),
+      result(),
+      result([fleetProjectionRow()]),
+      result(),
+    ]);
+    const foundRepository = new PostgresGatewayIdentityRepository(
+      new ScriptedPool(foundClient),
+    );
+    await expect(foundRepository.get(scope, gatewayId)).resolves.toMatchObject({
+      outcome: "found",
+      gateway: { gatewayId, displayName: "North plant gateway" },
+    });
+
+    const missingClient = new ScriptedClient([
+      result(),
+      result(),
+      result(),
+      result(),
+    ]);
+    const missingRepository = new PostgresGatewayIdentityRepository(
+      new ScriptedPool(missingClient),
+    );
+    await expect(missingRepository.get(scope, gatewayId)).resolves.toEqual({
+      outcome: "not-found",
+    });
   });
 
   it("returns not-found when the Tenant-scoped Gateway query has no row", async () => {

@@ -39,6 +39,8 @@ export {
   GET_INTEGRATION_PROJECTION_QUERY,
   LIST_INTEGRATION_PROJECTIONS_QUERY,
   GET_GATEWAY_ENROLLMENT_QUERY,
+  GET_FLEET_GATEWAY_QUERY,
+  LIST_FLEET_GATEWAYS_QUERY,
   ISSUE_GATEWAY_ENROLLMENT_COMMAND,
   INGEST_TELEMETRY_BATCH_COMMAND,
   REPORT_INTEGRATION_OBSERVATIONS_COMMAND,
@@ -318,6 +320,19 @@ export type {
   GatewayEnrollmentView,
   IssueGatewayEnrollmentValue,
 } from "./gateway-enrollment.js";
+export { GetFleetGateway, ListFleetGateways } from "./fleet-query.js";
+export type {
+  FleetConnectionStatus,
+  FleetGatewayGetResult,
+  FleetGatewayListResult,
+  FleetGatewayQueryRepository,
+  FleetGatewaySnapshot,
+  FleetGatewayView,
+  FleetLatestTelemetrySnapshot,
+  FleetQueryFailure,
+  FleetQueryResult,
+  FleetSessionSnapshot,
+} from "./fleet-query.js";
 export type {
   ApplicationClock,
   EnrollmentTokenService,

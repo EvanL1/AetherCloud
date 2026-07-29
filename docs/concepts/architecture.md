@@ -35,16 +35,19 @@ long-lived edge sessions to request/response API workloads.
   outbox.
 - `apps/web` is the independently deployed `cloud.aetheriot.dev` operator
   console. It is an authenticated client of the API with no privileged data
-  path. Overview, identity/session management, and the Audit explorer are
-  implemented; Fleet, telemetry, deployment, and provider screens remain
-  unavailable until their production application interfaces are composed.
+  path. Fleet list/detail/registration with CloudLink and latest-telemetry
+  summaries is the default product screen; overview, identity/session
+  management, and the Audit explorer are also implemented. Telemetry history,
+  deployment, and provider screens remain unavailable until their production
+  application interfaces are composed.
 
-Only the API is a configured long-running process in the repository-foundation milestone.
-It exposes authenticated audit JSON and finite resumable SSE snapshots in
-addition to public liveness/product metadata. The composition root explicitly
-selects a memory or PostgreSQL Audit repository; PostgreSQL mode uses bounded
-pool settings, Tenant transaction context, forced RLS, a non-owner application
-role, and CA-verified TLS. Railway production verifies Supabase Auth ES256
+Only the API is a configured long-running process in the repository-foundation
+milestone. It exposes authenticated Fleet list/detail/registration, Audit JSON,
+and finite resumable SSE snapshots in addition to public liveness/product
+metadata. The composition root explicitly selects memory or PostgreSQL Audit
+and Fleet repositories; PostgreSQL mode uses bounded pool settings, Tenant
+transaction context, forced RLS, a non-owner application role, and CA-verified
+TLS. Railway production verifies Supabase Auth ES256
 access tokens against the issuer's JWKS and derives Tenant, Project, and
 permissions only from administrator-controlled `app_metadata`. Exact-origin
 CORS permits only the independent AetherCloud console to call the API without
@@ -107,8 +110,9 @@ than exposing its internal records to another context.
 PostgreSQL is the default transactional AetherCloud product store. Gateway,
 CloudLink session, telemetry, integration projection/control, and Audit query
 adapters now have migration or repository foundations. The API composition
-root can query Audit through PostgreSQL, while public write routes, full
-bounded-context production composition, and workers remain planned.
+root queries Audit and Fleet projections and atomically registers Gateway
+identities through PostgreSQL. Enrollment claims, other bounded-context public
+writes, full production composition, and workers remain planned.
 Infrastructure state is different: each provider-scoped deployment stack uses
 its own remote, locked backend. Workers are stateless with respect to infrastructure state and
 consume saved JSON plans rather than scraping terminal output or raw state

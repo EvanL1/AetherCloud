@@ -30,7 +30,7 @@ describe("AetherCloud console interface", () => {
     );
 
     expect(html).toContain("生产服务");
-    expect(html).toContain("审计事件查询");
+    expect(html).toContain("边缘 Fleet");
     expect(html).toContain("服务端接口待组合");
     expect(html).toContain("只展示真实实现");
   });

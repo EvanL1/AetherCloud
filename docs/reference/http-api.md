@@ -7,23 +7,23 @@ status: implemented
 
 # HTTP API reference
 
-The repository-foundation milestone exposes two public metadata routes and two
-authenticated Audit query routes. It does not yet expose fleet, telemetry,
-provider discovery, deployment, command, webhook/export, or MCP routes. The
-implemented `DiscoverProviderRegions` application query is intentionally not an
-HTTP contract until authentication, tenant context, and runtime decoding are
-composed around it.
+The production API exposes two public metadata routes, three authenticated
+Fleet routes, and two authenticated Audit query routes. Telemetry is currently
+visible only as the latest per-Gateway Fleet projection; standalone history,
+provider discovery, deployment, webhook/export, and MCP routes remain
+unexposed. The implemented `DiscoverProviderRegions` application query is
+intentionally not an HTTP contract until authentication, tenant context, and
+runtime decoding are composed around it.
 
 The implemented `PlanDeploymentStack` application command is also not an HTTP
 contract. No endpoint accepts a module, topology, Plan artifact, or Apply
 request. Its future route additionally needs durable audit, encrypted artifact
 storage, and a production State-locking engine adapter.
 
-The implemented Gateway register, enrollment-claim issue/consume, and status
-use cases are also application contracts only. They remain unexposed until a
-production Tenant identity boundary, PostgreSQL transaction, durable audit, and
-secret-backed token service are composed. No endpoint described on this page
-accepts an enrollment token.
+Gateway identity registration and Fleet read projections are now composed
+through the production Tenant identity boundary and forced-RLS PostgreSQL
+adapter. Enrollment-claim issue/consume remains an application contract only;
+no endpoint described on this page accepts or returns an enrollment token.
 
 ## `GET /health`
 
@@ -74,6 +74,29 @@ This is metadata about stable product boundaries, not evidence that a provider
 connection, inventory route, or infrastructure execution endpoint is already
 available.
 
+## `GET /api/v1/fleet/gateways`
+
+Lists Gateway identities in the authenticated Tenant and Project. It requires
+`fleet.gateway.read`; optional `limit` is 1–100 and `cursor` is the last Gateway
+UUID from the previous page. The response includes enrollment state, a
+CloudLink-derived connection status, canonical string telemetry counts, and the
+latest persisted telemetry record when one exists. It never reads live point
+state from an edge connection.
+
+## `GET /api/v1/fleet/gateways/:gatewayId`
+
+Returns one Gateway from the same forced-RLS projection and permission boundary.
+An unknown or out-of-scope identity returns the same typed `404
+gateway-not-found` result.
+
+## `POST /api/v1/fleet/gateways`
+
+Registers a Gateway identity with `gatewayId` and `displayName`. It requires
+`fleet.gateway.create` and an `idempotency-key` header. The application command
+atomically persists the identity, Audit evidence, and Outbox event in Supabase
+PostgreSQL. Registration does not create an edge credential or bypass the
+separate enrollment-claim workflow.
+
 ## `GET /api/v1/audit/events`
 
 Searches only the Tenant and Project resolved from the authenticated subject.
@@ -113,10 +136,11 @@ human-readable message, and correlation identity:
 }
 ```
 
-Audit routes return `400 invalid-input`, `401 unauthenticated`,
-`403 permission-denied`, or `503 storage-unavailable` as applicable and also
-emit `x-correlation-id`. PostgreSQL transport and row-decoding failures are
-sanitized into the typed `503` outcome.
+Fleet and Audit routes return typed `400 invalid-input`, `401 unauthenticated`,
+`403 permission-denied`, `404 gateway-not-found`, `409` idempotency/conflict, or
+`503` storage failures as applicable and also emit `x-correlation-id`.
+PostgreSQL transport and row-decoding failures are sanitized into typed `503`
+outcomes.
 
 ## Authentication
 

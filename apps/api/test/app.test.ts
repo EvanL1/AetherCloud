@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SearchAuditEvents } from "@aether-cloud/application";
-import type { AuditEventRepository } from "@aether-cloud/application";
+import type {
+  AuditEventRepository,
+  FleetGatewayView,
+  GatewayEnrollmentView,
+} from "@aether-cloud/application";
 
 import { buildApp } from "../src/app.js";
-import type { HttpAuthenticator } from "../src/app.js";
+import type { FleetHttpDependencies, HttpAuthenticator } from "../src/app.js";
 
 const apps: Array<ReturnType<typeof buildApp>> = [];
 
@@ -66,10 +70,10 @@ describe("AetherCloud API", () => {
     });
   });
 
-  it("allows only configured website origins to call browser API routes", async () => {
+  it("allows only the configured console origin to call browser API routes", async () => {
     const app = buildApp({
       version: "0.1.0",
-      allowedOrigins: ["https://aetheriot.dev", "https://www.aetheriot.dev"],
+      allowedOrigins: ["https://cloud.aetheriot.dev"],
     });
     apps.push(app);
 
@@ -77,9 +81,9 @@ describe("AetherCloud API", () => {
       method: "OPTIONS",
       url: "/api/v1/audit/events",
       headers: {
-        origin: "https://www.aetheriot.dev",
-        "access-control-request-method": "GET",
-        "access-control-request-headers": "authorization",
+        origin: "https://cloud.aetheriot.dev",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "authorization,idempotency-key",
       },
     });
     const denied = await app.inject({
@@ -94,10 +98,10 @@ describe("AetherCloud API", () => {
 
     expect(allowed.statusCode).toBe(204);
     expect(allowed.headers["access-control-allow-origin"]).toBe(
-      "https://www.aetheriot.dev",
+      "https://cloud.aetheriot.dev",
     );
     expect(allowed.headers["access-control-allow-headers"]).toContain(
-      "authorization",
+      "idempotency-key",
     );
     expect(denied.headers["access-control-allow-origin"]).toBeUndefined();
   });
@@ -282,6 +286,176 @@ describe("AetherCloud API", () => {
     expect(response.statusCode).toBe(503);
     expect(response.json()).toMatchObject({
       error: { code: "storage-unavailable" },
+    });
+  });
+
+  it("lists real Fleet projections using only authenticated scope", async () => {
+    let observedContext: unknown;
+    let observedInput: unknown;
+    const fleet: FleetHttpDependencies = {
+      authenticator: {
+        authenticate: () =>
+          Promise.resolve({
+            ok: true,
+            value: {
+              tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              subjectId: "operator-1",
+              permissions: ["fleet.gateway.read"],
+            },
+          }),
+      },
+      list: {
+        execute: (context, input) => {
+          observedContext = context;
+          observedInput = input;
+          return Promise.resolve({
+            ok: true,
+            value: {
+              items: [
+                {
+                  gatewayId:
+                    "cccccccc-cccc-4ccc-8ccc-cccccccccccc" as FleetGatewayView["gatewayId"],
+                  displayName: "Warehouse gateway",
+                  enrollmentState: "registered",
+                  revision: 1,
+                  registeredAt:
+                    "2026-07-29T12:00:00.000Z" as FleetGatewayView["registeredAt"],
+                  connection: { status: "never-connected" },
+                  telemetry: { recordCount: "0" },
+                },
+              ],
+              nextCursor: null,
+            },
+          });
+        },
+      },
+      get: {
+        execute: () =>
+          Promise.resolve({
+            ok: false,
+            failure: {
+              code: "gateway-not-found",
+              message: "gateway was not found",
+            },
+          }),
+      },
+      register: {
+        execute: () =>
+          Promise.resolve({
+            ok: false,
+            failure: { code: "invalid-input", message: "not used" },
+          }),
+      },
+    };
+    const app = buildApp({ version: "0.1.0", fleet });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/fleet/gateways?limit=25",
+      headers: { authorization: "Bearer token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      items: [{ displayName: "Warehouse gateway" }],
+      nextCursor: null,
+    });
+    expect(observedContext).toMatchObject({
+      tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    });
+    expect(observedInput).toEqual({ limit: 25 });
+  });
+
+  it("registers a Gateway through the governed application command", async () => {
+    let observedContext: unknown;
+    let observedInput: unknown;
+    const authenticator: HttpAuthenticator = {
+      authenticate: () =>
+        Promise.resolve({
+          ok: true,
+          value: {
+            tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            subjectId: "operator-1",
+            permissions: ["fleet.gateway.create"],
+          },
+        }),
+    };
+    const app = buildApp({
+      version: "0.1.0",
+      fleet: {
+        authenticator,
+        list: {
+          execute: () =>
+            Promise.resolve({
+              ok: true,
+              value: { items: [], nextCursor: null },
+            }),
+        },
+        get: {
+          execute: () =>
+            Promise.resolve({
+              ok: false,
+              failure: {
+                code: "gateway-not-found",
+                message: "gateway was not found",
+              },
+            }),
+        },
+        register: {
+          execute: (context, input) => {
+            observedContext = context;
+            observedInput = input;
+            return Promise.resolve({
+              ok: true,
+              replayed: false,
+              value: {
+                tenantId:
+                  "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" as GatewayEnrollmentView["tenantId"],
+                projectId:
+                  "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" as GatewayEnrollmentView["projectId"],
+                gatewayId:
+                  "cccccccc-cccc-4ccc-8ccc-cccccccccccc" as GatewayEnrollmentView["gatewayId"],
+                displayName: "Warehouse gateway",
+                state: "registered",
+                revision: 1,
+              },
+            });
+          },
+        },
+      },
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/fleet/gateways",
+      headers: {
+        authorization: "Bearer token",
+        "idempotency-key": "register-request-001",
+      },
+      payload: {
+        gatewayId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        displayName: "Warehouse gateway",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      gatewayId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      state: "registered",
+    });
+    expect(observedContext).toMatchObject({
+      subjectKind: "user",
+      idempotencyKey: "register-request-001",
+      permissions: ["fleet.gateway.create"],
+    });
+    expect(observedInput).toEqual({
+      gatewayId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      displayName: "Warehouse gateway",
     });
   });
 

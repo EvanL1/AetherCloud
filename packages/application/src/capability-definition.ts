@@ -63,6 +63,18 @@ export const GET_GATEWAY_ENROLLMENT_QUERY = Object.freeze({
   permission: "fleet.gateway.enrollment.read",
 } as const satisfies QueryDefinition);
 
+export const LIST_FLEET_GATEWAYS_QUERY = Object.freeze({
+  kind: "query",
+  name: "fleet.gateway.list",
+  permission: "fleet.gateway.read",
+} as const satisfies QueryDefinition);
+
+export const GET_FLEET_GATEWAY_QUERY = Object.freeze({
+  kind: "query",
+  name: "fleet.gateway.get",
+  permission: "fleet.gateway.read",
+} as const satisfies QueryDefinition);
+
 export const OPEN_CLOUDLINK_SESSION_COMMAND = Object.freeze({
   kind: "command",
   name: "cloudlink.session.open",

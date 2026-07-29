@@ -370,6 +370,12 @@ importers:
       '@aether-cloud/audit-postgres-adapter':
         specifier: workspace:*
         version: link:../../adapters/audit/postgres
+      '@aether-cloud/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@aether-cloud/fleet-memory-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/fleet/memory
       '@aether-cloud/fleet-postgres-adapter':
         specifier: workspace:*
         version: link:../../adapters/fleet/postgres

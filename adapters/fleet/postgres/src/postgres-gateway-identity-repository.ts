@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto";
 
 import type {
+  FleetGatewayGetResult,
+  FleetGatewayListResult,
+  FleetGatewayQueryRepository,
+  FleetGatewaySnapshot,
+  FleetLatestTelemetrySnapshot,
+  FleetSessionSnapshot,
   GatewayFindResult,
   GatewayIdentityInsertRequest,
   GatewayIdentityRepository,
@@ -56,6 +62,75 @@ FROM aethercloud.gateway_identities
 WHERE tenant_id = $1::uuid
   AND project_id = $2::uuid
   AND gateway_id = $3::uuid
+`;
+
+const fleetProjectionColumnsSql = `
+  gateway.tenant_id::text AS tenant_id,
+  gateway.project_id::text AS project_id,
+  gateway.gateway_id::text AS gateway_id,
+  gateway.display_name,
+  gateway.revision::text AS revision,
+  gateway.enrollment_state,
+  to_char(gateway.registered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS registered_at,
+  session.state AS session_state,
+  CASE WHEN session.activated_at IS NULL THEN NULL ELSE to_char(session.activated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS session_activated_at,
+  CASE WHEN session.last_heartbeat_at IS NULL THEN NULL ELSE to_char(session.last_heartbeat_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS last_heartbeat_at,
+  session.heartbeat_interval_ms::text AS heartbeat_interval_ms,
+  COALESCE(usage.record_count, 0)::text AS telemetry_record_count,
+  CASE WHEN latest.received_at IS NULL THEN NULL ELSE to_char(latest.received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS telemetry_last_received_at,
+  latest.stream_id AS telemetry_stream_id,
+  latest.stream_epoch::text AS telemetry_stream_epoch,
+  latest.position::text AS telemetry_position,
+  latest.source_timestamp_ms::text AS telemetry_source_timestamp_ms,
+  latest.record_kind AS telemetry_record_kind,
+  latest.record_payload AS telemetry_record_payload
+`;
+
+const fleetProjectionJoinsSql = `
+LEFT JOIN LATERAL (
+  SELECT state, activated_at, last_heartbeat_at, heartbeat_interval_ms
+  FROM aethercloud.cloudlink_sessions
+  WHERE tenant_id = gateway.tenant_id
+    AND project_id = gateway.project_id
+    AND gateway_id = gateway.gateway_id
+    AND state <> 'closed'
+  ORDER BY epoch DESC
+  LIMIT 1
+) AS session ON true
+LEFT JOIN aethercloud.telemetry_gateway_usage AS usage
+  ON usage.tenant_id = gateway.tenant_id
+  AND usage.project_id = gateway.project_id
+  AND usage.gateway_id = gateway.gateway_id
+LEFT JOIN LATERAL (
+  SELECT stream_id, stream_epoch, position, source_timestamp_ms,
+    record_kind, record_payload, received_at
+  FROM aethercloud.telemetry_records
+  WHERE tenant_id = gateway.tenant_id
+    AND project_id = gateway.project_id
+    AND gateway_id = gateway.gateway_id
+  ORDER BY received_at DESC, stream_id, stream_epoch DESC, position DESC
+  LIMIT 1
+) AS latest ON true
+`;
+
+const listFleetGatewaysSql = `
+SELECT ${fleetProjectionColumnsSql}
+FROM aethercloud.gateway_identities AS gateway
+${fleetProjectionJoinsSql}
+WHERE gateway.tenant_id = $1::uuid
+  AND gateway.project_id = $2::uuid
+  AND ($3::uuid IS NULL OR gateway.gateway_id > $3::uuid)
+ORDER BY gateway.gateway_id
+LIMIT $4
+`;
+
+const getFleetGatewaySql = `
+SELECT ${fleetProjectionColumnsSql}
+FROM aethercloud.gateway_identities AS gateway
+${fleetProjectionJoinsSql}
+WHERE gateway.tenant_id = $1::uuid
+  AND gateway.project_id = $2::uuid
+  AND gateway.gateway_id = $3::uuid
 `;
 
 const insertGatewaySql = `
@@ -254,6 +329,110 @@ function decodeGatewayRow(row: Row): GatewayIdentity {
   return gateway;
 }
 
+function optionalString(row: Row, field: string): string | undefined {
+  const value = row[field];
+  if (value === null || value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0)
+    throw new Error(`PostgreSQL Fleet row has invalid ${field}`);
+  return value;
+}
+
+function decimalString(row: Row, field: string): string {
+  const value = requireString(row, field);
+  if (!/^(?:0|[1-9][0-9]*)$/.test(value))
+    throw new Error(`PostgreSQL Fleet row has invalid ${field}`);
+  return value;
+}
+
+function decodeFleetSession(row: Row): FleetSessionSnapshot | null {
+  const state = optionalString(row, "session_state");
+  if (state === undefined) return null;
+  if (
+    state !== "active" &&
+    state !== "closed" &&
+    state !== "draining" &&
+    state !== "negotiating" &&
+    state !== "resuming" &&
+    state !== "suspect"
+  ) {
+    throw new Error("PostgreSQL Fleet row has invalid session_state");
+  }
+  const activatedAt = optionalString(row, "session_activated_at");
+  const lastHeartbeatAt = optionalString(row, "last_heartbeat_at");
+  const heartbeatIntervalMs = optionalString(row, "heartbeat_interval_ms");
+  return {
+    state,
+    ...(activatedAt === undefined
+      ? {}
+      : { activatedAt: parseUtcInstant(activatedAt) }),
+    ...(lastHeartbeatAt === undefined
+      ? {}
+      : { lastHeartbeatAt: parseUtcInstant(lastHeartbeatAt) }),
+    ...(heartbeatIntervalMs === undefined
+      ? {}
+      : {
+          heartbeatIntervalMs: decimalString(row, "heartbeat_interval_ms"),
+        }),
+  };
+}
+
+function isRecord(input: unknown): input is Readonly<Record<string, unknown>> {
+  return typeof input === "object" && input !== null && !Array.isArray(input);
+}
+
+function decodeLatestTelemetry(
+  row: Row,
+): FleetLatestTelemetrySnapshot | undefined {
+  const streamId = optionalString(row, "telemetry_stream_id");
+  if (streamId === undefined) return undefined;
+  const kind = requireString(row, "telemetry_record_kind");
+  if (kind !== "device-event" && kind !== "point-sample")
+    throw new Error("PostgreSQL Fleet row has invalid telemetry_record_kind");
+  const payload = row.telemetry_record_payload;
+  if (!isRecord(payload))
+    throw new Error(
+      "PostgreSQL Fleet row has invalid telemetry_record_payload",
+    );
+  return {
+    streamId,
+    streamEpoch: decimalString(row, "telemetry_stream_epoch"),
+    position: decimalString(row, "telemetry_position"),
+    sourceTimestampMs: decimalString(row, "telemetry_source_timestamp_ms"),
+    kind,
+    payload,
+  };
+}
+
+function decodeFleetSnapshot(row: Row): FleetGatewaySnapshot {
+  const enrollmentState = requireString(row, "enrollment_state");
+  if (
+    enrollmentState !== "registered" &&
+    enrollmentState !== "awaiting-claim" &&
+    enrollmentState !== "claimed"
+  ) {
+    throw new Error("PostgreSQL Fleet row has invalid enrollment_state");
+  }
+  const lastReceivedAt = optionalString(row, "telemetry_last_received_at");
+  const latest = decodeLatestTelemetry(row);
+  return {
+    tenantId: parseTenantId(row.tenant_id),
+    projectId: parseProjectId(row.project_id),
+    gatewayId: parseGatewayId(row.gateway_id),
+    displayName: requireString(row, "display_name"),
+    enrollmentState,
+    revision: parseRevision(row.revision),
+    registeredAt: parseUtcInstant(row.registered_at),
+    session: decodeFleetSession(row),
+    telemetry: {
+      recordCount: decimalString(row, "telemetry_record_count"),
+      ...(lastReceivedAt === undefined
+        ? {}
+        : { lastReceivedAt: parseUtcInstant(lastReceivedAt) }),
+      ...(latest === undefined ? {} : { latest }),
+    },
+  };
+}
+
 function stableEventId(
   prefix: "audit" | "outbox",
   request: GatewayIdentityInsertRequest,
@@ -346,7 +525,9 @@ function replacementValues(
   ];
 }
 
-export class PostgresGatewayIdentityRepository implements GatewayIdentityRepository {
+export class PostgresGatewayIdentityRepository
+  implements GatewayIdentityRepository, FleetGatewayQueryRepository
+{
   readonly #pool: PostgresPool;
 
   constructor(pool: PostgresPool) {
@@ -367,6 +548,56 @@ export class PostgresGatewayIdentityRepository implements GatewayIdentityReposit
         return row === undefined
           ? { outcome: "not-found" }
           : { outcome: "found", gateway: decodeGatewayRow(row) };
+      },
+    );
+  }
+
+  list(
+    query: Parameters<FleetGatewayQueryRepository["list"]>[0],
+  ): Promise<FleetGatewayListResult> {
+    return this.transaction<FleetGatewayListResult>(
+      query.tenantId,
+      { outcome: "storage-unavailable" },
+      async (client) => {
+        const result = await client.query<Row>(listFleetGatewaysSql, [
+          query.tenantId,
+          query.projectId,
+          query.cursor ?? null,
+          query.limit + 1,
+        ]);
+        const rows = [...result.rows];
+        const hasNext = rows.length > query.limit;
+        if (hasNext) rows.pop();
+        const gateways = rows.map((row) => decodeFleetSnapshot(row));
+        return {
+          outcome: "found",
+          gateways,
+          nextCursor:
+            hasNext && gateways.length > 0
+              ? (gateways.at(-1)?.gatewayId ?? null)
+              : null,
+        };
+      },
+    );
+  }
+
+  get(
+    scope: GatewayScope,
+    gatewayId: GatewayId,
+  ): Promise<FleetGatewayGetResult> {
+    return this.transaction<FleetGatewayGetResult>(
+      scope.tenantId,
+      { outcome: "storage-unavailable" },
+      async (client) => {
+        const result = await client.query<Row>(getFleetGatewaySql, [
+          scope.tenantId,
+          scope.projectId,
+          gatewayId,
+        ]);
+        const row = result.rows[0];
+        return row === undefined
+          ? { outcome: "not-found" }
+          : { outcome: "found", gateway: decodeFleetSnapshot(row) };
       },
     );
   }

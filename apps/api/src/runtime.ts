@@ -1,10 +1,20 @@
-import { SearchAuditEvents } from "@aether-cloud/application";
+import {
+  GetFleetGateway,
+  ListFleetGateways,
+  RegisterGateway,
+  SearchAuditEvents,
+} from "@aether-cloud/application";
 import { InMemoryAuditEventStore } from "@aether-cloud/audit-memory-adapter";
+import { InMemoryGatewayIdentityRepository } from "@aether-cloud/fleet-memory-adapter";
 import {
   PostgresAuditEventRepository,
   type PostgresAuditPool,
 } from "@aether-cloud/audit-postgres-adapter";
-import { NodePostgresPool } from "@aether-cloud/fleet-postgres-adapter";
+import {
+  NodePostgresPool,
+  PostgresGatewayIdentityRepository,
+} from "@aether-cloud/fleet-postgres-adapter";
+import { parseUtcInstant } from "@aether-cloud/domain";
 import { URL } from "node:url";
 
 import { buildApp } from "./app.js";
@@ -196,13 +206,27 @@ export function composeApiRuntime(
   factories: ApiRuntimeFactories = {},
 ): ApiRuntime {
   const audit = auditRepository(environment, factories);
+  const fleetRepository =
+    audit.pool === undefined
+      ? new InMemoryGatewayIdentityRepository()
+      : new PostgresGatewayIdentityRepository(audit.pool);
+  const clock = {
+    now: () => parseUtcInstant(new Date().toISOString()),
+  };
+  const identity = authenticator(environment);
   const origins = allowedOrigins(environment);
   const app = buildApp({
     version: "0.1.0",
     ...(origins === undefined ? {} : { allowedOrigins: origins }),
     audit: {
       query: new SearchAuditEvents({ repository: audit.repository }),
-      authenticator: authenticator(environment),
+      authenticator: identity,
+    },
+    fleet: {
+      list: new ListFleetGateways({ repository: fleetRepository, clock }),
+      get: new GetFleetGateway({ repository: fleetRepository, clock }),
+      register: new RegisterGateway({ repository: fleetRepository, clock }),
+      authenticator: identity,
     },
   });
   let closePromise: Promise<void> | undefined;

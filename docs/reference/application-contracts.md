@@ -74,14 +74,14 @@ Capability names, error codes, event names, and operation identifiers remain
 stable within a version. Adding a field is backward compatible only when old
 readers may safely ignore it.
 
-The catalog currently documents two implemented public HTTP operations and two
-authenticated Audit query operations (JSON and finite SSE snapshot);
-partial provider, Plan, enrollment, CloudLink session, Runtime Manifest,
-telemetry, alarm, Artifact Registry, deployment, governed Job, audit, webhook,
-and Data Export application slices; and planned later IoT product capabilities.
-Gateway registration and enrollment events are now `partial` because the
-PostgreSQL adapter writes them into the same transaction as aggregate and Audit
-state. The Integration projection and default-off Integration Control slices
+The catalog currently documents two implemented public HTTP operations, three
+authenticated Fleet operations, and two authenticated Audit query operations
+(JSON and finite SSE snapshot); partial provider, Plan, enrollment, CloudLink
+session, Runtime Manifest, telemetry, alarm, Artifact Registry, deployment,
+governed Job, webhook, and Data Export application slices; and planned later
+IoT product capabilities. Gateway registration is production-composed because
+the PostgreSQL adapter writes it in the same transaction as Audit and Outbox
+state; enrollment claim issue/consume remains partial. The Integration projection and default-off Integration Control slices
 now name their transactional PostgreSQL ledgers, including real-database
 concurrency, rollback, restart, and row-isolation evidence. This does not mean
 their production composition, signing-key lifecycle, public Agent, real Broker
@@ -94,7 +94,7 @@ v1alpha1 challenge/hello path and its memory, PostgreSQL, Node.js Ed25519, and
 MQTT layers. They do not claim production authentication: atomic
 credential/key lifecycle, durable command audit, and per-uplink
 Gateway-signed authentication are missing, so later business uplinks fail
-closed. The deployed PostgreSQL Audit read composition does not imply a
+closed. The deployed PostgreSQL Fleet and Audit composition does not imply a
 production live event stream, external webhook sender, export worker/download
 interface, production CloudLink process, complete migration orchestration, or
 Tenant membership administration. The deployed HTTP Audit routes do verify

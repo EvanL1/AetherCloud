@@ -77,6 +77,23 @@ describe("fleet in-memory adapters", () => {
         expectedRevision: 0,
       }),
     ).toBe("version-conflict");
+    await expect(
+      repository.list({ tenantId, projectId, limit: 25 }),
+    ).resolves.toMatchObject({
+      outcome: "found",
+      gateways: [
+        {
+          gatewayId,
+          displayName: "North plant gateway",
+          session: null,
+          telemetry: { recordCount: "0" },
+        },
+      ],
+      nextCursor: null,
+    });
+    await expect(
+      repository.get({ tenantId: otherTenantId, projectId }, gatewayId),
+    ).resolves.toEqual({ outcome: "not-found" });
     expect(repository.auditEvents()).toHaveLength(1);
     expect(repository.pendingOutboxEvents()).toHaveLength(1);
   });

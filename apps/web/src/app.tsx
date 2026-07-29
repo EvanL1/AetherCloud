@@ -4,12 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { AetherCloudApiClient } from "./api-client.js";
-import type { AuditEventView, AuditSearchResponse } from "./api-client.js";
+import type {
+  AuditEventView,
+  AuditSearchResponse,
+  FleetGatewayView,
+  FleetListResponse,
+} from "./api-client.js";
 import { consoleConfig } from "./config.js";
 import { decodeSessionScope } from "./session-scope.js";
 import type { SessionScope } from "./session-scope.js";
 
-type ConsoleView = "overview" | "audit" | "account";
+type ConsoleView = "fleet" | "overview" | "audit" | "account";
 type BusyAction = "sign-in" | "recovery" | "update" | "sign-out";
 type ApiState = "checking" | "connected" | "denied" | "unavailable";
 type FormSubmitEvent = SyntheticEvent<HTMLFormElement, SubmitEvent>;
@@ -215,12 +220,19 @@ function Navigation({
   onChange,
   open,
 }: NavigationProps): React.JSX.Element {
-  const items: readonly Readonly<{
+  const primaryItems: readonly Readonly<{
     view: ConsoleView;
     code: string;
     label: string;
   }>[] = [
-    { view: "overview", code: "OV", label: "总览" },
+    { view: "fleet", code: "FL", label: "边缘 Fleet" },
+    { view: "overview", code: "OV", label: "运行总览" },
+  ];
+  const managementItems: readonly Readonly<{
+    view: ConsoleView;
+    code: string;
+    label: string;
+  }>[] = [
     { view: "audit", code: "AU", label: "审计事件" },
     { view: "account", code: "ID", label: "身份与账户" },
   ];
@@ -231,7 +243,7 @@ function Navigation({
       </div>
       <nav aria-label="控制台导航">
         <p>CONTROL PLANE</p>
-        {items.map((item) => (
+        {primaryItems.map((item) => (
           <button
             className={
               current === item.view ? "nav-item nav-item-active" : "nav-item"
@@ -248,7 +260,6 @@ function Navigation({
         ))}
         <p>PRODUCT MODULES</p>
         {[
-          ["FL", "边缘 Fleet"],
           ["TM", "遥测与告警"],
           ["DP", "部署"],
           ["MC", "多云资源"],
@@ -263,12 +274,314 @@ function Navigation({
             <small>规划中</small>
           </div>
         ))}
+        <p>MANAGEMENT</p>
+        {managementItems.map((item) => (
+          <button
+            className={
+              current === item.view ? "nav-item nav-item-active" : "nav-item"
+            }
+            key={item.view}
+            onClick={() => {
+              onChange(item.view);
+            }}
+            type="button"
+          >
+            <span>{item.code}</span>
+            {item.label}
+          </button>
+        ))}
       </nav>
       <div className="sidebar-boundary">
         <span>AUTHORITY</span>
         <p>Cloud failure must not stop commissioned edge behavior.</p>
       </div>
     </aside>
+  );
+}
+
+interface FleetViewProps {
+  readonly fleet: FleetListResponse | undefined;
+  readonly loading: boolean;
+  readonly error: string | undefined;
+  readonly onReload: () => void;
+  readonly onRegister: (
+    input: Readonly<{
+      gatewayId: string;
+      displayName: string;
+    }>,
+  ) => Promise<void>;
+}
+
+function connectionLabel(
+  status: FleetGatewayView["connection"]["status"],
+): string {
+  if (status === "online") return "在线";
+  if (status === "stale") return "连接异常";
+  if (status === "connecting") return "连接中";
+  if (status === "offline") return "离线";
+  return "从未连接";
+}
+
+function FleetView({
+  fleet,
+  loading,
+  error,
+  onReload,
+  onRegister,
+}: FleetViewProps): React.JSX.Element {
+  const [registering, setRegistering] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string>();
+  const [gatewayId, setGatewayId] = useState(() => crypto.randomUUID());
+  const [selected, setSelected] = useState<string>();
+
+  async function register(event: FormSubmitEvent): Promise<void> {
+    event.preventDefault();
+    setFormError(undefined);
+    const displayName = new FormData(event.currentTarget).get("displayName");
+    if (typeof displayName !== "string" || displayName.trim().length === 0) {
+      setFormError("请输入网关名称。");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onRegister({ gatewayId, displayName: displayName.trim() });
+      setRegistering(false);
+      setGatewayId(crypto.randomUUID());
+      event.currentTarget.reset();
+    } catch {
+      setFormError("无法注册网关，请检查权限或稍后重试。");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const gateways = fleet?.items ?? [];
+  const selectedGateway = gateways.find(
+    (gateway) => gateway.gatewayId === selected,
+  );
+
+  return (
+    <div className="view-stack">
+      <section className="page-heading fleet-heading">
+        <div>
+          <p className="eyebrow">EDGE FLEET</p>
+          <h1>边缘 Fleet</h1>
+          <p>
+            注册并查看当前 Tenant 中的真实网关身份、CloudLink 状态和最新遥测。
+          </p>
+        </div>
+        <div className="page-actions">
+          <button
+            className="outline-button"
+            disabled={loading}
+            onClick={onReload}
+            type="button"
+          >
+            刷新
+          </button>
+          <button
+            className="compact-button"
+            onClick={() => {
+              setRegistering((visible) => !visible);
+            }}
+            type="button"
+          >
+            {registering ? "取消" : "注册网关"}
+          </button>
+        </div>
+      </section>
+
+      {registering ? (
+        <section className="surface register-surface">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">REGISTER IDENTITY</p>
+              <h2>创建网关身份</h2>
+            </div>
+            <span className="permission-chip">fleet.gateway.create</span>
+          </div>
+          <form
+            className="register-grid"
+            onSubmit={(event) => void register(event)}
+          >
+            <label>
+              网关名称
+              <input
+                autoFocus
+                maxLength={128}
+                name="displayName"
+                placeholder="例如：上海办公室主网关"
+                required
+              />
+            </label>
+            <label>
+              Gateway ID
+              <input readOnly value={gatewayId} />
+            </label>
+            <button
+              className="compact-button"
+              disabled={submitting}
+              type="submit"
+            >
+              {submitting ? "正在注册…" : "确认注册"}
+            </button>
+          </form>
+          <p className="register-note">
+            此操作创建受 Tenant RLS 保护的网关身份并写入 Audit 与
+            Outbox；它不会绕过后续接入凭据流程。
+          </p>
+          {formError === undefined ? null : (
+            <p className="inline-error">{formError}</p>
+          )}
+        </section>
+      ) : null}
+
+      {error === undefined ? null : <p className="inline-error">{error}</p>}
+
+      <section className="surface fleet-surface">
+        <div className="fleet-summary">
+          <div>
+            <span>TOTAL</span>
+            <strong>{gateways.length}</strong>
+          </div>
+          <div>
+            <span>ONLINE</span>
+            <strong>
+              {
+                gateways.filter(
+                  (gateway) => gateway.connection.status === "online",
+                ).length
+              }
+            </strong>
+          </div>
+          <div>
+            <span>TELEMETRY RECORDS</span>
+            <strong>
+              {gateways
+                .reduce(
+                  (total, gateway) =>
+                    total + BigInt(gateway.telemetry.recordCount),
+                  0n,
+                )
+                .toString()}
+            </strong>
+          </div>
+        </div>
+        {loading && fleet === undefined ? (
+          <div className="empty-state">
+            <span className="spinner" />
+            <h3>正在读取 Supabase Fleet</h3>
+          </div>
+        ) : gateways.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-glyph">FL</span>
+            <h3>还没有注册网关</h3>
+            <p>
+              创建第一个网关身份后，它会真实写入 Supabase，并立即出现在这里。
+            </p>
+          </div>
+        ) : (
+          <div className="gateway-grid">
+            {gateways.map((gateway) => (
+              <button
+                className={
+                  selected === gateway.gatewayId
+                    ? "gateway-card gateway-card-active"
+                    : "gateway-card"
+                }
+                key={gateway.gatewayId}
+                onClick={() => {
+                  setSelected((current) =>
+                    current === gateway.gatewayId
+                      ? undefined
+                      : gateway.gatewayId,
+                  );
+                }}
+                type="button"
+              >
+                <div className="gateway-card-head">
+                  <span
+                    className={`fleet-status fleet-status-${gateway.connection.status}`}
+                  />
+                  <span>{connectionLabel(gateway.connection.status)}</span>
+                  <small>{gateway.enrollmentState}</small>
+                </div>
+                <h3>{gateway.displayName}</h3>
+                <code>{gateway.gatewayId}</code>
+                <dl>
+                  <div>
+                    <dt>最新心跳</dt>
+                    <dd>
+                      {gateway.connection.lastSeenAt === undefined
+                        ? "—"
+                        : formatTime(gateway.connection.lastSeenAt)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>遥测记录</dt>
+                    <dd>{gateway.telemetry.recordCount}</dd>
+                  </div>
+                  <div>
+                    <dt>最新遥测</dt>
+                    <dd>
+                      {gateway.telemetry.lastReceivedAt === undefined
+                        ? "—"
+                        : formatTime(gateway.telemetry.lastReceivedAt)}
+                    </dd>
+                  </div>
+                </dl>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {selectedGateway === undefined ? null : (
+        <section className="surface gateway-detail">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">GATEWAY DETAIL</p>
+              <h2>{selectedGateway.displayName}</h2>
+            </div>
+            <span
+              className={`connection-badge connection-${selectedGateway.connection.status === "online" ? "connected" : "checking"}`}
+            >
+              <span aria-hidden="true" />
+              {connectionLabel(selectedGateway.connection.status)}
+            </span>
+          </div>
+          <div className="detail-grid">
+            <div>
+              <span>Enrollment</span>
+              <strong>{selectedGateway.enrollmentState}</strong>
+            </div>
+            <div>
+              <span>Session</span>
+              <strong>{selectedGateway.connection.sessionState ?? "—"}</strong>
+            </div>
+            <div>
+              <span>Revision</span>
+              <strong>{selectedGateway.revision}</strong>
+            </div>
+            <div>
+              <span>Registered</span>
+              <strong>{formatTime(selectedGateway.registeredAt)}</strong>
+            </div>
+          </div>
+          <div className="latest-telemetry">
+            <span>LATEST TELEMETRY</span>
+            {selectedGateway.telemetry.latest === undefined ? (
+              <p>该网关还没有遥测记录。</p>
+            ) : (
+              <pre>
+                {JSON.stringify(selectedGateway.telemetry.latest, null, 2)}
+              </pre>
+            )}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 
@@ -347,14 +660,14 @@ export function Overview({
           <button
             className="service-row"
             onClick={() => {
-              onNavigate("audit");
+              onNavigate("fleet");
             }}
             type="button"
           >
-            <span className="service-icon">AU</span>
+            <span className="service-icon">FL</span>
             <span>
-              <strong>审计事件查询</strong>
-              <small>使用 Tenant RLS 和短期 JWT 查询 PostgreSQL 审计记录</small>
+              <strong>边缘 Fleet</strong>
+              <small>注册网关并查询 CloudLink 状态与最新遥测</small>
             </span>
             <em>可用</em>
             <b aria-hidden="true">→</b>
@@ -723,11 +1036,12 @@ function Console({
   session,
   recovery,
 }: Readonly<{ session: Session; recovery: boolean }>): React.JSX.Element {
-  const [view, setView] = useState<ConsoleView>(
-    recovery ? "account" : "overview",
-  );
+  const [view, setView] = useState<ConsoleView>(recovery ? "account" : "fleet");
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("checking");
+  const [fleet, setFleet] = useState<FleetListResponse>();
+  const [fleetError, setFleetError] = useState<string>();
+  const [fleetLoading, setFleetLoading] = useState(true);
   const [audit, setAudit] = useState<AuditSearchResponse>();
   const [auditError, setAuditError] = useState<string>();
   const [auditLoading, setAuditLoading] = useState(true);
@@ -752,14 +1066,10 @@ function Console({
           ...input,
         });
         setAudit(result);
-        setApiState("connected");
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : "";
-        setApiState(
-          message.includes("401") || message.includes("403")
-            ? "denied"
-            : "unavailable",
-        );
+        if (!message.includes("401") && !message.includes("403"))
+          setApiState("unavailable");
         setAuditError("无法读取审计事件，请检查账户权限或稍后重试。");
       } finally {
         setAuditLoading(false);
@@ -768,17 +1078,49 @@ function Console({
     [session.access_token],
   );
 
+  const loadFleet = useCallback(async () => {
+    setFleetLoading(true);
+    setFleetError(undefined);
+    try {
+      const result = await api.listFleetGateways(session.access_token);
+      setFleet(result);
+      setApiState("connected");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "";
+      setApiState(
+        message.includes("401") || message.includes("403")
+          ? "denied"
+          : "unavailable",
+      );
+      setFleetError("无法读取 Fleet，请检查账户权限或稍后重试。");
+    } finally {
+      setFleetLoading(false);
+    }
+  }, [session.access_token]);
+
+  async function registerGateway(
+    input: Readonly<{
+      gatewayId: string;
+      displayName: string;
+    }>,
+  ): Promise<void> {
+    await api.registerGateway(session.access_token, input, crypto.randomUUID());
+    await loadFleet();
+  }
+
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.all([api.health(controller.signal), loadAudit()]).then(
-      ([healthy]) => {
-        if (!healthy) setApiState("unavailable");
-      },
-    );
+    void Promise.all([
+      api.health(controller.signal),
+      loadFleet(),
+      loadAudit(),
+    ]).then(([healthy]) => {
+      if (!healthy) setApiState("unavailable");
+    });
     return () => {
       controller.abort();
     };
-  }, [loadAudit]);
+  }, [loadAudit, loadFleet]);
 
   function navigate(next: ConsoleView): void {
     setView(next);
@@ -818,7 +1160,17 @@ function Console({
           </div>
         </header>
         <div className="console-content">
-          {view === "overview" ? (
+          {view === "fleet" ? (
+            <FleetView
+              error={fleetError}
+              fleet={fleet}
+              loading={fleetLoading}
+              onRegister={registerGateway}
+              onReload={() => {
+                void loadFleet();
+              }}
+            />
+          ) : view === "overview" ? (
             <Overview
               apiState={apiState}
               audit={audit}

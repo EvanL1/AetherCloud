@@ -49,15 +49,48 @@
       "idempotency": "required",
       "expiry": "required",
       "audit": "required",
-      "status": "partial",
+      "status": "implemented",
       "implemented_layers": [
         "domain",
         "application",
         "memory-adapter",
         "postgresql-adapter",
-        "transactional-audit-outbox"
+        "transactional-audit-outbox",
+        "production-database-composition",
+        "http",
+        "web-console"
       ],
-      "missing_layers": ["production-database-composition", "http"]
+      "missing_layers": []
+    },
+    {
+      "name": "fleet.gateway.list",
+      "kind": "query",
+      "permission": "fleet.gateway.read",
+      "status": "implemented",
+      "implemented_layers": [
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "production-database-composition",
+        "http",
+        "web-console"
+      ],
+      "missing_layers": []
+    },
+    {
+      "name": "fleet.gateway.get",
+      "kind": "query",
+      "permission": "fleet.gateway.read",
+      "status": "implemented",
+      "implemented_layers": [
+        "application",
+        "memory-adapter",
+        "postgresql-adapter",
+        "production-database-composition",
+        "http",
+        "web-console"
+      ],
+      "missing_layers": []
     },
     {
       "name": "fleet.gateway.enrollment.issue",
@@ -978,6 +1011,35 @@
       "path": "/api/v1/platform",
       "operation_id": "getPlatformProfile",
       "authentication": "public-product-metadata",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/fleet/gateways",
+      "operation_id": "listFleetGateways",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
+      "permission": "fleet.gateway.read",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/fleet/gateways/{gatewayId}",
+      "operation_id": "getFleetGateway",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
+      "permission": "fleet.gateway.read",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/fleet/gateways",
+      "operation_id": "registerGateway",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
+      "permission": "fleet.gateway.create",
+      "idempotency": "required-header",
+      "audit": "required-atomic-with-outbox",
       "status": "implemented"
     },
     {

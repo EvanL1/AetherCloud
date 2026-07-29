@@ -1,6 +1,11 @@
 import { getPlatformProfile } from "@aether-cloud/application";
 import type {
   AuditApplicationFailure,
+  FleetQueryFailure,
+  GatewayEnrollmentApplicationFailure,
+  GetFleetGateway,
+  ListFleetGateways,
+  RegisterGateway,
   SearchAuditEvents,
 } from "@aether-cloud/application";
 import cors from "@fastify/cors";
@@ -37,10 +42,18 @@ export interface AuditHttpDependencies {
   readonly authenticator: HttpAuthenticator;
 }
 
+export interface FleetHttpDependencies {
+  readonly authenticator: HttpAuthenticator;
+  readonly list: Pick<ListFleetGateways, "execute">;
+  readonly get: Pick<GetFleetGateway, "execute">;
+  readonly register: Pick<RegisterGateway, "execute">;
+}
+
 export interface BuildAppOptions {
   readonly version: string;
   readonly allowedOrigins?: readonly string[];
   readonly audit?: AuditHttpDependencies;
+  readonly fleet?: FleetHttpDependencies;
   readonly mcp?: McpHttpDependencies;
 }
 
@@ -106,6 +119,110 @@ const platformResponseSchema = {
         stateIsolation: { const: "deployment-stack", type: "string" },
       },
     },
+  },
+} as const;
+
+const fleetTelemetrySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["recordCount"],
+  properties: {
+    recordCount: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
+    lastReceivedAt: { type: "string", format: "date-time" },
+    latest: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "streamId",
+        "streamEpoch",
+        "position",
+        "sourceTimestampMs",
+        "kind",
+        "payload",
+      ],
+      properties: {
+        streamId: { type: "string", minLength: 1 },
+        streamEpoch: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
+        position: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
+        sourceTimestampMs: {
+          type: "string",
+          pattern: "^(?:0|[1-9][0-9]*)$",
+        },
+        kind: { enum: ["device-event", "point-sample"], type: "string" },
+        payload: { type: "object", additionalProperties: true },
+      },
+    },
+  },
+} as const;
+
+const fleetGatewaySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "gatewayId",
+    "displayName",
+    "enrollmentState",
+    "revision",
+    "registeredAt",
+    "connection",
+    "telemetry",
+  ],
+  properties: {
+    gatewayId: { type: "string", format: "uuid" },
+    displayName: { type: "string", minLength: 1, maxLength: 128 },
+    enrollmentState: {
+      enum: ["registered", "awaiting-claim", "claimed"],
+      type: "string",
+    },
+    revision: { type: "integer", minimum: 1 },
+    registeredAt: { type: "string", format: "date-time" },
+    connection: {
+      type: "object",
+      additionalProperties: false,
+      required: ["status"],
+      properties: {
+        status: {
+          enum: ["connecting", "never-connected", "offline", "online", "stale"],
+          type: "string",
+        },
+        sessionState: { type: "string" },
+        lastSeenAt: { type: "string", format: "date-time" },
+      },
+    },
+    telemetry: fleetTelemetrySchema,
+  },
+} as const;
+
+const fleetListSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["items", "nextCursor"],
+  properties: {
+    items: { type: "array", items: fleetGatewaySchema },
+    nextCursor: {
+      anyOf: [{ type: "string", format: "uuid" }, { type: "null" }],
+    },
+  },
+} as const;
+
+const registeredGatewaySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "tenantId",
+    "projectId",
+    "gatewayId",
+    "displayName",
+    "state",
+    "revision",
+  ],
+  properties: {
+    tenantId: { type: "string", format: "uuid" },
+    projectId: { type: "string", format: "uuid" },
+    gatewayId: { type: "string", format: "uuid" },
+    displayName: { type: "string", minLength: 1, maxLength: 128 },
+    state: { type: "string" },
+    revision: { type: "integer", minimum: 1 },
   },
 } as const;
 
@@ -225,7 +342,7 @@ function decodeAuditQuery(input: unknown): Record<string, unknown> {
 
 function sendError(
   reply: FastifyReply,
-  statusCode: 400 | 401 | 403 | 503,
+  statusCode: 400 | 401 | 403 | 404 | 409 | 503,
   code: string,
   message: string,
   correlationId: string,
@@ -240,6 +357,31 @@ function auditFailureStatus(
 ): 400 | 403 | 503 {
   if (code === "permission-denied") return 403;
   if (code === "storage-unavailable") return 503;
+  return 400;
+}
+
+function fleetFailureStatus(
+  code: FleetQueryFailure["code"],
+): 400 | 403 | 404 | 503 {
+  if (code === "permission-denied") return 403;
+  if (code === "gateway-not-found") return 404;
+  if (code === "gateway-storage-unavailable") return 503;
+  return 400;
+}
+
+function gatewayCommandFailureStatus(
+  code: GatewayEnrollmentApplicationFailure["code"],
+): 400 | 403 | 404 | 409 | 503 {
+  if (code === "permission-denied") return 403;
+  if (code === "gateway-not-found") return 404;
+  if (code === "gateway-storage-unavailable") return 503;
+  if (
+    code === "gateway-already-exists" ||
+    code === "idempotency-conflict" ||
+    code === "concurrent-modification"
+  ) {
+    return 409;
+  }
   return 400;
 }
 
@@ -265,11 +407,16 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     options.allowedOrigins.length > 0
   ) {
     void app.register(cors, {
-      allowedHeaders: ["authorization", "content-type", "last-event-id"],
+      allowedHeaders: [
+        "authorization",
+        "content-type",
+        "idempotency-key",
+        "last-event-id",
+      ],
       credentials: false,
       exposedHeaders: ["x-correlation-id"],
       maxAge: 600,
-      methods: ["GET", "HEAD", "OPTIONS"],
+      methods: ["GET", "HEAD", "OPTIONS", "POST"],
       origin: [...options.allowedOrigins],
       strictPreflight: true,
     });
@@ -302,6 +449,204 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const mcp = options.mcp;
   if (mcp !== undefined) {
     registerMcpHttp(app, mcp, options.version);
+  }
+
+  const fleet = options.fleet;
+  if (fleet !== undefined) {
+    app.get(
+      "/api/v1/fleet/gateways",
+      {
+        schema: {
+          response: {
+            200: fleetListSchema,
+            400: errorResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            503: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const correlationId = request.id;
+        reply.header("x-correlation-id", correlationId);
+        const authentication = await fleet.authenticator.authenticate({
+          authorization: request.headers.authorization,
+        });
+        if (!authentication.ok) {
+          return sendError(
+            reply,
+            401,
+            "unauthenticated",
+            "authentication is required",
+            correlationId,
+          );
+        }
+        if (!isRecord(request.query)) {
+          return sendError(
+            reply,
+            400,
+            "invalid-input",
+            "query must be an object",
+            correlationId,
+          );
+        }
+        const allowed = new Set(["cursor", "limit"]);
+        if (Object.keys(request.query).some((key) => !allowed.has(key))) {
+          return sendError(
+            reply,
+            400,
+            "invalid-input",
+            "query contains an unsupported field",
+            correlationId,
+          );
+        }
+        const rawLimit = request.query.limit ?? "50";
+        if (
+          typeof rawLimit !== "string" ||
+          !/^(?:[1-9]|[1-9][0-9]|100)$/.test(rawLimit) ||
+          (request.query.cursor !== undefined &&
+            typeof request.query.cursor !== "string")
+        ) {
+          return sendError(
+            reply,
+            400,
+            "invalid-input",
+            "Fleet query is invalid",
+            correlationId,
+          );
+        }
+        const result = await fleet.list.execute(authentication.value, {
+          limit: Number.parseInt(rawLimit, 10),
+          ...(request.query.cursor === undefined
+            ? {}
+            : { cursor: request.query.cursor }),
+        });
+        if (!result.ok) {
+          return sendError(
+            reply,
+            fleetFailureStatus(result.failure.code),
+            result.failure.code,
+            result.failure.message,
+            correlationId,
+          );
+        }
+        return reply.status(200).send(result.value);
+      },
+    );
+
+    app.get(
+      "/api/v1/fleet/gateways/:gatewayId",
+      {
+        schema: {
+          response: {
+            200: fleetGatewaySchema,
+            400: errorResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            503: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const correlationId = request.id;
+        reply.header("x-correlation-id", correlationId);
+        const authentication = await fleet.authenticator.authenticate({
+          authorization: request.headers.authorization,
+        });
+        if (!authentication.ok) {
+          return sendError(
+            reply,
+            401,
+            "unauthenticated",
+            "authentication is required",
+            correlationId,
+          );
+        }
+        const result = await fleet.get.execute(
+          authentication.value,
+          request.params,
+        );
+        if (!result.ok) {
+          return sendError(
+            reply,
+            fleetFailureStatus(result.failure.code),
+            result.failure.code,
+            result.failure.message,
+            correlationId,
+          );
+        }
+        return reply.status(200).send(result.value);
+      },
+    );
+
+    app.post(
+      "/api/v1/fleet/gateways",
+      {
+        schema: {
+          response: {
+            200: registeredGatewaySchema,
+            400: errorResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            409: errorResponseSchema,
+            503: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const correlationId = request.id;
+        reply.header("x-correlation-id", correlationId);
+        const authentication = await fleet.authenticator.authenticate({
+          authorization: request.headers.authorization,
+        });
+        if (!authentication.ok) {
+          return sendError(
+            reply,
+            401,
+            "unauthenticated",
+            "authentication is required",
+            correlationId,
+          );
+        }
+        const idempotencyKey = request.headers["idempotency-key"];
+        if (
+          typeof idempotencyKey !== "string" ||
+          idempotencyKey.length < 8 ||
+          idempotencyKey.length > 128
+        ) {
+          return sendError(
+            reply,
+            400,
+            "invalid-input",
+            "idempotency-key header is required",
+            correlationId,
+          );
+        }
+        const issuedAt = new Date();
+        const expiresAt = new Date(issuedAt.getTime() + 5 * 60_000);
+        const result = await fleet.register.execute(
+          {
+            ...authentication.value,
+            subjectKind: "user",
+            idempotencyKey,
+            issuedAt: issuedAt.toISOString(),
+            expiresAt: expiresAt.toISOString(),
+          },
+          request.body,
+        );
+        if (!result.ok) {
+          return sendError(
+            reply,
+            gatewayCommandFailureStatus(result.failure.code),
+            result.failure.code,
+            result.failure.message,
+            correlationId,
+          );
+        }
+        return reply.status(200).send(result.value);
+      },
+    );
   }
 
   const audit = options.audit;

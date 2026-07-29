@@ -937,6 +937,205 @@
     justify-content: flex-end;
   }
 
+  .page-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .register-surface,
+  .fleet-surface,
+  .gateway-detail {
+    padding: 25px;
+  }
+  .register-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+    gap: 14px;
+  }
+  .register-grid label {
+    display: grid;
+    gap: 8px;
+    color: var(--muted-strong);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.07em;
+  }
+  .register-grid input {
+    min-height: 42px;
+  }
+  .register-grid input[readonly] {
+    color: var(--muted);
+  }
+  .register-note {
+    margin: 17px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.65;
+  }
+  .fleet-summary {
+    display: grid;
+    margin: -25px -25px 0;
+    grid-template-columns: repeat(3, 1fr);
+    border-bottom: 1px solid var(--line);
+  }
+  .fleet-summary > div {
+    min-height: 86px;
+    padding: 19px 25px;
+    border-right: 1px solid var(--line);
+  }
+  .fleet-summary > div:last-child {
+    border-right: 0;
+  }
+  .fleet-summary span,
+  .detail-grid span,
+  .latest-telemetry > span {
+    display: block;
+    color: var(--muted);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+  }
+  .fleet-summary strong {
+    display: block;
+    margin-top: 11px;
+    color: var(--text);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 21px;
+    font-weight: 540;
+  }
+  .gateway-grid {
+    display: grid;
+    padding-top: 22px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 13px;
+  }
+  .gateway-card {
+    min-width: 0;
+    padding: 19px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: rgba(4, 10, 9, 0.42);
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+  }
+  .gateway-card:hover,
+  .gateway-card-active {
+    border-color: var(--line-strong);
+    background: var(--mint-soft);
+  }
+  .gateway-card-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--muted-strong);
+    font-size: 9px;
+  }
+  .gateway-card-head small {
+    margin-left: auto;
+    color: var(--muted);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 8px;
+  }
+  .fleet-status {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .fleet-status-online {
+    background: var(--mint);
+    box-shadow: 0 0 12px rgba(184, 255, 98, 0.55);
+  }
+  .fleet-status-stale {
+    background: var(--amber);
+  }
+  .fleet-status-offline {
+    background: var(--danger);
+  }
+  .gateway-card h3 {
+    margin: 20px 0 7px;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 570;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .gateway-card > code {
+    display: block;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 8px;
+    text-overflow: ellipsis;
+  }
+  .gateway-card dl {
+    display: grid;
+    margin: 20px 0 0;
+    gap: 9px;
+  }
+  .gateway-card dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .gateway-card dt,
+  .gateway-card dd {
+    margin: 0;
+    color: var(--muted);
+    font-size: 9px;
+  }
+  .gateway-card dd {
+    overflow: hidden;
+    color: var(--muted-strong);
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--line);
+  }
+  .detail-grid > div {
+    min-width: 0;
+    padding: 17px;
+    border-right: 1px solid var(--line);
+  }
+  .detail-grid > div:last-child {
+    border-right: 0;
+  }
+  .detail-grid strong {
+    display: block;
+    margin-top: 10px;
+    overflow: hidden;
+    color: var(--muted-strong);
+    font-size: 10px;
+    font-weight: 540;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .latest-telemetry {
+    margin-top: 19px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    background: rgba(4, 10, 9, 0.52);
+  }
+  .latest-telemetry p {
+    margin: 15px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .latest-telemetry pre {
+    max-height: 280px;
+    margin: 15px 0 0;
+    overflow: auto;
+    color: var(--mint);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 9px;
+    line-height: 1.65;
+  }
+
   .account-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1065,6 +1264,21 @@
     .scope-crumb {
       display: none;
     }
+    .gateway-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .register-grid {
+      grid-template-columns: 1fr;
+    }
+    .detail-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .detail-grid > div:nth-child(2) {
+      border-right: 0;
+    }
+    .detail-grid > div:nth-child(-n + 2) {
+      border-bottom: 1px solid var(--line);
+    }
     .account-grid {
       grid-template-columns: 1fr;
     }
@@ -1105,6 +1319,36 @@
     .page-heading {
       min-height: auto;
       flex-direction: column;
+    }
+    .page-actions {
+      width: 100%;
+    }
+    .page-actions > button {
+      flex: 1;
+    }
+    .fleet-summary {
+      grid-template-columns: 1fr;
+    }
+    .fleet-summary > div {
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .fleet-summary > div:last-child {
+      border-bottom: 0;
+    }
+    .gateway-grid {
+      grid-template-columns: 1fr;
+    }
+    .detail-grid {
+      grid-template-columns: 1fr;
+    }
+    .detail-grid > div,
+    .detail-grid > div:nth-child(2) {
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .detail-grid > div:last-child {
+      border-bottom: 0;
     }
     .metric-grid,
     .roadmap-grid {
