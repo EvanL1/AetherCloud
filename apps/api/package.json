@@ -15,6 +15,7 @@
     "@aether-cloud/fleet-postgres-adapter": "workspace:*",
     "@aether-cloud/mcp-interface": "workspace:*",
     "fastify": "5.10.0",
+    "jose": "6.2.4",
     "tsx": "4.21.0"
   }
 }

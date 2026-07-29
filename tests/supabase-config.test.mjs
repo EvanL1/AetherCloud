@@ -62,6 +62,21 @@ test("Supabase keeps the private AetherCloud schema off the Data API", async () 
   );
 });
 
+test("Supabase declares hardened production Auth and database TLS settings", async () => {
+  const config = await readFile(new URL("supabase/config.toml", root), "utf8");
+
+  assert.match(config, /\[db\.ssl_enforcement\]\nenabled = true/);
+  assert.match(config, /site_url = "https:\/\/aetheriot\.dev"/);
+  assert.match(
+    config,
+    /additional_redirect_urls = \["https:\/\/aetheriot\.dev", "https:\/\/www\.aetheriot\.dev"\]/,
+  );
+  assert.match(config, /minimum_password_length = 12/);
+  assert.match(config, /\[auth\.email\][\s\S]*enable_confirmations = true/);
+  assert.match(config, /\[auth\.email\][\s\S]*secure_password_change = true/);
+  assert.match(config, /enable_anonymous_sign_ins = false/);
+});
+
 test("Supabase provisions a non-login least-privilege application role", async () => {
   const migration = await readFile(
     new URL("supabase/migrations/20260728000600_application_role.sql", root),

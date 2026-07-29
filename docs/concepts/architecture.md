@@ -40,8 +40,10 @@ It exposes authenticated audit JSON and finite resumable SSE snapshots in
 addition to public liveness/product metadata. The composition root explicitly
 selects a memory or PostgreSQL Audit repository; PostgreSQL mode uses bounded
 pool settings, Tenant transaction context, forced RLS, a non-owner application
-role, and CA-verified TLS. Its configured bearer identity is still not
-production IAM.
+role, and CA-verified TLS. Railway production verifies Supabase Auth ES256
+access tokens against the issuer's JWKS and derives Tenant, Project, and
+permissions only from administrator-controlled `app_metadata`. User and Tenant
+membership provisioning is not yet an application surface.
 `apps/mcp` is an implemented transport-neutral resource/tool interface, not a
 runnable MCP composition root. It delegates Audit, Data Export, and governed Job
 operations to application use cases; MCP SDK transport and identity composition

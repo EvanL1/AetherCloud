@@ -97,4 +97,7 @@ Gateway-signed authentication are missing, so later business uplinks fail
 closed. The deployed PostgreSQL Audit read composition does not imply a
 production live event stream, external webhook sender, export worker/download
 interface, production CloudLink process, complete migration orchestration, or
-production IAM.
+Tenant membership administration. The deployed HTTP Audit routes do verify
+Supabase Auth ES256 access tokens and accept authorization scope only from
+administrator-controlled `app_metadata`; this does not implement the remaining
+IAM lifecycle.

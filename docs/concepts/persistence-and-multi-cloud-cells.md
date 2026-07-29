@@ -112,10 +112,11 @@ and pins the Supabase CA. Railway runs the API with that role over
 credentials are used only by an ephemeral migration service and are not left
 in the API environment.
 
-This proves the deployed Audit read path, not production IAM, Audit write-route
-composition, backup/restore, worker durability, or the other PostgreSQL
-adapters' production wiring. The configured bearer remains a bootstrap
-identity adapter.
+This proves the deployed Supabase-JWT-authenticated Audit read path, not Tenant
+membership administration, Audit write-route composition, backup/restore,
+worker durability, or the other PostgreSQL adapters' production wiring. The
+configured bearer remains local-test-only and is rejected by the Railway
+production composition.
 
 ## Implemented CloudLink session persistence slice
 

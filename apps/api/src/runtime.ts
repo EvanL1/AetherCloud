@@ -12,7 +12,9 @@ import {
   ConfiguredBearerAuthenticator,
   type ConfiguredBearerSubject,
 } from "./configured-bearer-authenticator.js";
+import { SupabaseJwtAuthenticator } from "./supabase-jwt-authenticator.js";
 import type { FastifyInstance } from "fastify";
+import type { HttpAuthenticator } from "./app.js";
 
 interface ClosablePostgresPool extends PostgresAuditPool {
   end(): Promise<void>;
@@ -62,6 +64,28 @@ function configuredSubject(
       .map((permission) => permission.trim())
       .filter((permission) => permission.length > 0),
   };
+}
+
+function authenticator(environment: NodeJS.ProcessEnv): HttpAuthenticator {
+  const mode = environment.AETHER_CLOUD_AUTH_MODE ?? "configured";
+  if (mode === "configured") {
+    if (environment.RAILWAY_ENVIRONMENT_NAME === "production") {
+      throw new Error("Production requires Supabase JWT authentication");
+    }
+    return new ConfiguredBearerAuthenticator(configuredSubject(environment));
+  }
+  if (mode !== "supabase-jwt") {
+    throw new Error(
+      "AETHER_CLOUD_AUTH_MODE must be configured or supabase-jwt",
+    );
+  }
+  const issuer = environment.AETHER_CLOUD_SUPABASE_AUTH_ISSUER;
+  if (issuer === undefined || issuer.length === 0) {
+    throw new Error(
+      "AETHER_CLOUD_SUPABASE_AUTH_ISSUER is required for Supabase JWT authentication",
+    );
+  }
+  return new SupabaseJwtAuthenticator({ issuer });
 }
 
 function postgresConnectionString(environment: NodeJS.ProcessEnv): string {
@@ -137,9 +161,7 @@ export function composeApiRuntime(
     version: "0.1.0",
     audit: {
       query: new SearchAuditEvents({ repository: audit.repository }),
-      authenticator: new ConfiguredBearerAuthenticator(
-        configuredSubject(environment),
-      ),
+      authenticator: authenticator(environment),
     },
   });
   let closePromise: Promise<void> | undefined;

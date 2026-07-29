@@ -96,8 +96,11 @@ destination registry, secret rotation, production HTTP sender, signing,
 DNS/redirect SSRF defence, retry leasing, a live SSE notifier, WebSocket,
 object storage, export workers, retention/quota enforcement, and public
 webhook/export APIs are still planned. The API can select the PostgreSQL Audit
-query repository with a non-owner forced-RLS role and verified TLS, but its
-configured bearer identity is not production IAM.
+query repository with a non-owner forced-RLS role and verified TLS. Railway
+production verifies Supabase Auth ES256 access tokens through JWKS; only
+administrator-controlled `app_metadata` can provide Tenant, Project, and
+permission scope. Tenant membership onboarding, role administration, and
+revocation-aware authorization beyond short-lived token expiry remain planned.
 
 Use the [HTTP API reference](../reference/http-api.md) and the
 [application contract catalog](../reference/application-contracts.md) to find

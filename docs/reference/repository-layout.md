@@ -13,7 +13,7 @@ when their first vertical slice is implemented.
 
 ```text
 apps/
-  api/                  HTTP composition root
+  api/                  HTTP composition root with Supabase JWKS authentication
   mcp/                  implemented transport-neutral MCP application interface; wire root planned
   cloudlink/            experimental MQTT ingress composition; production wiring planned
   worker/               planned background-work composition root

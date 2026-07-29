@@ -122,19 +122,24 @@ sanitized into the typed `503` outcome.
 
 `/health` and `/api/v1/platform` are intentionally public and contain no Tenant
 or infrastructure instances. Audit routes require `Authorization: Bearer
-<token>`. The local server resolves the configured subject from
-`AETHER_CLOUD_API_BEARER_TOKEN`, `AETHER_CLOUD_API_TENANT_ID`,
-`AETHER_CLOUD_API_PROJECT_ID`, `AETHER_CLOUD_API_SUBJECT_ID`, and comma-separated
-`AETHER_CLOUD_API_PERMISSIONS`; missing configuration denies every protected
-request. Exact tokens are compared in constant time.
+<token>`. Railway production sets `AETHER_CLOUD_AUTH_MODE=supabase-jwt` and
+accepts only ES256 Supabase Auth access tokens with the configured HTTPS issuer,
+`authenticated` audience and role, valid lifetime, and a signature resolved
+through that issuer's JWKS. The API carries no Supabase secret or JWT signing
+key.
 
+Tenant ID, Project ID, and permissions come only from
+`app_metadata.aethercloud_tenant_id`, `aethercloud_project_id`, and
+`aethercloud_permissions`. Supabase `user_metadata` is user-writable and is
+never authorization evidence. Missing, malformed, duplicated, or out-of-scope
+claims fail closed with `401`. Self-sign-up alone grants no AetherCloud access;
+an administrator-controlled membership flow must attach those claims.
+
+The constant-time configured bearer adapter remains available for local tests,
+but the composition root refuses it in the Railway production environment.
 `AETHER_CLOUD_AUDIT_STORE` explicitly selects `memory` or `postgres`. PostgreSQL
 mode requires `AETHER_CLOUD_POSTGRES_URL` to name the dedicated
-`aethercloud_app` role and require CA-verified TLS; it applies Tenant context
+`aethercloud_app` role and use `verify-full` TLS; it applies Tenant context
 inside each transaction before querying the forced-RLS Audit table. The memory
-mode remains suitable only for local composition and contract tests.
-
-The configured bearer adapter is still not production identity. Production
-routes must resolve Tenant context from an authenticated identity before
-invoking an application use case. A body, path, or query Tenant identity is
-never proof of access.
+mode remains suitable only for local composition and contract tests. A body,
+path, query, or user-editable metadata Tenant identity is never proof of access.

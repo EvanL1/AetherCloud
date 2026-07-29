@@ -730,7 +730,16 @@
       "production_readiness": "experimental",
       "context_sensitivity": "public",
       "updated": "2026-07-29",
-      "priority": "optional"
+      "priority": "optional",
+      "implemented_layers": [
+        "fastify-http",
+        "supabase-es256-jwks-authentication",
+        "postgresql-audit-query"
+      ],
+      "missing_layers": [
+        "tenant-membership-administration",
+        "remaining-http-capabilities"
+      ]
     },
     {
       "id": "application-contracts",

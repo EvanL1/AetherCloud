@@ -107,6 +107,36 @@ describe("API runtime composition", () => {
     ).toThrow(/verify-full TLS/);
   });
 
+  it("selects Supabase JWT authentication explicitly", async () => {
+    const runtime = composeApiRuntime({
+      ...authenticatedEnvironment,
+      AETHER_CLOUD_AUDIT_STORE: "memory",
+      AETHER_CLOUD_AUTH_MODE: "supabase-jwt",
+      AETHER_CLOUD_SUPABASE_AUTH_ISSUER:
+        "https://exampleproject.supabase.co/auth/v1",
+    });
+    runtimes.push(runtime);
+
+    const response = await runtime.app.inject({
+      method: "GET",
+      url: "/api/v1/audit/events?limit=10",
+      headers: { authorization: "Bearer not-a-jwt" },
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("fails closed instead of using configured bearer auth in production", () => {
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_AUTH_MODE: "configured",
+        RAILWAY_ENVIRONMENT_NAME: "production",
+      }),
+    ).toThrow(/Supabase JWT authentication/);
+  });
+
   it("keeps explicit memory mode self-contained", async () => {
     const runtime = composeApiRuntime({
       ...authenticatedEnvironment,

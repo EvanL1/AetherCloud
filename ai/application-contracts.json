@@ -793,13 +793,14 @@
         "memory-adapter",
         "postgresql-audit-query-adapter",
         "railway-postgresql-composition",
+        "supabase-es256-jwks-authentication",
         "http-json",
         "http-sse-finite-snapshot",
         "mcp-resource-interface"
       ],
       "missing_layers": [
         "production-audit-write-composition",
-        "production-identity",
+        "tenant-membership-administration",
         "live-event-notifier"
       ]
     },
@@ -983,7 +984,7 @@
       "method": "GET",
       "path": "/api/v1/audit/events",
       "operation_id": "searchAuditEvents",
-      "authentication": "configured-bearer-tenant-subject",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
       "permission": "audit.event.read",
       "status": "implemented"
     },
@@ -991,7 +992,7 @@
       "method": "GET",
       "path": "/api/v1/audit/events/stream",
       "operation_id": "streamAuditEventSnapshot",
-      "authentication": "configured-bearer-tenant-subject",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
       "permission": "audit.event.read",
       "resume": "last-event-id-audit-sequence",
       "liveness": "finite-snapshot",
