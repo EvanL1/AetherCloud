@@ -126,12 +126,26 @@ describe("API runtime composition", () => {
     expect(response.statusCode).toBe(401);
   });
 
+  it("requires explicit website origins for production browser access", () => {
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_AUTH_MODE: "supabase-jwt",
+        AETHER_CLOUD_SUPABASE_AUTH_ISSUER:
+          "https://exampleproject.supabase.co/auth/v1",
+        RAILWAY_ENVIRONMENT_NAME: "production",
+      }),
+    ).toThrow(/AETHER_CLOUD_ALLOWED_WEB_ORIGINS/);
+  });
+
   it("fails closed instead of using configured bearer auth in production", () => {
     expect(() =>
       composeApiRuntime({
         ...authenticatedEnvironment,
         AETHER_CLOUD_AUDIT_STORE: "memory",
         AETHER_CLOUD_AUTH_MODE: "configured",
+        AETHER_CLOUD_ALLOWED_WEB_ORIGINS: "https://aetheriot.dev",
         RAILWAY_ENVIRONMENT_NAME: "production",
       }),
     ).toThrow(/Supabase JWT authentication/);

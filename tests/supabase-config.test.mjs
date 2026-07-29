@@ -69,7 +69,7 @@ test("Supabase declares hardened production Auth and database TLS settings", asy
   assert.match(config, /site_url = "https:\/\/aetheriot\.dev"/);
   assert.match(
     config,
-    /additional_redirect_urls = \["https:\/\/aetheriot\.dev", "https:\/\/www\.aetheriot\.dev"\]/,
+    /additional_redirect_urls = \["https:\/\/aetheriot\.dev", "https:\/\/www\.aetheriot\.dev", "https:\/\/aetheriot\.dev\/cloud\/", "https:\/\/www\.aetheriot\.dev\/cloud\/", "https:\/\/aetheriot\.dev\/en\/cloud\/", "https:\/\/www\.aetheriot\.dev\/en\/cloud\/"\]/,
   );
   assert.match(config, /minimum_password_length = 12/);
   assert.match(config, /\[auth\.email\][\s\S]*enable_confirmations = true/);

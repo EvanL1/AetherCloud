@@ -3,6 +3,7 @@ import type {
   AuditApplicationFailure,
   SearchAuditEvents,
 } from "@aether-cloud/application";
+import cors from "@fastify/cors";
 import Fastify from "fastify";
 
 import { registerMcpHttp } from "./mcp-http.js";
@@ -38,6 +39,7 @@ export interface AuditHttpDependencies {
 
 export interface BuildAppOptions {
   readonly version: string;
+  readonly allowedOrigins?: readonly string[];
   readonly audit?: AuditHttpDependencies;
   readonly mcp?: McpHttpDependencies;
 }
@@ -257,6 +259,21 @@ function encodeAuditSse(
 
 export function buildApp(options: BuildAppOptions): FastifyInstance {
   const app = Fastify({ logger: false });
+
+  if (
+    options.allowedOrigins !== undefined &&
+    options.allowedOrigins.length > 0
+  ) {
+    void app.register(cors, {
+      allowedHeaders: ["authorization", "content-type", "last-event-id"],
+      credentials: false,
+      exposedHeaders: ["x-correlation-id"],
+      maxAge: 600,
+      methods: ["GET", "HEAD", "OPTIONS"],
+      origin: [...options.allowedOrigins],
+      strictPreflight: true,
+    });
+  }
 
   app.get(
     "/health",

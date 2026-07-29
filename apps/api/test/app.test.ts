@@ -66,6 +66,42 @@ describe("AetherCloud API", () => {
     });
   });
 
+  it("allows only configured website origins to call browser API routes", async () => {
+    const app = buildApp({
+      version: "0.1.0",
+      allowedOrigins: ["https://aetheriot.dev", "https://www.aetheriot.dev"],
+    });
+    apps.push(app);
+
+    const allowed = await app.inject({
+      method: "OPTIONS",
+      url: "/api/v1/audit/events",
+      headers: {
+        origin: "https://www.aetheriot.dev",
+        "access-control-request-method": "GET",
+        "access-control-request-headers": "authorization",
+      },
+    });
+    const denied = await app.inject({
+      method: "OPTIONS",
+      url: "/api/v1/audit/events",
+      headers: {
+        origin: "https://attacker.example",
+        "access-control-request-method": "GET",
+        "access-control-request-headers": "authorization",
+      },
+    });
+
+    expect(allowed.statusCode).toBe(204);
+    expect(allowed.headers["access-control-allow-origin"]).toBe(
+      "https://www.aetheriot.dev",
+    );
+    expect(allowed.headers["access-control-allow-headers"]).toContain(
+      "authorization",
+    );
+    expect(denied.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+
   it("resolves trusted scope before invoking the Audit application query", async () => {
     let observedScope: unknown;
     let observedQuery: unknown;

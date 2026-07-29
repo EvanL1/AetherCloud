@@ -88,6 +88,45 @@ function authenticator(environment: NodeJS.ProcessEnv): HttpAuthenticator {
   return new SupabaseJwtAuthenticator({ issuer });
 }
 
+function allowedOrigins(
+  environment: NodeJS.ProcessEnv,
+): readonly string[] | undefined {
+  const input = environment.AETHER_CLOUD_ALLOWED_WEB_ORIGINS;
+  if (input === undefined || input.length === 0) {
+    if (environment.RAILWAY_ENVIRONMENT_NAME === "production") {
+      throw new Error(
+        "AETHER_CLOUD_ALLOWED_WEB_ORIGINS is required in production",
+      );
+    }
+    return undefined;
+  }
+  const origins = input.split(",").map((origin) => origin.trim());
+  if (origins.length > 8 || origins.some((origin) => origin.length === 0)) {
+    throw new Error("AETHER_CLOUD_ALLOWED_WEB_ORIGINS is invalid");
+  }
+  const unique = new Set<string>();
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      throw new Error("AETHER_CLOUD_ALLOWED_WEB_ORIGINS is invalid");
+    }
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.origin !== origin ||
+      (environment.RAILWAY_ENVIRONMENT_NAME === "production" &&
+        parsed.hostname !== "aetheriot.dev" &&
+        !parsed.hostname.endsWith(".aetheriot.dev")) ||
+      unique.has(origin)
+    ) {
+      throw new Error("AETHER_CLOUD_ALLOWED_WEB_ORIGINS is invalid");
+    }
+    unique.add(origin);
+  }
+  return Object.freeze([...unique]);
+}
+
 function postgresConnectionString(environment: NodeJS.ProcessEnv): string {
   const input = environment.AETHER_CLOUD_POSTGRES_URL;
   if (input === undefined || input.length === 0) {
@@ -157,8 +196,10 @@ export function composeApiRuntime(
   factories: ApiRuntimeFactories = {},
 ): ApiRuntime {
   const audit = auditRepository(environment, factories);
+  const origins = allowedOrigins(environment);
   const app = buildApp({
     version: "0.1.0",
+    ...(origins === undefined ? {} : { allowedOrigins: origins }),
     audit: {
       query: new SearchAuditEvents({ repository: audit.repository }),
       authenticator: authenticator(environment),
