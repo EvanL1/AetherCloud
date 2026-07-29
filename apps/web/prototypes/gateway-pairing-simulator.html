@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>AetherEdge 网关配对模拟</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f4f1;
+        --side: #eeeeea;
+        --surface: #fff;
+        --ink: #171717;
+        --muted: #686868;
+        --faint: #92928d;
+        --line: #dcdcd7;
+        --line-strong: #bdbdb7;
+        --accent: #315f78;
+        --accent-soft: #e8f0f3;
+        --success: #337052;
+        --warning: #8a641f;
+        --danger: #a94747;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        min-width: 320px;
+        margin: 0;
+        background: var(--bg);
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      code {
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+      .app {
+        display: grid;
+        min-height: 100vh;
+        grid-template-columns: 216px minmax(0, 1fr);
+      }
+      aside {
+        position: relative;
+        padding: 24px 18px;
+        border-right: 1px solid var(--line);
+        background: var(--side);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 680;
+        letter-spacing: -0.02em;
+      }
+      .mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        border-radius: 7px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 11px;
+      }
+      .prototype-label {
+        display: inline-block;
+        margin: 24px 8px 12px;
+        padding: 5px 7px;
+        border: 1px solid var(--line-strong);
+        border-radius: 99px;
+        color: var(--muted);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+      }
+      nav {
+        display: grid;
+        gap: 3px;
+      }
+      nav span {
+        padding: 10px 12px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      nav .active {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 620;
+      }
+      .scope-note {
+        position: absolute;
+        right: 18px;
+        bottom: 24px;
+        left: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        color: var(--faint);
+        font-size: 9px;
+        line-height: 1.6;
+      }
+      main {
+        min-width: 0;
+      }
+      .topbar {
+        display: flex;
+        height: 62px;
+        padding: 0 30px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .simulation-warning {
+        color: var(--warning);
+      }
+      .content {
+        width: min(940px, 100%);
+        margin: 0 auto;
+        padding: 52px 40px 100px;
+      }
+      .screen[hidden] {
+        display: none;
+      }
+      .heading {
+        display: flex;
+        min-height: 92px;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--accent);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.11em;
+      }
+      h1 {
+        margin: 0;
+        font-size: 34px;
+        font-weight: 590;
+        letter-spacing: -0.045em;
+      }
+      h2 {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 590;
+        letter-spacing: -0.025em;
+      }
+      .heading p:last-child,
+      .panel-intro {
+        max-width: 620px;
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.65;
+      }
+      .primary,
+      .secondary,
+      .text-button {
+        min-height: 38px;
+        padding: 0 16px;
+        border-radius: 6px;
+        font-size: 11px;
+      }
+      .primary {
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: #fff;
+      }
+      .primary:hover {
+        opacity: 0.86;
+      }
+      .primary:disabled {
+        cursor: wait;
+        opacity: 0.5;
+      }
+      .secondary {
+        border: 1px solid var(--line-strong);
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .text-button {
+        padding-inline: 4px;
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+      }
+      .panel {
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+      .empty {
+        display: grid;
+        min-height: 360px;
+        place-content: center;
+        justify-items: center;
+        text-align: center;
+      }
+      .empty-mark {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        border-radius: 50%;
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .empty h2 {
+        margin-top: 20px;
+      }
+      .empty p {
+        max-width: 390px;
+        margin: 9px 0 20px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.65;
+      }
+      .step-layout {
+        display: grid;
+        margin-top: 18px;
+        grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.65fr);
+        gap: 14px;
+      }
+      .form {
+        display: grid;
+        margin-top: 26px;
+        gap: 17px;
+      }
+      label {
+        display: grid;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      input {
+        width: 100%;
+        min-height: 42px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        outline: none;
+        background: var(--surface);
+        color: var(--ink);
+      }
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+      .form-actions {
+        display: flex;
+        margin-top: 6px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .explain {
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .explain h3,
+      .status-panel h3 {
+        margin: 0;
+        font-size: 12px;
+      }
+      .explain ol {
+        margin: 18px 0 0;
+        padding: 0 0 0 18px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.8;
+      }
+      .command {
+        position: relative;
+        margin-top: 24px;
+        padding: 18px 100px 18px 18px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #f4f4f1;
+        overflow: hidden;
+      }
+      .command code {
+        display: block;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 10px;
+        line-height: 1.7;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .command button {
+        position: absolute;
+        top: 11px;
+        right: 11px;
+      }
+      .expiry {
+        display: flex;
+        margin-top: 12px;
+        align-items: center;
+        gap: 8px;
+        color: var(--warning);
+        font-size: 9px;
+      }
+      .expiry::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        content: "";
+      }
+      .simulation-action {
+        margin-top: 28px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+      }
+      .simulation-action p {
+        margin: 0 0 12px;
+        color: var(--faint);
+        font-size: 9px;
+      }
+      .status-list {
+        margin-top: 20px;
+      }
+      .status-row {
+        display: grid;
+        padding: 14px 0;
+        grid-template-columns: 18px 1fr auto;
+        align-items: center;
+        border-top: 1px solid var(--line);
+        gap: 10px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .status-row i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--line-strong);
+      }
+      .status-row.done i {
+        background: var(--success);
+      }
+      .status-row.waiting i {
+        background: var(--warning);
+      }
+      .status-row strong {
+        color: var(--ink);
+        font-weight: 560;
+      }
+      .status-row span:last-child {
+        color: var(--faint);
+        font-size: 9px;
+      }
+      .waiting-box {
+        display: grid;
+        min-height: 180px;
+        margin-top: 24px;
+        place-content: center;
+        justify-items: center;
+        border: 1px dashed var(--line-strong);
+        border-radius: 7px;
+        text-align: center;
+      }
+      .pulse {
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--warning);
+        border-radius: 50%;
+        animation: pulse 1.5s ease infinite;
+      }
+      @keyframes pulse {
+        50% {
+          box-shadow: 0 0 0 7px rgba(138, 100, 31, 0.08);
+        }
+      }
+      .waiting-box strong {
+        margin-top: 15px;
+        font-size: 12px;
+      }
+      .waiting-box p {
+        max-width: 330px;
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      .success-summary {
+        display: grid;
+        margin-top: 24px;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+      }
+      .success-summary div {
+        padding: 18px;
+        border-right: 1px solid var(--line);
+      }
+      .success-summary div:last-child {
+        border-right: 0;
+      }
+      .success-summary span,
+      .success-summary strong {
+        display: block;
+      }
+      .success-summary span {
+        color: var(--faint);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+      .success-summary strong {
+        margin-top: 9px;
+        font-size: 11px;
+      }
+      .next-action {
+        display: flex;
+        margin-top: 24px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .next-action p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      .demo-facts {
+        margin-top: 20px;
+        padding: 14px 16px;
+        border-left: 3px solid var(--warning);
+        background: #faf8f2;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.65;
+      }
+      @media (max-width: 760px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        aside {
+          display: none;
+        }
+        .topbar {
+          padding-inline: 18px;
+        }
+        .content {
+          padding: 36px 18px 70px;
+        }
+        .step-layout {
+          grid-template-columns: 1fr;
+        }
+        .heading {
+          flex-direction: column;
+        }
+        .success-summary {
+          grid-template-columns: 1fr;
+        }
+        .success-summary div {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .success-summary div:last-child {
+          border-bottom: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pulse {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside>
+        <div class="brand"><span class="mark">A</span>AetherCloud</div>
+        <span class="prototype-label">INTERACTION SIMULATOR</span>
+        <nav>
+          <span class="active">Fleet</span><span>审计</span><span>账户</span>
+        </nav>
+        <div class="scope-note">
+          本页面只模拟交互，不连接 API，也不会写入生产数据。
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <span>AetherCloud / Fleet</span>
+          <span class="simulation-warning">模拟模式 · 不写入数据</span>
+        </header>
+        <div class="content">
+          <section class="screen" data-screen="empty">
+            <div class="heading">
+              <div>
+                <p class="eyebrow">AETHEREDGE</p>
+                <h1>Fleet</h1>
+                <p>管理 AetherEdge 网关、连接状态与数据新鲜度。</p>
+              </div>
+            </div>
+            <div class="panel empty">
+              <span class="empty-mark">＋</span>
+              <h2>添加第一个 AetherEdge 网关</h2>
+              <p>
+                创建网关身份，然后在 AetherEdge
+                主机上完成一次性配对。只有配对成功后，它才是可连接的网关。
+              </p>
+              <button class="primary" data-action="start" type="button">
+                添加网关
+              </button>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="setup" hidden>
+            <div class="heading">
+              <div>
+                <p class="eyebrow">STEP 1 / 3</p>
+                <h1>添加网关</h1>
+                <p>先给这台 AetherEdge 一个容易辨识的名称。</p>
+              </div>
+            </div>
+            <div class="step-layout">
+              <form class="panel form" id="gateway-form">
+                <div>
+                  <h2>网关信息</h2>
+                  <p class="panel-intro">
+                    系统会在后台生成身份，不要求用户填写 UUID。
+                  </p>
+                </div>
+                <label
+                  >网关名称<input
+                    id="gateway-name"
+                    maxlength="128"
+                    placeholder="例如：上海办公室"
+                    required
+                /></label>
+                <label
+                  >位置（可选）<input
+                    id="gateway-location"
+                    maxlength="128"
+                    placeholder="例如：3F · 弱电间"
+                /></label>
+                <div class="form-actions">
+                  <button class="text-button" data-action="reset" type="button">
+                    取消</button
+                  ><button class="primary" type="submit">创建并继续配对</button>
+                </div>
+              </form>
+              <aside class="explain">
+                <h3>接下来会发生什么</h3>
+                <ol>
+                  <li>云端创建网关身份</li>
+                  <li>生成短期一次性配对指令</li>
+                  <li>AetherEdge 使用指令证明身份</li>
+                  <li>配对成功后建立 CloudLink</li>
+                </ol>
+              </aside>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="pair" hidden>
+            <div class="heading">
+              <div>
+                <p class="eyebrow">STEP 2 / 3</p>
+                <h1>在 AetherEdge 上配对</h1>
+                <p>
+                  <strong data-value="name"></strong>
+                  的身份已经创建，但它还没有完成配对。
+                </p>
+              </div>
+              <button class="secondary" data-action="reset" type="button">
+                取消配对
+              </button>
+            </div>
+            <div class="step-layout">
+              <article class="panel">
+                <h2>运行一次性指令</h2>
+                <p class="panel-intro">
+                  登录目标 AetherEdge
+                  主机，在终端执行下面的指令。配对材料只显示一次。
+                </p>
+                <div class="command">
+                  <code id="pair-command"
+                    >aetheredge cloud enroll --token demo</code
+                  ><button class="secondary" data-action="copy" type="button">
+                    复制
+                  </button>
+                </div>
+                <div class="expiry">模拟配对材料将在 10 分钟后过期</div>
+                <div class="simulation-action">
+                  <p>
+                    原型中没有真实 AetherEdge，使用下面的按钮模拟主机执行指令。
+                  </p>
+                  <button class="primary" data-action="claim" type="button">
+                    模拟 AetherEdge 执行配对
+                  </button>
+                </div>
+              </article>
+              <aside class="explain status-panel">
+                <h3>配对状态</h3>
+                <div class="status-list">
+                  <div class="status-row done">
+                    <i></i><strong>网关身份</strong><span>已创建</span>
+                  </div>
+                  <div class="status-row waiting">
+                    <i></i><strong>AetherEdge 证明</strong><span>等待中</span>
+                  </div>
+                  <div class="status-row">
+                    <i></i><strong>CloudLink</strong><span>未连接</span>
+                  </div>
+                  <div class="status-row">
+                    <i></i><strong>首批遥测</strong><span>未收到</span>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="connecting" hidden>
+            <div class="heading">
+              <div>
+                <p class="eyebrow">STEP 3 / 3</p>
+                <h1>配对完成，等待连接</h1>
+                <p>
+                  <strong data-value="name"></strong>
+                  已经证明并绑定网关身份。配对成功不等同于数据已经正常。
+                </p>
+              </div>
+            </div>
+            <div class="step-layout">
+              <article class="panel">
+                <h2>确认 CloudLink 与首批数据</h2>
+                <div class="status-list">
+                  <div class="status-row done">
+                    <i></i><strong>网关身份</strong><span>已创建</span>
+                  </div>
+                  <div class="status-row done">
+                    <i></i><strong>AetherEdge 证明</strong><span>已验证</span>
+                  </div>
+                  <div class="status-row waiting">
+                    <i></i><strong>CloudLink</strong><span>等待中</span>
+                  </div>
+                  <div class="status-row">
+                    <i></i><strong>首批遥测</strong><span>未收到</span>
+                  </div>
+                </div>
+                <div class="simulation-action">
+                  <p>模拟 AetherEdge 使用新凭据建立 CloudLink。</p>
+                  <button class="primary" data-action="connect" type="button">
+                    模拟 CloudLink 连接
+                  </button>
+                </div>
+              </article>
+              <aside class="waiting-box">
+                <span class="pulse"></span><strong>等待 AetherEdge 上线</strong>
+                <p>真实界面会自动接收状态变化，不要求用户手动刷新。</p>
+              </aside>
+            </div>
+          </section>
+
+          <section class="screen" data-screen="telemetry" hidden>
+            <div class="heading">
+              <div>
+                <p class="eyebrow">GATEWAY ONLINE</p>
+                <h1 data-value="name"></h1>
+                <p>
+                  CloudLink
+                  已连接。继续确认首批遥测，避免把“已连接”误认为“数据正常”。
+                </p>
+              </div>
+            </div>
+            <article class="panel">
+              <div class="status-list">
+                <div class="status-row done">
+                  <i></i><strong>网关身份</strong><span>已创建</span>
+                </div>
+                <div class="status-row done">
+                  <i></i><strong>AetherEdge 证明</strong><span>已验证</span>
+                </div>
+                <div class="status-row done">
+                  <i></i><strong>CloudLink</strong><span>在线</span>
+                </div>
+                <div class="status-row waiting">
+                  <i></i><strong>首批遥测</strong><span>等待中</span>
+                </div>
+              </div>
+              <div class="simulation-action">
+                <p>模拟 AetherEdge 发送并由云端持久化第一批遥测。</p>
+                <button class="primary" data-action="telemetry" type="button">
+                  模拟首批遥测到达
+                </button>
+              </div>
+            </article>
+          </section>
+
+          <section class="screen" data-screen="ready" hidden>
+            <div class="heading">
+              <div>
+                <p class="eyebrow">PAIRING COMPLETE</p>
+                <h1 data-value="name"></h1>
+                <p><span class="status-dot"></span>网关在线，数据刚刚到达。</p>
+              </div>
+              <button class="secondary" data-action="reset" type="button">
+                重新模拟
+              </button>
+            </div>
+            <article class="panel">
+              <h2>网关可以开始使用</h2>
+              <div class="success-summary">
+                <div><span>PAIRING</span><strong>已完成</strong></div>
+                <div><span>CLOUDLINK</span><strong>在线</strong></div>
+                <div><span>TELEMETRY</span><strong>刚刚到达</strong></div>
+              </div>
+              <div class="next-action">
+                <p>
+                  正式产品将在这里进入 Gateway
+                  Overview，而不是继续显示配对向导。
+                </p>
+                <button class="primary" type="button">查看网关</button>
+              </div>
+              <div class="demo-facts">
+                <strong>模拟结束：</strong>真实实现需要 Enrollment
+                issue/claim、凭据签发、CloudLink
+                会话和遥测持久化共同提供这些状态；前端不能用计时器伪造成功。
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const screens = [...document.querySelectorAll("[data-screen]")];
+      const nameTargets = [...document.querySelectorAll('[data-value="name"]')];
+      const form = document.querySelector("#gateway-form");
+      const nameInput = document.querySelector("#gateway-name");
+      const locationInput = document.querySelector("#gateway-location");
+      const command = document.querySelector("#pair-command");
+      let gatewayName = "";
+
+      function show(name) {
+        for (const screen of screens)
+          screen.hidden = screen.dataset.screen !== name;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function reset() {
+        gatewayName = "";
+        form.reset();
+        show("empty");
+      }
+
+      document.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-action]");
+        if (!button) return;
+        const action = button.dataset.action;
+        if (action === "start") show("setup");
+        if (action === "reset") reset();
+        if (action === "copy") {
+          try {
+            await navigator.clipboard.writeText(command.textContent);
+            button.textContent = "已复制";
+          } catch {
+            button.textContent = "请手动复制";
+          }
+          window.setTimeout(() => (button.textContent = "复制"), 1200);
+        }
+        if (action === "claim") {
+          button.disabled = true;
+          button.textContent = "正在验证证明…";
+          window.setTimeout(() => {
+            button.disabled = false;
+            button.textContent = "模拟 AetherEdge 执行配对";
+            show("connecting");
+          }, 700);
+        }
+        if (action === "connect") show("telemetry");
+        if (action === "telemetry") show("ready");
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        gatewayName = nameInput.value.trim();
+        if (!gatewayName) return;
+        for (const target of nameTargets) target.textContent = gatewayName;
+        const suffix = crypto.randomUUID().replaceAll("-", "").slice(0, 18);
+        command.textContent = `aetheredge cloud enroll --token ac_demo_${suffix}`;
+        show("pair");
+      });
+    </script>
+  </body>
+</html>
