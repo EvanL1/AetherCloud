@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { LoginScreen, Overview } from "../src/app.js";
+import { FleetView, LoginScreen, Overview } from "../src/app.js";
 
 describe("AetherCloud console interface", () => {
   it("renders a dedicated control-plane login rather than a marketing subpage", () => {
@@ -12,6 +12,23 @@ describe("AetherCloud console interface", () => {
     expect(html).toContain("管理员邀请");
     expect(html).toContain("切换到浅色主题");
     expect(html).toContain('href="https://aetheriot.dev"');
+  });
+
+  it("starts an empty Fleet with an AetherEdge gateway task", () => {
+    const html = renderToStaticMarkup(
+      <FleetView
+        error={undefined}
+        fleet={{ items: [], nextCursor: null }}
+        loading={false}
+        onRegister={() => Promise.resolve()}
+        onReload={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("添加第一个 AetherEdge 网关");
+    expect(html).toContain("添加网关");
+    expect(html).not.toContain("Gateway ID");
+    expect(html).not.toContain("fleet.gateway.create");
   });
 
   it("distinguishes production services from modules that are not exposed", () => {
@@ -31,8 +48,8 @@ describe("AetherCloud console interface", () => {
     );
 
     expect(html).toContain("生产服务");
-    expect(html).toContain("边缘 Fleet");
-    expect(html).toContain("边缘 Fleet</strong><small>生产可用");
+    expect(html).toContain("AetherEdge Fleet");
+    expect(html).toContain("AetherEdge Fleet</strong><small>生产可用");
     expect(html).toContain("只展示真实实现");
   });
 });

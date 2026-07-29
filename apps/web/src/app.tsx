@@ -259,19 +259,14 @@ function Navigation({
 }: NavigationProps): React.JSX.Element {
   const primaryItems: readonly Readonly<{
     view: ConsoleView;
-    code: string;
     label: string;
-  }>[] = [
-    { view: "fleet", code: "FL", label: "边缘 Fleet" },
-    { view: "overview", code: "OV", label: "运行总览" },
-  ];
+  }>[] = [{ view: "fleet", label: "Fleet" }];
   const managementItems: readonly Readonly<{
     view: ConsoleView;
-    code: string;
     label: string;
   }>[] = [
-    { view: "audit", code: "AU", label: "审计事件" },
-    { view: "account", code: "ID", label: "身份与账户" },
+    { view: "audit", label: "审计" },
+    { view: "account", label: "账户" },
   ];
   return (
     <aside className={`sidebar${open ? " sidebar-open" : ""}`}>
@@ -279,7 +274,7 @@ function Navigation({
         <Brand />
       </div>
       <nav aria-label="控制台导航">
-        <p>CONTROL PLANE</p>
+        <p>WORKSPACE</p>
         {primaryItems.map((item) => (
           <button
             className={
@@ -291,25 +286,8 @@ function Navigation({
             }}
             type="button"
           >
-            <span>{item.code}</span>
             {item.label}
           </button>
-        ))}
-        <p>PRODUCT MODULES</p>
-        {[
-          ["TM", "遥测与告警"],
-          ["DP", "部署"],
-          ["MC", "多云资源"],
-        ].map(([code, label]) => (
-          <div
-            className="nav-item nav-item-disabled"
-            key={code}
-            title="服务端接口尚未开放"
-          >
-            <span>{code}</span>
-            {label}
-            <small>规划中</small>
-          </div>
         ))}
         <p>MANAGEMENT</p>
         {managementItems.map((item) => (
@@ -323,14 +301,13 @@ function Navigation({
             }}
             type="button"
           >
-            <span>{item.code}</span>
             {item.label}
           </button>
         ))}
       </nav>
       <div className="sidebar-boundary">
-        <span>AUTHORITY</span>
-        <p>Cloud failure must not stop commissioned edge behavior.</p>
+        <span>AETHEREDGE</span>
+        <p>现场运行不依赖云端持续在线。</p>
       </div>
     </aside>
   );
@@ -359,7 +336,7 @@ function connectionLabel(
   return "从未连接";
 }
 
-function FleetView({
+export function FleetView({
   fleet,
   loading,
   error,
@@ -387,7 +364,7 @@ function FleetView({
       setGatewayId(crypto.randomUUID());
       event.currentTarget.reset();
     } catch {
-      setFormError("无法注册网关，请检查权限或稍后重试。");
+      setFormError("无法创建网关，请检查权限或稍后重试。");
     } finally {
       setSubmitting(false);
     }
@@ -398,14 +375,20 @@ function FleetView({
     (gateway) => gateway.gatewayId === selected,
   );
 
+  const needsAttention = gateways.filter(
+    (gateway) => gateway.connection.status !== "online",
+  ).length;
+
   return (
     <div className="view-stack">
       <section className="page-heading fleet-heading">
         <div>
-          <p className="eyebrow">EDGE FLEET</p>
-          <h1>边缘 Fleet</h1>
+          <p className="eyebrow">AETHEREDGE</p>
+          <h1>Fleet</h1>
           <p>
-            注册并查看当前 Tenant 中的真实网关身份、CloudLink 状态和最新遥测。
+            {gateways.length === 0
+              ? "管理 AetherEdge 网关、连接状态与数据新鲜度。"
+              : `${String(gateways.length)} 个网关 · ${String(needsAttention)} 个需要处理`}
           </p>
         </div>
         <div className="page-actions">
@@ -424,7 +407,7 @@ function FleetView({
             }}
             type="button"
           >
-            {registering ? "取消" : "注册网关"}
+            {registering ? "取消" : "添加网关"}
           </button>
         </div>
       </section>
@@ -433,10 +416,9 @@ function FleetView({
         <section className="surface register-surface">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">REGISTER IDENTITY</p>
-              <h2>创建网关身份</h2>
+              <p className="eyebrow">NEW GATEWAY</p>
+              <h2>添加 AetherEdge 网关</h2>
             </div>
-            <span className="permission-chip">fleet.gateway.create</span>
           </div>
           <form
             className="register-grid"
@@ -448,25 +430,20 @@ function FleetView({
                 autoFocus
                 maxLength={128}
                 name="displayName"
-                placeholder="例如：上海办公室主网关"
+                placeholder="例如：上海办公室"
                 required
               />
-            </label>
-            <label>
-              Gateway ID
-              <input readOnly value={gatewayId} />
             </label>
             <button
               className="compact-button"
               disabled={submitting}
               type="submit"
             >
-              {submitting ? "正在注册…" : "确认注册"}
+              {submitting ? "正在创建…" : "创建网关身份"}
             </button>
           </form>
           <p className="register-note">
-            此操作创建受 Tenant RLS 保护的网关身份并写入 Audit 与
-            Outbox；它不会绕过后续接入凭据流程。
+            这里只创建网关身份。安全接入与凭据绑定将在后续步骤完成。
           </p>
           {formError === undefined ? null : (
             <p className="inline-error">{formError}</p>
@@ -477,55 +454,43 @@ function FleetView({
       {error === undefined ? null : <p className="inline-error">{error}</p>}
 
       <section className="surface fleet-surface">
-        <div className="fleet-summary">
-          <div>
-            <span>TOTAL</span>
-            <strong>{gateways.length}</strong>
-          </div>
-          <div>
-            <span>ONLINE</span>
-            <strong>
-              {
-                gateways.filter(
-                  (gateway) => gateway.connection.status === "online",
-                ).length
-              }
-            </strong>
-          </div>
-          <div>
-            <span>TELEMETRY RECORDS</span>
-            <strong>
-              {gateways
-                .reduce(
-                  (total, gateway) =>
-                    total + BigInt(gateway.telemetry.recordCount),
-                  0n,
-                )
-                .toString()}
-            </strong>
-          </div>
-        </div>
         {loading && fleet === undefined ? (
           <div className="empty-state">
             <span className="spinner" />
-            <h3>正在读取 Supabase Fleet</h3>
+            <h3>正在读取 Fleet</h3>
           </div>
         ) : gateways.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-glyph">FL</span>
-            <h3>还没有注册网关</h3>
-            <p>
-              创建第一个网关身份后，它会真实写入 Supabase，并立即出现在这里。
-            </p>
+            <span className="empty-glyph" aria-hidden="true">
+              ＋
+            </span>
+            <h3>添加第一个 AetherEdge 网关</h3>
+            <p>创建网关身份后，它会出现在 Fleet 中。现场运行不会被云端接管。</p>
+            <button
+              className="compact-button"
+              onClick={() => {
+                setRegistering(true);
+              }}
+              type="button"
+            >
+              添加网关
+            </button>
           </div>
         ) : (
-          <div className="gateway-grid">
+          <div className="fleet-list">
+            <div className="fleet-list-row fleet-list-header">
+              <span>网关</span>
+              <span>连接</span>
+              <span>最新数据</span>
+              <span>遥测记录</span>
+              <span />
+            </div>
             {gateways.map((gateway) => (
               <button
                 className={
                   selected === gateway.gatewayId
-                    ? "gateway-card gateway-card-active"
-                    : "gateway-card"
+                    ? "fleet-list-row fleet-list-item fleet-list-item-active"
+                    : "fleet-list-row fleet-list-item"
                 }
                 key={gateway.gatewayId}
                 onClick={() => {
@@ -537,37 +502,23 @@ function FleetView({
                 }}
                 type="button"
               >
-                <div className="gateway-card-head">
-                  <span
+                <span className="fleet-gateway-name">
+                  <strong>{gateway.displayName}</strong>
+                  <small>{shortId(gateway.gatewayId)}</small>
+                </span>
+                <span className="fleet-connection">
+                  <i
                     className={`fleet-status fleet-status-${gateway.connection.status}`}
                   />
-                  <span>{connectionLabel(gateway.connection.status)}</span>
-                  <small>{gateway.enrollmentState}</small>
-                </div>
-                <h3>{gateway.displayName}</h3>
-                <code>{gateway.gatewayId}</code>
-                <dl>
-                  <div>
-                    <dt>最新心跳</dt>
-                    <dd>
-                      {gateway.connection.lastSeenAt === undefined
-                        ? "—"
-                        : formatTime(gateway.connection.lastSeenAt)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>遥测记录</dt>
-                    <dd>{gateway.telemetry.recordCount}</dd>
-                  </div>
-                  <div>
-                    <dt>最新遥测</dt>
-                    <dd>
-                      {gateway.telemetry.lastReceivedAt === undefined
-                        ? "—"
-                        : formatTime(gateway.telemetry.lastReceivedAt)}
-                    </dd>
-                  </div>
-                </dl>
+                  {connectionLabel(gateway.connection.status)}
+                </span>
+                <span>
+                  {gateway.telemetry.lastReceivedAt === undefined
+                    ? "—"
+                    : formatTime(gateway.telemetry.lastReceivedAt)}
+                </span>
+                <span>{gateway.telemetry.recordCount}</span>
+                <span aria-hidden="true">›</span>
               </button>
             ))}
           </div>
@@ -578,31 +529,37 @@ function FleetView({
         <section className="surface gateway-detail">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">GATEWAY DETAIL</p>
+              <p className="eyebrow">GATEWAY</p>
               <h2>{selectedGateway.displayName}</h2>
+              <p className="detail-subtitle">
+                {connectionLabel(selectedGateway.connection.status)} · 最近数据
+                {selectedGateway.telemetry.lastReceivedAt === undefined
+                  ? "尚未到达"
+                  : formatTime(selectedGateway.telemetry.lastReceivedAt)}
+              </p>
             </div>
-            <span
-              className={`connection-badge connection-${selectedGateway.connection.status === "online" ? "connected" : "checking"}`}
-            >
-              <span aria-hidden="true" />
-              {connectionLabel(selectedGateway.connection.status)}
-            </span>
           </div>
           <div className="detail-grid">
             <div>
-              <span>Enrollment</span>
+              <span>连接</span>
+              <strong>
+                {connectionLabel(selectedGateway.connection.status)}
+              </strong>
+            </div>
+            <div>
+              <span>数据</span>
+              <strong>
+                {selectedGateway.telemetry.lastReceivedAt === undefined
+                  ? "尚无遥测"
+                  : "已接收"}
+              </strong>
+            </div>
+            <div>
+              <span>接入状态</span>
               <strong>{selectedGateway.enrollmentState}</strong>
             </div>
             <div>
-              <span>Session</span>
-              <strong>{selectedGateway.connection.sessionState ?? "—"}</strong>
-            </div>
-            <div>
-              <span>Revision</span>
-              <strong>{selectedGateway.revision}</strong>
-            </div>
-            <div>
-              <span>Registered</span>
+              <span>创建时间</span>
               <strong>{formatTime(selectedGateway.registeredAt)}</strong>
             </div>
           </div>
@@ -703,8 +660,8 @@ export function Overview({
           >
             <span className="service-icon">FL</span>
             <span>
-              <strong>边缘 Fleet</strong>
-              <small>注册网关并查询 CloudLink 状态与最新遥测</small>
+              <strong>AetherEdge Fleet</strong>
+              <small>添加网关并查询 CloudLink 状态与最新遥测</small>
             </span>
             <em>可用</em>
             <b aria-hidden="true">→</b>
@@ -768,7 +725,7 @@ export function Overview({
           {(
             [
               ["审计与身份", "生产可用", "ready"],
-              ["边缘 Fleet", "生产可用", "ready"],
+              ["AetherEdge Fleet", "生产可用", "ready"],
               ["遥测与告警", "持久化基础已实现", "foundation"],
               ["部署与多云", "应用契约已定义", "planned"],
             ] as const
@@ -1180,12 +1137,16 @@ function Console({
             ☰
           </button>
           <div className="scope-crumb">
-            <span>
-              {scope === null ? "UNASSIGNED" : shortId(scope.tenantId)}
-            </span>
+            <span>AetherCloud</span>
             <b>/</b>
             <span>
-              {scope === null ? "NO PROJECT" : shortId(scope.projectId)}
+              {view === "fleet"
+                ? "Fleet"
+                : view === "audit"
+                  ? "审计"
+                  : view === "account"
+                    ? "账户"
+                    : "总览"}
             </span>
           </div>
           <div className="topbar-actions">
@@ -1256,7 +1217,7 @@ export function App(): React.JSX.Element {
     );
     themeColor?.setAttribute(
       "content",
-      theme === "dark" ? "#100e18" : "#efede8",
+      theme === "dark" ? "#151514" : "#f4f4f1",
     );
   }, [theme]);
 

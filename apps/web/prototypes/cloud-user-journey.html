@@ -1,0 +1,1139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>AetherCloud 用户旅程提案</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4f4f1;
+        --surface: #ffffff;
+        --ink: #171717;
+        --muted: #686868;
+        --faint: #909090;
+        --line: #dcdcd7;
+        --line-strong: #bdbdb7;
+        --accent: #315f78;
+        --accent-soft: #e8f0f3;
+        --success: #337052;
+        --warning: #8a641f;
+        --radius: 8px;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      code,
+      .mono {
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+      .shell {
+        display: grid;
+        min-height: 100vh;
+        grid-template-columns: 248px minmax(0, 1fr);
+      }
+      .index {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        padding: 28px 24px;
+        border-right: 1px solid var(--line);
+        background: #eeeeea;
+      }
+      .wordmark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 680;
+        letter-spacing: -0.02em;
+      }
+      .mark {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 1px solid var(--ink);
+        border-radius: 6px;
+        font-size: 11px;
+      }
+      .index > p {
+        margin: 16px 0 28px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.65;
+      }
+      .index nav {
+        display: grid;
+        gap: 3px;
+      }
+      .index nav a {
+        padding: 9px 10px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .index nav a:hover {
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .version {
+        position: absolute;
+        bottom: 24px;
+        color: var(--faint);
+        font-size: 10px;
+      }
+      main {
+        width: min(1080px, 100%);
+        padding: 72px clamp(28px, 6vw, 84px) 120px;
+      }
+      .intro {
+        max-width: 760px;
+      }
+      .kicker,
+      .section-kicker {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+      }
+      h1 {
+        max-width: 700px;
+        margin: 0;
+        font-size: clamp(36px, 5vw, 62px);
+        font-weight: 560;
+        letter-spacing: -0.055em;
+        line-height: 1.06;
+      }
+      .lead {
+        max-width: 680px;
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.8;
+      }
+      .decision {
+        margin-top: 36px;
+        padding: 18px 20px;
+        border-left: 3px solid var(--accent);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .decision strong {
+        color: var(--ink);
+      }
+      section.block {
+        padding-top: 96px;
+        scroll-margin-top: 28px;
+      }
+      h2 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 590;
+        letter-spacing: -0.035em;
+      }
+      .section-intro {
+        max-width: 720px;
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.75;
+      }
+      .journey-line {
+        display: grid;
+        margin-top: 32px;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .journey-line article {
+        position: relative;
+        min-height: 136px;
+        padding: 18px 15px;
+        border-right: 1px solid var(--line);
+      }
+      .journey-line article:last-child {
+        border-right: 0;
+      }
+      .journey-line article:not(:last-child)::after {
+        position: absolute;
+        z-index: 2;
+        top: 25px;
+        right: -8px;
+        width: 15px;
+        height: 15px;
+        border-top: 1px solid var(--line-strong);
+        border-right: 1px solid var(--line-strong);
+        background: var(--surface);
+        content: "";
+        transform: rotate(45deg);
+      }
+      .journey-line span {
+        color: var(--faint);
+        font-size: 9px;
+      }
+      .journey-line strong {
+        display: block;
+        margin-top: 22px;
+        font-size: 13px;
+      }
+      .journey-line p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.55;
+      }
+      .branch {
+        margin: 14px 0 0 50%;
+        padding: 14px 18px;
+        border: 1px dashed var(--line-strong);
+        border-radius: var(--radius);
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .branch strong {
+        color: var(--warning);
+      }
+      .journey-table {
+        width: 100%;
+        margin-top: 30px;
+        border-collapse: collapse;
+        border-top: 1px solid var(--line-strong);
+        font-size: 12px;
+      }
+      .journey-table th,
+      .journey-table td {
+        padding: 15px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      .journey-table th {
+        color: var(--faint);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+      }
+      .journey-table td:first-child {
+        width: 18%;
+        font-weight: 620;
+      }
+      .journey-table td:nth-child(2) {
+        width: 27%;
+      }
+      .journey-table td:not(:first-child) {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .architecture {
+        display: grid;
+        margin-top: 28px;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .architecture article,
+      .principle-grid article {
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+      .architecture h3,
+      .principle-grid h3 {
+        margin: 0;
+        font-size: 14px;
+      }
+      .architecture ul,
+      .principle-grid ul {
+        margin: 16px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .architecture li,
+      .principle-grid li {
+        padding: 8px 0;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .prototype-note {
+        display: flex;
+        margin: 30px 0 16px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .legend {
+        display: flex;
+        gap: 14px;
+      }
+      .legend span::before {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 6px;
+        border-radius: 50%;
+        background: var(--success);
+        content: "";
+      }
+      .legend span:last-child::before {
+        background: var(--faint);
+      }
+      .wireframe {
+        display: grid;
+        min-height: 590px;
+        margin-top: 14px;
+        grid-template-columns: 190px 1fr;
+        border: 1px solid var(--line-strong);
+        border-radius: 10px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .wire-nav {
+        padding: 20px 14px;
+        border-right: 1px solid var(--line);
+        background: #f7f7f4;
+      }
+      .wire-nav .wordmark {
+        padding: 0 8px 20px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .wire-nav nav {
+        display: grid;
+        margin-top: 18px;
+        gap: 4px;
+      }
+      .wire-nav nav span {
+        padding: 9px 10px;
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .wire-nav nav .active {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 620;
+      }
+      .wire-nav .admin {
+        margin-top: 26px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+      .wire-content {
+        min-width: 0;
+      }
+      .wire-topbar {
+        display: flex;
+        height: 58px;
+        padding: 0 24px;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .wire-body {
+        padding: 34px;
+      }
+      .wire-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .wire-heading h3 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 590;
+        letter-spacing: -0.035em;
+      }
+      .wire-heading p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .button {
+        min-height: 36px;
+        padding: 0 15px;
+        border: 1px solid var(--ink);
+        border-radius: 6px;
+        background: var(--ink);
+        color: white;
+        font-size: 11px;
+      }
+      .button.secondary {
+        border-color: var(--line-strong);
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .empty {
+        display: grid;
+        min-height: 330px;
+        margin-top: 26px;
+        place-content: center;
+        justify-items: center;
+        border-top: 1px solid var(--line);
+        text-align: center;
+      }
+      .empty .symbol {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        border-radius: 50%;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .empty h4 {
+        margin: 18px 0 0;
+        font-size: 14px;
+      }
+      .empty p {
+        max-width: 320px;
+        margin: 8px 0 18px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.65;
+      }
+      .flow-screens {
+        display: grid;
+        margin-top: 18px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .mini-screen {
+        min-height: 250px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+      .mini-screen .step {
+        color: var(--faint);
+        font-size: 9px;
+      }
+      .mini-screen h4 {
+        margin: 22px 0 8px;
+        font-size: 14px;
+      }
+      .mini-screen > p {
+        min-height: 50px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      .field {
+        margin-top: 16px;
+      }
+      .field label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .input,
+      .command {
+        min-height: 34px;
+        padding: 9px 10px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .command {
+        margin-top: 16px;
+        overflow: hidden;
+        background: #f1f1ed;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .wait-row {
+        display: flex;
+        margin-top: 18px;
+        align-items: center;
+        gap: 9px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--warning);
+      }
+      .dot.ok {
+        background: var(--success);
+      }
+      .fleet-table {
+        margin-top: 28px;
+        border-top: 1px solid var(--line-strong);
+      }
+      .fleet-row {
+        display: grid;
+        min-height: 64px;
+        padding: 12px 4px;
+        grid-template-columns: 2fr 1fr 1fr auto;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        gap: 16px;
+        font-size: 10px;
+      }
+      .fleet-row.header {
+        min-height: 38px;
+        color: var(--faint);
+        font-size: 8px;
+        letter-spacing: 0.06em;
+      }
+      .gateway-name strong,
+      .gateway-name small {
+        display: block;
+      }
+      .gateway-name small {
+        margin-top: 4px;
+        color: var(--faint);
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+      }
+      .status::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--success);
+        content: "";
+      }
+      .gateway-layout {
+        display: grid;
+        margin-top: 28px;
+        grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.7fr);
+        gap: 14px;
+      }
+      .plain-panel {
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+      .plain-panel h4 {
+        margin: 0;
+        font-size: 12px;
+      }
+      .facts {
+        display: grid;
+        margin-top: 18px;
+        grid-template-columns: repeat(3, 1fr);
+        border-top: 1px solid var(--line);
+      }
+      .facts div {
+        padding: 15px 0;
+      }
+      .facts span,
+      .facts strong {
+        display: block;
+      }
+      .facts span {
+        color: var(--faint);
+        font-size: 8px;
+      }
+      .facts strong {
+        margin-top: 8px;
+        font-size: 11px;
+      }
+      .events {
+        margin-top: 18px;
+      }
+      .events div {
+        display: flex;
+        padding: 11px 0;
+        justify-content: space-between;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .principle-grid {
+        display: grid;
+        margin-top: 28px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .cut-list li::before {
+        margin-right: 8px;
+        color: var(--accent);
+        content: "−";
+      }
+      .delivery {
+        display: grid;
+        margin-top: 30px;
+        gap: 10px;
+      }
+      .delivery div {
+        display: grid;
+        padding: 16px 18px;
+        grid-template-columns: 110px 1fr auto;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        gap: 20px;
+        font-size: 11px;
+      }
+      .delivery span {
+        color: var(--muted);
+      }
+      .delivery em {
+        color: var(--success);
+        font-size: 9px;
+        font-style: normal;
+      }
+      .delivery .later {
+        color: var(--faint);
+      }
+      @media (max-width: 860px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+        .index {
+          position: relative;
+          height: auto;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .index nav,
+        .version {
+          display: none;
+        }
+        main {
+          padding-top: 48px;
+        }
+        .journey-line {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .journey-line article {
+          border-bottom: 1px solid var(--line);
+        }
+        .journey-line article::after {
+          display: none;
+        }
+        .branch {
+          margin-left: 0;
+        }
+        .architecture,
+        .principle-grid,
+        .flow-screens {
+          grid-template-columns: 1fr;
+        }
+        .wireframe {
+          grid-template-columns: 1fr;
+        }
+        .wire-nav {
+          display: none;
+        }
+      }
+      @media (max-width: 560px) {
+        .journey-line {
+          grid-template-columns: 1fr;
+        }
+        .journey-table th:nth-child(3),
+        .journey-table td:nth-child(3) {
+          display: none;
+        }
+        .wire-heading,
+        .prototype-note {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .wire-body {
+          padding: 24px 18px;
+        }
+        .fleet-row {
+          grid-template-columns: 1.5fr 1fr auto;
+        }
+        .fleet-row > :nth-child(3) {
+          display: none;
+        }
+        .gateway-layout {
+          grid-template-columns: 1fr;
+        }
+        .facts {
+          grid-template-columns: 1fr;
+        }
+        .delivery div {
+          grid-template-columns: 1fr;
+          gap: 7px;
+        }
+      }
+      @media print {
+        .shell {
+          display: block;
+        }
+        .index {
+          display: none;
+        }
+        main {
+          width: 100%;
+          padding: 20px;
+        }
+        section.block {
+          padding-top: 48px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="index">
+        <div class="wordmark"><span class="mark">A</span>AetherCloud</div>
+        <p>用户旅程与低保真界面提案。先确定任务顺序，再进入视觉设计。</p>
+        <nav aria-label="文档目录">
+          <a href="#premise">01 产品入口</a>
+          <a href="#journey">02 主用户旅程</a>
+          <a href="#information">03 信息架构</a>
+          <a href="#prototype">04 低保真界面</a>
+          <a href="#subtraction">05 做减法</a>
+          <a href="#delivery">06 实施边界</a>
+        </nav>
+        <span class="version mono">JOURNEY PROPOSAL · V1</span>
+      </aside>
+
+      <main>
+        <header class="intro" id="premise">
+          <p class="kicker">AETHERCLOUD · USER JOURNEY</p>
+          <h1>
+            用户不是来管理控制台的，而是来让每一台 AetherEdge 稳定工作的。
+          </h1>
+          <p class="lead">
+            AetherCloud 的入口不应该是账户、API
+            状态或抽象总览。主入口应该回答三个问题：哪些网关需要处理、数据是否在持续到达、下一次变更是否安全。
+          </p>
+          <div class="decision">
+            <strong>产品入口：</strong>登录后直接进入
+            Fleet。第一次使用引导“添加网关”；日常使用优先显示“需要处理的网关”。审计、权限和账户退到二级管理区域。
+          </div>
+        </header>
+
+        <section class="block" id="journey">
+          <p class="section-kicker">02 · PRIMARY JOURNEY</p>
+          <h2>一条主线，两个分支</h2>
+          <p class="section-intro">
+            主线是从“还没有网关”到“AetherEdge
+            持续产生可信数据”，随后才进入部署。异常不是独立产品模块，而是在每个阶段提供的处理分支。
+          </p>
+          <div class="journey-line" aria-label="主要用户旅程">
+            <article>
+              <span>01</span><strong>进入 Fleet</strong>
+              <p>识别当前范围与待处理事项</p>
+            </article>
+            <article>
+              <span>02</span><strong>添加网关</strong>
+              <p>只填写名称和可选位置</p>
+            </article>
+            <article>
+              <span>03</span><strong>建立连接</strong>
+              <p>一次性接入指令与明确等待状态</p>
+            </article>
+            <article>
+              <span>04</span><strong>确认数据</strong>
+              <p>检查心跳、时间和首批遥测</p>
+            </article>
+            <article>
+              <span>05</span><strong>持续观察</strong>
+              <p>围绕异常和新鲜度工作</p>
+            </article>
+            <article>
+              <span>06</span><strong>安全部署</strong>
+              <p>审阅、确认、等待 AetherEdge 接受</p>
+            </article>
+          </div>
+          <div class="branch">
+            <strong>异常分支：</strong
+            >停留在当前上下文中诊断，不把用户抛到另一个“系统状态”页面。
+          </div>
+
+          <table class="journey-table">
+            <thead>
+              <tr>
+                <th>阶段</th>
+                <th>用户要完成的事</th>
+                <th>界面只需要回答</th>
+                <th>完成信号</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>进入 Fleet</td>
+                <td>判断今天是否需要行动</td>
+                <td>多少网关异常；上次数据何时到达</td>
+                <td>用户能选择一个明确对象</td>
+              </tr>
+              <tr>
+                <td>添加网关</td>
+                <td>创建一个可辨识的 AetherEdge 网关身份</td>
+                <td>它叫什么；部署在哪里</td>
+                <td>身份已创建，不等同于已连接</td>
+              </tr>
+              <tr>
+                <td>建立连接</td>
+                <td>让 AetherEdge 证明并绑定网关身份</td>
+                <td>执行哪条指令；有效期；当前进度</td>
+                <td>凭据激活并出现第一次心跳</td>
+              </tr>
+              <tr>
+                <td>确认数据</td>
+                <td>确认链路不是“假在线”</td>
+                <td>心跳是否新鲜；是否收到首批遥测</td>
+                <td>连接与数据都在可接受窗口内</td>
+              </tr>
+              <tr>
+                <td>持续观察</td>
+                <td>快速定位需要处理的网关</td>
+                <td>异常原因；影响范围；建议动作</td>
+                <td>异常被处理或明确接受</td>
+              </tr>
+              <tr>
+                <td>安全部署</td>
+                <td>发布一个可追踪的期望版本</td>
+                <td>变更内容；风险；AetherEdge 是否接受</td>
+                <td>Desired、Reported、Applied 可区分</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="block" id="information">
+          <p class="section-kicker">03 · INFORMATION ARCHITECTURE</p>
+          <h2>导航围绕对象，不围绕后台模块</h2>
+          <p class="section-intro">
+            一级导航保持三个工作域。进入某个 Gateway
+            后，遥测和部署成为这个对象的上下文，而不是新的起点。
+          </p>
+          <div class="architecture">
+            <article>
+              <h3>一级工作区</h3>
+              <ul>
+                <li>
+                  <strong>Fleet</strong> — 默认入口，AetherEdge
+                  网关身份、连接和健康
+                </li>
+                <li><strong>Deployments</strong> — 跨网关发布与执行结果</li>
+                <li><strong>Cloud</strong> — Provider 连接、资源与放置</li>
+              </ul>
+            </article>
+            <article>
+              <h3>二级管理区</h3>
+              <ul>
+                <li>Members &amp; Access — 成员、角色与权限</li>
+                <li>Audit — 调查时进入，不占据日常首页</li>
+                <li>Settings — Tenant、Project 和集成设置</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="block" id="prototype">
+          <p class="section-kicker">04 · LOW-FIDELITY PROTOTYPE</p>
+          <h2>第一屏只做 Fleet</h2>
+          <p class="section-intro">
+            这里刻意不做皮肤。只验证标题、动作、层级和状态是否顺手。
+          </p>
+          <div class="prototype-note">
+            <span>场景 A：新 Tenant，尚无网关</span>
+            <div class="legend">
+              <span>当前可实现</span><span>后续能力</span>
+            </div>
+          </div>
+
+          <div class="wireframe" aria-label="Fleet 空状态低保真界面">
+            <aside class="wire-nav">
+              <div class="wordmark"><span class="mark">A</span>AetherCloud</div>
+              <nav>
+                <span class="active">Fleet</span>
+                <span>Deployments</span>
+                <span>Cloud</span>
+                <div class="admin">
+                  <span>Members &amp; Access</span>
+                  <span>Audit</span>
+                  <span>Settings</span>
+                </div>
+              </nav>
+            </aside>
+            <div class="wire-content">
+              <header class="wire-topbar">
+                <span>Project / Production</span><span>Owner · L</span>
+              </header>
+              <div class="wire-body">
+                <div class="wire-heading">
+                  <div>
+                    <h3>Fleet</h3>
+                    <p>AetherEdge 网关、连接状态与数据新鲜度</p>
+                  </div>
+                  <button class="button" type="button">添加网关</button>
+                </div>
+                <div class="empty">
+                  <span class="symbol">＋</span>
+                  <h4>添加第一个 AetherEdge 网关</h4>
+                  <p>
+                    先创建网关身份，再在 AetherEdge
+                    上完成一次性接入。已经运行的现场逻辑不会被云端接管。
+                  </p>
+                  <button class="button" type="button">添加网关</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="prototype-note">
+            <span>场景 B：首次接入</span
+            ><span>一个任务拆成三个短步骤，不暴露内部 UUID</span>
+          </div>
+          <div class="flow-screens">
+            <article class="mini-screen">
+              <span class="step mono">STEP 1 / 3</span>
+              <h4>这个网关叫什么？</h4>
+              <p>名称用于识别现场。位置是可选描述，不参与授权。</p>
+              <div class="field">
+                <label>名称</label>
+                <div class="input">上海办公室</div>
+              </div>
+              <div class="field">
+                <label>位置（可选）</label>
+                <div class="input">3F · 弱电间</div>
+              </div>
+            </article>
+            <article class="mini-screen">
+              <span class="step mono">STEP 2 / 3</span>
+              <h4>在 AetherEdge 上接入</h4>
+              <p>
+                一次性指令只显示一次，并明确过期时间。复制后到 AetherEdge
+                主机执行。
+              </p>
+              <div class="command mono">aetheredge cloud enroll …</div>
+              <div class="wait-row">
+                <span class="dot"></span>等待 AetherEdge 证明身份
+              </div>
+            </article>
+            <article class="mini-screen">
+              <span class="step mono">STEP 3 / 3</span>
+              <h4>确认第一批数据</h4>
+              <p>连接成功不代表数据健康。分别确认心跳和首批遥测。</p>
+              <div class="wait-row">
+                <span class="dot ok"></span>CloudLink 已连接
+              </div>
+              <div class="wait-row">
+                <span class="dot ok"></span>已收到首批遥测
+              </div>
+            </article>
+          </div>
+
+          <div class="prototype-note">
+            <span>场景 C：日常返回</span><span>列表优先，不用大面积指标卡</span>
+          </div>
+          <div class="wireframe" aria-label="Fleet 日常列表低保真界面">
+            <aside class="wire-nav">
+              <div class="wordmark"><span class="mark">A</span>AetherCloud</div>
+              <nav>
+                <span class="active">Fleet</span><span>Deployments</span
+                ><span>Cloud</span>
+              </nav>
+            </aside>
+            <div class="wire-content">
+              <header class="wire-topbar">
+                <span>Project / Production</span><span>Owner · L</span>
+              </header>
+              <div class="wire-body">
+                <div class="wire-heading">
+                  <div>
+                    <h3>Fleet</h3>
+                    <p>3 个网关 · 1 个需要处理</p>
+                  </div>
+                  <button class="button" type="button">添加网关</button>
+                </div>
+                <div class="fleet-table">
+                  <div class="fleet-row header">
+                    <span>网关</span><span>连接</span><span>最新数据</span
+                    ><span></span>
+                  </div>
+                  <div class="fleet-row">
+                    <span class="gateway-name"
+                      ><strong>上海办公室</strong
+                      ><small>3F · 弱电间</small></span
+                    ><span class="status">在线</span><span>刚刚</span
+                    ><span>›</span>
+                  </div>
+                  <div class="fleet-row">
+                    <span class="gateway-name"
+                      ><strong>苏州实验室</strong><small>测试台 A</small></span
+                    ><span class="status">在线</span><span>2 分钟前</span
+                    ><span>›</span>
+                  </div>
+                  <div class="fleet-row">
+                    <span class="gateway-name"
+                      ><strong>杭州仓库</strong><small>东区</small></span
+                    ><span class="status" style="color: var(--warning)"
+                      >数据延迟</span
+                    ><span>18 分钟前</span><span>›</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="prototype-note">
+            <span>场景 D：进入一个 Gateway</span><span>先给结论，再给证据</span>
+          </div>
+          <div class="wireframe" aria-label="Gateway 详情低保真界面">
+            <aside class="wire-nav">
+              <div class="wordmark"><span class="mark">A</span>AetherCloud</div>
+              <nav>
+                <span>← 返回 Fleet</span><span class="active">Overview</span
+                ><span>Telemetry</span><span>Deployments</span
+                ><span>Settings</span>
+              </nav>
+            </aside>
+            <div class="wire-content">
+              <header class="wire-topbar">
+                <span>Fleet / 上海办公室</span><span>Owner · L</span>
+              </header>
+              <div class="wire-body">
+                <div class="wire-heading">
+                  <div>
+                    <h3>上海办公室</h3>
+                    <p>
+                      <span class="status">运行正常</span> · 最近数据刚刚到达
+                    </p>
+                  </div>
+                  <button class="button secondary" type="button">更多</button>
+                </div>
+                <div class="gateway-layout">
+                  <article class="plain-panel">
+                    <h4>当前状态</h4>
+                    <div class="facts">
+                      <div><span>连接</span><strong>在线</strong></div>
+                      <div><span>数据</span><strong>新鲜</strong></div>
+                      <div><span>部署</span><strong>无待处理</strong></div>
+                    </div>
+                    <div class="events">
+                      <div><span>收到遥测</span><span>刚刚</span></div>
+                      <div><span>CloudLink 心跳</span><span>12 秒前</span></div>
+                      <div><span>网关完成接入</span><span>3 天前</span></div>
+                    </div>
+                  </article>
+                  <aside class="plain-panel">
+                    <h4>需要处理</h4>
+                    <div class="empty" style="min-height: 170px">
+                      <p>目前没有需要处理的事项。</p>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" id="subtraction">
+          <p class="section-kicker">05 · SUBTRACTION</p>
+          <h2>明确删除什么</h2>
+          <p class="section-intro">
+            克制不是减少字号，而是减少用户在完成任务前必须理解的概念。
+          </p>
+          <div class="principle-grid">
+            <article>
+              <h3>首页删除</h3>
+              <ul class="cut-list">
+                <li>API 状态大卡片</li>
+                <li>Tenant 与 Project UUID</li>
+                <li>账户角色指标</li>
+                <li>未开放模块占位卡</li>
+                <li>产品权威边界宣言</li>
+              </ul>
+            </article>
+            <article>
+              <h3>接入流程删除</h3>
+              <ul class="cut-list">
+                <li>要求用户填写 Gateway UUID</li>
+                <li>常驻注册表单</li>
+                <li>内部权限名称</li>
+                <li>Audit 与 Outbox 实现说明</li>
+                <li>“注册成功”等同“已上线”</li>
+              </ul>
+            </article>
+            <article>
+              <h3>视觉删除</h3>
+              <ul class="cut-list">
+                <li>装饰性渐变和光晕</li>
+                <li>每个内容都包一张卡片</li>
+                <li>两套以上强调色</li>
+                <li>大标题占据工作空间</li>
+                <li>无含义的缩写图标</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="block" id="delivery">
+          <p class="section-kicker">06 · DELIVERY BOUNDARY</p>
+          <h2>先实现真实主线</h2>
+          <p class="section-intro">
+            低保真稿包含完整目标旅程，但正式界面必须继续区分已上线能力与下一阶段能力。
+          </p>
+          <div class="delivery">
+            <div>
+              <strong>现在重做</strong
+              ><span>Fleet 空状态、列表、Gateway 详情、创建身份</span
+              ><em>现有 API 可支持</em>
+            </div>
+            <div>
+              <strong>下一阶段</strong
+              ><span>一次性 Enrollment 指令、连接等待与首批数据确认</span
+              ><em class="later">需要新 API</em>
+            </div>
+            <div>
+              <strong>随后进入</strong
+              ><span>遥测历史、异常诊断、Desired / Reported / Applied 部署</span
+              ><em class="later">需要垂直切片</em>
+            </div>
+            <div>
+              <strong>最后扩展</strong
+              ><span>Provider 连接、资源发现和多云放置</span
+              ><em class="later">不提前占据界面</em>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
