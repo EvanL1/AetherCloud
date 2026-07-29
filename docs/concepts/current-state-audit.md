@@ -172,6 +172,11 @@ The completed foundation was verified through 2026-07-29:
 - Railway serves `https://api.aetheriot.dev`, with valid custom-domain TLS,
   successful liveness, and PostgreSQL Audit queries authenticated by a real
   Supabase Auth ES256 access token resolved through the hosted JWKS
+- Railway has an explicit GitHub `main` deployment trigger for the API service;
+  the repository-owned `railway.json` remains its deployment configuration
+- one initial Supabase owner identity is provisioned with administrator-controlled
+  Tenant, Project, role, and permission metadata; general membership
+  administration remains manual and unexposed
 - Supabase PostgreSQL 17 has the ordered baseline migrations, forced RLS,
   non-owner/non-`BYPASSRLS` application role, pinned CA, and database SSL
   enforcement; ephemeral migration credentials are absent from the API service
