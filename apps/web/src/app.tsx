@@ -1201,8 +1201,13 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     let active = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (active) setSession(data.session);
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session === null) {
+        if (active) setSession(null);
+        return;
+      }
+      const refreshed = await supabase.auth.refreshSession();
+      if (active) setSession(refreshed.data.session ?? data.session);
     });
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
