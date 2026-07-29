@@ -1,6 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import type { SyntheticEvent } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { AetherCloudApiClient } from "./api-client.js";
@@ -18,7 +25,17 @@ type ConsoleView = "fleet" | "overview" | "audit" | "account";
 type BusyAction = "sign-in" | "recovery" | "update" | "sign-out";
 type ApiState = "checking" | "connected" | "denied" | "unavailable";
 type FormSubmitEvent = SyntheticEvent<HTMLFormElement, SubmitEvent>;
+type Theme = "dark" | "light";
 
+interface ThemeController {
+  readonly theme: Theme;
+  readonly toggle: () => void;
+}
+
+const ThemeContext = createContext<ThemeController>({
+  theme: "dark",
+  toggle: () => undefined,
+});
 const supabase = createClient(
   consoleConfig.supabaseUrl,
   consoleConfig.supabasePublishableKey,
@@ -64,6 +81,23 @@ function Brand(): React.JSX.Element {
         Aether<span>Cloud</span>
       </span>
     </a>
+  );
+}
+
+function ThemeToggle(): React.JSX.Element {
+  const { theme, toggle } = useContext(ThemeContext);
+  const nextTheme = theme === "dark" ? "浅色" : "深色";
+  return (
+    <button
+      aria-label={`切换到${nextTheme}主题`}
+      className="theme-toggle"
+      onClick={toggle}
+      title={`切换到${nextTheme}主题`}
+      type="button"
+    >
+      <span aria-hidden="true">{theme === "dark" ? "☼" : "☾"}</span>
+      <span>{theme === "dark" ? "LIGHT" : "DARK"}</span>
+    </button>
   );
 }
 
@@ -114,9 +148,12 @@ export function LoginScreen(): React.JSX.Element {
       <div className="login-atmosphere" aria-hidden="true" />
       <header className="login-header">
         <Brand />
-        <a className="marketing-link" href="https://aetheriot.dev">
-          AetherIoT 官网 <span aria-hidden="true">↗</span>
-        </a>
+        <div className="login-header-actions">
+          <ThemeToggle />
+          <a className="marketing-link" href="https://aetheriot.dev">
+            AetherIoT 官网 <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </header>
       <section className="login-layout">
         <div className="login-intro">
@@ -731,7 +768,7 @@ export function Overview({
           {(
             [
               ["审计与身份", "生产可用", "ready"],
-              ["边缘 Fleet", "服务端接口待组合", "next"],
+              ["边缘 Fleet", "生产可用", "ready"],
               ["遥测与告警", "持久化基础已实现", "foundation"],
               ["部署与多云", "应用契约已定义", "planned"],
             ] as const
@@ -1151,11 +1188,14 @@ function Console({
               {scope === null ? "NO PROJECT" : shortId(scope.projectId)}
             </span>
           </div>
-          <div className="operator-chip">
-            <span>{session.user.email?.slice(0, 1).toUpperCase()}</span>
-            <div>
-              <strong>{session.user.email}</strong>
-              <small>{scope?.role ?? "未分配"}</small>
+          <div className="topbar-actions">
+            <ThemeToggle />
+            <div className="operator-chip">
+              <span>{session.user.email?.slice(0, 1).toUpperCase()}</span>
+              <div>
+                <strong>{session.user.email}</strong>
+                <small>{scope?.role ?? "未分配"}</small>
+              </div>
             </div>
           </div>
         </header>
@@ -1198,6 +1238,27 @@ function Console({
 export function App(): React.JSX.Element {
   const [session, setSession] = useState<Session | null>();
   const [recovery, setRecovery] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = window.localStorage.getItem("aethercloud-theme");
+    if (stored === "dark" || stored === "light") return stored;
+    return typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: light)").matches
+      ? "light"
+      : "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    window.localStorage.setItem("aethercloud-theme", theme);
+    const themeColor = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]',
+    );
+    themeColor?.setAttribute(
+      "content",
+      theme === "dark" ? "#100e18" : "#efede8",
+    );
+  }, [theme]);
 
   useEffect(() => {
     let active = true;
@@ -1219,18 +1280,34 @@ export function App(): React.JSX.Element {
     };
   }, []);
 
+  let content: React.JSX.Element;
   if (session === undefined) {
-    return (
+    content = (
       <main className="boot-screen">
         <Brand />
         <span className="spinner" />
         <p>正在建立安全会话…</p>
       </main>
     );
+  } else {
+    content =
+      session === null ? (
+        <LoginScreen />
+      ) : (
+        <Console recovery={recovery} session={session} />
+      );
   }
-  return session === null ? (
-    <LoginScreen />
-  ) : (
-    <Console recovery={recovery} session={session} />
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        theme,
+        toggle: () => {
+          setTheme((current) => (current === "dark" ? "light" : "dark"));
+        },
+      }}
+    >
+      {content}
+    </ThemeContext.Provider>
   );
 }

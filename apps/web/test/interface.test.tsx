@@ -10,6 +10,7 @@ describe("AetherCloud console interface", () => {
     expect(html).toContain("登录控制台");
     expect(html).toContain("管理每一处边缘");
     expect(html).toContain("管理员邀请");
+    expect(html).toContain("切换到浅色主题");
     expect(html).toContain('href="https://aetheriot.dev"');
   });
 
@@ -31,7 +32,7 @@ describe("AetherCloud console interface", () => {
 
     expect(html).toContain("生产服务");
     expect(html).toContain("边缘 Fleet");
-    expect(html).toContain("服务端接口待组合");
+    expect(html).toContain("边缘 Fleet</strong><small>生产可用");
     expect(html).toContain("只展示真实实现");
   });
 });
