@@ -33,9 +33,11 @@ long-lived edge sessions to request/response API workloads.
 - `workers` execute isolated infrastructure plans, refresh provider inventory,
   advance deployments and telemetry projections, retry work, and deliver the
   outbox.
-- the bilingual AetherWebsite account page is an authenticated client of the
-  API and has no privileged data path; a complete operator console remains
-  planned.
+- `apps/web` is the independently deployed `cloud.aetheriot.dev` operator
+  console. It is an authenticated client of the API with no privileged data
+  path. Overview, identity/session management, and the Audit explorer are
+  implemented; Fleet, telemetry, deployment, and provider screens remain
+  unavailable until their production application interfaces are composed.
 
 Only the API is a configured long-running process in the repository-foundation milestone.
 It exposes authenticated audit JSON and finite resumable SSE snapshots in
@@ -45,7 +47,7 @@ pool settings, Tenant transaction context, forced RLS, a non-owner application
 role, and CA-verified TLS. Railway production verifies Supabase Auth ES256
 access tokens against the issuer's JWKS and derives Tenant, Project, and
 permissions only from administrator-controlled `app_metadata`. Exact-origin
-CORS permits the AetherWebsite account page to verify the API session without
+CORS permits only the independent AetherCloud console to call the API without
 cookies or direct database access. User and Tenant membership provisioning is
 not yet an application surface.
 `apps/mcp` is an implemented transport-neutral resource/tool interface, not a

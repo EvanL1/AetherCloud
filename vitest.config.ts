@@ -20,7 +20,7 @@ export default defineConfig({
     },
     include: [
       "adapters/*/*/test/**/*.test.ts",
-      "apps/*/test/**/*.test.ts",
+      "apps/*/test/**/*.test.{ts,tsx}",
       "packages/*/test/**/*.test.ts",
     ],
   },

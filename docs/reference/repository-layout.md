@@ -17,7 +17,7 @@ apps/
   mcp/                  implemented transport-neutral MCP application interface; wire root planned
   cloudlink/            experimental MQTT ingress composition; production wiring planned
   worker/               planned background-work composition root
-  web/                  planned operator client
+  web/                  implemented independent Cloudflare operator console
 packages/
   domain/               values, identifiers, invariants
   application/          transport-neutral use cases

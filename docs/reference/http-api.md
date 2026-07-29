@@ -135,12 +135,12 @@ never authorization evidence. Missing, malformed, duplicated, or out-of-scope
 claims fail closed with `401`. Self-sign-up alone grants no AetherCloud access;
 an administrator-controlled membership flow must attach those claims.
 
-The bilingual AetherWebsite account page signs in directly with Supabase Auth,
-keeps the resulting short-lived session in the browser, and calls only the
-AetherCloud API with that access token. Production CORS permits exactly the
-configured HTTPS AetherIoT website origins, does not allow credentials, and
-exposes only the correlation header. Browser clients never receive the database
-URL or write AetherCloud business tables directly.
+The independently deployed `cloud.aetheriot.dev` console signs in directly with
+Supabase Auth, keeps the resulting short-lived session in the browser, and calls
+only the AetherCloud API with that access token. Production CORS permits exactly
+the configured console origin, does not allow credentials, and exposes only the
+correlation header. Browser clients never receive the database URL or write
+AetherCloud business tables directly.
 
 The constant-time configured bearer adapter remains available for local tests,
 but the composition root refuses it in the Railway production environment.

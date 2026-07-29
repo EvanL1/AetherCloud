@@ -985,7 +985,7 @@
       "path": "/api/v1/audit/events",
       "operation_id": "searchAuditEvents",
       "authentication": "supabase-es256-jwt-admin-metadata-scope",
-      "browser_origins": "configured-aetheriot-https-origins-no-credentials",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
       "permission": "audit.event.read",
       "status": "implemented"
     },
@@ -994,7 +994,7 @@
       "path": "/api/v1/audit/events/stream",
       "operation_id": "streamAuditEventSnapshot",
       "authentication": "supabase-es256-jwt-admin-metadata-scope",
-      "browser_origins": "configured-aetheriot-https-origins-no-credentials",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
       "permission": "audit.event.read",
       "resume": "last-event-id-audit-sequence",
       "liveness": "finite-snapshot",
