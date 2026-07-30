@@ -14,6 +14,7 @@ import { AetherCloudApiClient } from "./api-client.js";
 import type {
   AuditEventView,
   AuditSearchResponse,
+  EnrollmentIssuedView,
   FleetGatewayView,
   FleetListResponse,
 } from "./api-client.js";
@@ -313,6 +314,13 @@ function Navigation({
   );
 }
 
+interface PairingInstruction {
+  readonly gatewayId: string;
+  readonly command: string;
+  readonly enrollmentToken: string;
+  readonly expiresAt: string;
+}
+
 interface FleetViewProps {
   readonly fleet: FleetListResponse | undefined;
   readonly loading: boolean;
@@ -323,7 +331,10 @@ interface FleetViewProps {
       gatewayId: string;
       displayName: string;
     }>,
-  ) => Promise<void>;
+  ) => Promise<PairingInstruction>;
+  readonly onIssueEnrollment: (
+    gatewayId: string,
+  ) => Promise<PairingInstruction>;
 }
 
 function connectionLabel(
@@ -342,12 +353,14 @@ export function FleetView({
   error,
   onReload,
   onRegister,
+  onIssueEnrollment,
 }: FleetViewProps): React.JSX.Element {
   const [registering, setRegistering] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string>();
   const [gatewayId, setGatewayId] = useState(() => crypto.randomUUID());
   const [selected, setSelected] = useState<string>();
+  const [pairing, setPairing] = useState<PairingInstruction>();
 
   async function register(event: FormSubmitEvent): Promise<void> {
     event.preventDefault();
@@ -359,7 +372,12 @@ export function FleetView({
     }
     setSubmitting(true);
     try {
-      await onRegister({ gatewayId, displayName: displayName.trim() });
+      const instruction = await onRegister({
+        gatewayId,
+        displayName: displayName.trim(),
+      });
+      setPairing(instruction);
+      setSelected(gatewayId);
       setRegistering(false);
       setGatewayId(crypto.randomUUID());
       event.currentTarget.reset();
@@ -374,6 +392,19 @@ export function FleetView({
   const selectedGateway = gateways.find(
     (gateway) => gateway.gatewayId === selected,
   );
+  const pairingGateway = gateways.find(
+    (gateway) => gateway.gatewayId === pairing?.gatewayId,
+  );
+  useEffect(() => {
+    if (pairingGateway?.enrollmentState === "claimed") setPairing(undefined);
+  }, [pairingGateway?.enrollmentState]);
+  useEffect(() => {
+    if (pairing === undefined) return;
+    const interval = window.setInterval(onReload, 2_000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [onReload, pairing]);
 
   const needsAttention = gateways.filter(
     (gateway) => gateway.connection.status !== "online",
@@ -450,6 +481,72 @@ export function FleetView({
           )}
         </section>
       ) : null}
+
+      {pairing === undefined ? null : (
+        <section className="surface pairing-surface">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">PAIR AETHEREDGE</p>
+              <h2>在 AetherEdge 上完成配对</h2>
+              <p className="detail-subtitle">
+                配对材料将在 {formatTime(pairing.expiresAt)} 过期。Token
+                只显示这一次。
+              </p>
+            </div>
+            <button
+              className="text-button"
+              onClick={() => {
+                setPairing(undefined);
+              }}
+              type="button"
+            >
+              关闭
+            </button>
+          </div>
+          <div className="pairing-step">
+            <span>1</span>
+            <div>
+              <strong>运行命令</strong>
+              <p>登录目标 AetherEdge 主机并执行：</p>
+              <div className="pairing-secret">
+                <code>{pairing.command}</code>
+                <button
+                  className="outline-button"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(pairing.command)
+                  }
+                  type="button"
+                >
+                  复制命令
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="pairing-step">
+            <span>2</span>
+            <div>
+              <strong>粘贴 Enrollment Token</strong>
+              <p>CLI 出现隐藏提示后粘贴；Token 不会进入 shell history。</p>
+              <div className="pairing-secret pairing-token">
+                <code>{pairing.enrollmentToken}</code>
+                <button
+                  className="outline-button"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(pairing.enrollmentToken)
+                  }
+                  type="button"
+                >
+                  复制 Token
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="pairing-wait">
+            <span className="spinner" />
+            等待 AetherEdge 提交 Ed25519 身份证明…
+          </div>
+        </section>
+      )}
 
       {error === undefined ? null : <p className="inline-error">{error}</p>}
 
@@ -538,6 +635,31 @@ export function FleetView({
                   : formatTime(selectedGateway.telemetry.lastReceivedAt)}
               </p>
             </div>
+            {selectedGateway.enrollmentState === "registered" ? (
+              <button
+                className="compact-button"
+                onClick={() => {
+                  setSubmitting(true);
+                  void onIssueEnrollment(selectedGateway.gatewayId)
+                    .then(setPairing)
+                    .catch(() => {
+                      setFormError("无法生成配对材料，请检查权限或稍后重试。");
+                    })
+                    .finally(() => {
+                      setSubmitting(false);
+                    });
+                }}
+                type="button"
+              >
+                生成配对指令
+              </button>
+            ) : (
+              <span className="permission-chip">
+                {selectedGateway.enrollmentState === "claimed"
+                  ? "身份已配对"
+                  : "等待 AetherEdge 配对"}
+              </span>
+            )}
           </div>
           <div className="detail-grid">
             <div>
@@ -1092,14 +1214,44 @@ function Console({
     }
   }, [session.access_token]);
 
+  function pairingInstruction(
+    issued: EnrollmentIssuedView,
+  ): PairingInstruction {
+    if (scope === null) throw new Error("signed Fleet scope is unavailable");
+    return {
+      gatewayId: issued.gatewayId,
+      expiresAt: issued.expiresAt,
+      enrollmentToken: issued.enrollmentToken,
+      command: [
+        "aether cloud enroll",
+        `--cloud-url ${consoleConfig.apiBaseUrl}`,
+        `--tenant-id ${scope.tenantId}`,
+        `--project-id ${scope.projectId}`,
+        `--gateway-id ${issued.gatewayId}`,
+      ].join(" "),
+    };
+  }
+
+  async function issueEnrollment(
+    gatewayId: string,
+  ): Promise<PairingInstruction> {
+    const issued = await api.issueGatewayEnrollment(
+      session.access_token,
+      gatewayId,
+      crypto.randomUUID(),
+    );
+    await loadFleet();
+    return pairingInstruction(issued);
+  }
+
   async function registerGateway(
     input: Readonly<{
       gatewayId: string;
       displayName: string;
     }>,
-  ): Promise<void> {
+  ): Promise<PairingInstruction> {
     await api.registerGateway(session.access_token, input, crypto.randomUUID());
-    await loadFleet();
+    return issueEnrollment(input.gatewayId);
   }
 
   useEffect(() => {
@@ -1166,6 +1318,7 @@ function Console({
               error={fleetError}
               fleet={fleet}
               loading={fleetLoading}
+              onIssueEnrollment={issueEnrollment}
               onRegister={registerGateway}
               onReload={() => {
                 void loadFleet();

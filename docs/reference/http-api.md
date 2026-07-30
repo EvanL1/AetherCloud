@@ -1,14 +1,15 @@
 ---
 title: HTTP API reference
 description: Call the implemented HTTP endpoints and distinguish them from planned versioned APIs
-updated: 2026-07-29
+updated: 2026-07-30
 status: implemented
 ---
 
 # HTTP API reference
 
-The production API exposes two public metadata routes, three authenticated
-Fleet routes, and two authenticated Audit query routes. Telemetry is currently
+The API exposes two public metadata routes, five authenticated Fleet routes,
+one token-authorized AetherEdge Claim route, and two authenticated Audit query
+routes. Telemetry is currently
 visible only as the latest per-Gateway Fleet projection; standalone history,
 provider discovery, deployment, webhook/export, and MCP routes remain
 unexposed. The implemented `DiscoverProviderRegions` application query is
@@ -20,10 +21,11 @@ contract. No endpoint accepts a module, topology, Plan artifact, or Apply
 request. Its future route additionally needs durable audit, encrypted artifact
 storage, and a production State-locking engine adapter.
 
-Gateway identity registration and Fleet read projections are now composed
-through the production Tenant identity boundary and forced-RLS PostgreSQL
-adapter. Enrollment-claim issue/consume remains an application contract only;
-no endpoint described on this page accepts or returns an enrollment token.
+Gateway registration, Enrollment Claim issue/consume, and Fleet read
+projections are composed through the Tenant identity boundary and forced-RLS
+PostgreSQL adapter. An Enrollment Token is returned exactly once to an
+authorized, explicitly confirming operator and is accepted only by the bounded
+AetherEdge Claim route. It is never returned by a read route.
 
 ## `GET /health`
 
@@ -94,8 +96,46 @@ gateway-not-found` result.
 Registers a Gateway identity with `gatewayId` and `displayName`. It requires
 `fleet.gateway.create` and an `idempotency-key` header. The application command
 atomically persists the identity, Audit evidence, and Outbox event in Supabase
-PostgreSQL. Registration does not create an edge credential or bypass the
-separate enrollment-claim workflow.
+PostgreSQL. Registration does not create an edge credential or bypass the separate
+Enrollment Claim workflow.
+
+## `POST /api/v1/fleet/gateways/:gatewayId/enrollment-claims`
+
+Issues one ten-minute Enrollment Token. It requires
+`fleet.gateway.enrollment.issue`, `Authorization`, `idempotency-key`, and the
+explicit `x-aethercloud-confirmation: issue-enrollment-claim` header. The raw
+Token appears only in the first successful response; an exact retry returns
+`409 enrollment-token-not-recoverable` rather than fabricating or recovering
+secret material. Gateway, Audit, and Outbox state advance atomically.
+
+## `GET /api/v1/fleet/gateways/:gatewayId/enrollment`
+
+Returns non-secret enrollment state under
+`fleet.gateway.enrollment.read`. It never returns the Token, Token digest,
+public key, or idempotency key.
+
+## `POST /api/v1/fleet/enrollment-claims:claim`
+
+Consumes the provisional AetherEdge contract
+`aether.cloud.gateway-enrollment-claim.v1`. This route uses the short-lived
+Enrollment Token instead of a user JWT and is process-limited against abuse.
+It strictly validates the Ed25519 raw public key and requires its declared
+fingerprint to equal lowercase hexadecimal `SHA-256(raw 32-byte public key)`.
+The only success response is:
+
+```json
+{
+  "schema": "aether.cloud.gateway-enrollment-claimed.v1",
+  "gatewayId": "33333333-3333-4333-8333-333333333333",
+  "state": "claimed",
+  "revision": 3
+}
+```
+
+`claimed` proves only that Cloud atomically consumed the Token and bound the
+credential-request fingerprint. It does not mean credential-active,
+CloudLink-connected, online, or telemetry-healthy. Active credential issuance,
+trust-key delivery, and production CloudLink composition remain gated.
 
 ## `GET /api/v1/audit/events`
 
@@ -137,8 +177,8 @@ human-readable message, and correlation identity:
 ```
 
 Fleet and Audit routes return typed `400 invalid-input`, `401 unauthenticated`,
-`403 permission-denied`, `404 gateway-not-found`, `409` idempotency/conflict, or
-`503` storage failures as applicable and also emit `x-correlation-id`.
+`403 permission-denied`, `404 gateway-not-found`, `409` idempotency/conflict,
+`429 rate-limited`, or `503` storage failures as applicable and also emit `x-correlation-id`.
 PostgreSQL transport and row-decoding failures are sanitized into typed `503`
 outcomes.
 

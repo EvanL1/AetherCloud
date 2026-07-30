@@ -1019,6 +1019,7 @@
     gap: 10px;
   }
   .register-surface,
+  .pairing-surface,
   .fleet-surface,
   .gateway-detail {
     padding: 25px;
@@ -1046,6 +1047,69 @@
     color: var(--muted);
     font-size: 10px;
     line-height: 1.65;
+  }
+  .pairing-step {
+    display: grid;
+    padding: 20px 0;
+    grid-template-columns: 28px minmax(0, 1fr);
+    border-top: 1px solid var(--line);
+    gap: 14px;
+  }
+  .pairing-step > span {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    color: var(--muted);
+    font-size: 9px;
+  }
+  .pairing-step strong {
+    font-size: 12px;
+    font-weight: 580;
+  }
+  .pairing-step p {
+    margin: 6px 0 12px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .pairing-secret {
+    display: flex;
+    min-width: 0;
+    padding: 9px 9px 9px 13px;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--table-head-bg);
+    gap: 14px;
+  }
+  .pairing-secret code {
+    overflow-x: auto;
+    color: var(--text);
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  .pairing-secret .outline-button {
+    min-height: 34px;
+    flex: 0 0 auto;
+  }
+  .pairing-token code {
+    color: var(--amber);
+  }
+  .pairing-wait {
+    display: flex;
+    padding-top: 18px;
+    align-items: center;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 10px;
+    gap: 10px;
+  }
+  .pairing-wait .spinner {
+    width: 14px;
+    height: 14px;
   }
   .detail-grid span,
   .latest-telemetry > span {
@@ -1364,6 +1428,10 @@
     }
     .fleet-list-row > :nth-child(4) {
       display: none;
+    }
+    .pairing-secret {
+      align-items: stretch;
+      flex-direction: column;
     }
     .detail-grid {
       grid-template-columns: 1fr;

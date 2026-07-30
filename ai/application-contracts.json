@@ -101,19 +101,19 @@
       "idempotency": "required",
       "expiry": "required",
       "audit": "required",
-      "status": "partial",
+      "status": "implemented",
       "implemented_layers": [
         "domain",
         "application",
         "memory-adapter",
         "postgresql-adapter",
-        "transactional-audit-outbox"
-      ],
-      "missing_layers": [
+        "transactional-audit-outbox",
+        "node-crypto-token-service",
         "production-database-composition",
-        "kms-token-service",
-        "http"
-      ]
+        "http",
+        "web-console"
+      ],
+      "missing_layers": []
     },
     {
       "name": "fleet.gateway.enrollment.claim",
@@ -124,31 +124,34 @@
       "idempotency": "required",
       "expiry": "required",
       "audit": "required",
-      "status": "partial",
+      "status": "implemented",
       "implemented_layers": [
         "domain",
         "application",
         "memory-adapter",
         "postgresql-adapter",
-        "transactional-audit-outbox"
-      ],
-      "missing_layers": [
-        "credential-binding",
+        "transactional-audit-outbox",
+        "ed25519-fingerprint-validation",
         "production-database-composition",
-        "http"
-      ]
+        "http",
+        "real-aetheredge-cli-local-harness"
+      ],
+      "missing_layers": []
     },
     {
       "name": "fleet.gateway.enrollment.get",
       "kind": "query",
       "permission": "fleet.gateway.enrollment.read",
-      "status": "partial",
+      "status": "implemented",
       "implemented_layers": [
         "application",
         "memory-adapter",
-        "postgresql-adapter"
+        "postgresql-adapter",
+        "production-database-composition",
+        "http",
+        "web-console"
       ],
-      "missing_layers": ["production-database-composition", "http"]
+      "missing_layers": []
     },
     {
       "name": "cloudlink.session.open",
@@ -1038,6 +1041,36 @@
       "authentication": "supabase-es256-jwt-admin-metadata-scope",
       "browser_origins": "cloud.aetheriot.dev-no-credentials",
       "permission": "fleet.gateway.create",
+      "idempotency": "required-header",
+      "audit": "required-atomic-with-outbox",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/fleet/gateways/{gatewayId}/enrollment-claims",
+      "operation_id": "issueGatewayEnrollmentClaim",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
+      "permission": "fleet.gateway.enrollment.issue",
+      "confirmation": "explicit-header",
+      "idempotency": "required-header",
+      "audit": "required-atomic-with-outbox",
+      "status": "implemented"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/fleet/gateways/{gatewayId}/enrollment",
+      "operation_id": "getGatewayEnrollment",
+      "authentication": "supabase-es256-jwt-admin-metadata-scope",
+      "browser_origins": "cloud.aetheriot.dev-no-credentials",
+      "permission": "fleet.gateway.enrollment.read",
+      "status": "implemented"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/fleet/enrollment-claims:claim",
+      "operation_id": "claimGatewayEnrollment",
+      "authentication": "short-lived-enrollment-token",
       "idempotency": "required-header",
       "audit": "required-atomic-with-outbox",
       "status": "implemented"

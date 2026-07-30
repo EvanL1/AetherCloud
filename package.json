@@ -21,6 +21,7 @@
     "test:home-assistant-e2e": "AETHER_CLOUD_RUN_HOME_ASSISTANT_E2E=1 tsx scripts/run-home-assistant-e2e-harness.ts",
     "test:cloudlink-dual": "tsx scripts/run-cloudlink-dual-harness.ts",
     "test:cloudlink-alpha-harness": "pnpm test:cloudlink-dual",
+    "test:aetheredge-enrollment": "tsx scripts/run-aetheredge-enrollment-harness.ts",
     "test:cloudlink-aws-iot": "AETHER_CLOUD_RUN_AWS_IOT_INTEGRATION=1 tsx scripts/run-cloudlink-aws-iot-harness.ts",
     "test:postgres-integration": "vitest run --config vitest.postgres.config.ts",
     "test:coverage": "node --test tests/*.test.mjs && vitest run --coverage",

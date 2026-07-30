@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AetherCloudApiClient,
   buildAuditSearchUrl,
   buildFleetListUrl,
   decodeAuditSearchResponse,
@@ -19,6 +20,10 @@ const event = {
   confirmation: "not-required",
   correlationId: "correlation-1",
 };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("AetherCloud web API client", () => {
   it("decodes the bounded Audit response without converting int64 sequences", () => {
@@ -89,6 +94,44 @@ describe("AetherCloud web API client", () => {
     expect(buildFleetListUrl("https://api.aetheriot.dev", 50).toString()).toBe(
       "https://api.aetheriot.dev/api/v1/fleet/gateways?limit=50",
     );
+  });
+
+  it("issues a governed one-time Enrollment Claim", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          schema: "aether.cloud.gateway-enrollment-issued.v1",
+          gatewayId: "33333333-3333-4333-8333-333333333333",
+          state: "awaiting-claim",
+          revision: 2,
+          expiresAt: "2026-07-29T10:10:00.000Z",
+          enrollmentToken: "opaque-token-with-sufficient-entropy",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await new AetherCloudApiClient(
+      "https://api.aetheriot.dev",
+    ).issueGatewayEnrollment(
+      "access-token",
+      "33333333-3333-4333-8333-333333333333",
+      "issue-request-001",
+    );
+
+    expect(result.state).toBe("awaiting-claim");
+    const calls = fetch.mock.calls as unknown as readonly (readonly [
+      URL,
+      RequestInit,
+    ])[];
+    expect(calls[0]?.[0].toString()).toBe(
+      "https://api.aetheriot.dev/api/v1/fleet/gateways/33333333-3333-4333-8333-333333333333/enrollment-claims",
+    );
+    expect(calls[0]?.[1].method).toBe("POST");
+    expect(calls[0]?.[1].headers).toMatchObject({
+      "x-aethercloud-confirmation": "issue-enrollment-claim",
+    });
   });
 
   it("builds only supported Audit filters", () => {

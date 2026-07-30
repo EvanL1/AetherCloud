@@ -55,6 +55,14 @@ export interface FleetListResponse {
   readonly nextCursor: string | null;
 }
 
+export interface EnrollmentIssuedView {
+  readonly gatewayId: string;
+  readonly state: "awaiting-claim";
+  readonly revision: number;
+  readonly expiresAt: string;
+  readonly enrollmentToken: string;
+}
+
 export interface AuditSearchInput {
   readonly limit: number;
   readonly action?: string;
@@ -349,6 +357,54 @@ export class AetherCloudApiClient {
     );
     if (!response.ok)
       throw new Error(`Fleet API returned ${String(response.status)}`);
+  }
+
+  async issueGatewayEnrollment(
+    accessToken: string,
+    gatewayId: string,
+    idempotencyKey: string,
+  ): Promise<EnrollmentIssuedView> {
+    const response = await fetch(
+      new URL(
+        `/api/v1/fleet/gateways/${encodeURIComponent(gatewayId)}/enrollment-claims`,
+        this.#apiBaseUrl,
+      ),
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          "content-type": "application/json",
+          "idempotency-key": idempotencyKey,
+          "x-aethercloud-confirmation": "issue-enrollment-claim",
+        },
+        body: "{}",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Fleet API returned ${String(response.status)}`);
+    const value: unknown = await response.json();
+    if (!isRecord(value)) return fleetFailure();
+    const state = value.state;
+    const revision = value.revision;
+    const expiresAt = value.expiresAt;
+    if (
+      value.schema !== "aether.cloud.gateway-enrollment-issued.v1" ||
+      state !== "awaiting-claim" ||
+      typeof revision !== "number" ||
+      !Number.isSafeInteger(revision) ||
+      revision < 2 ||
+      typeof expiresAt !== "string" ||
+      Number.isNaN(Date.parse(expiresAt))
+    ) {
+      return fleetFailure();
+    }
+    return {
+      gatewayId: fleetString(value, "gatewayId"),
+      state,
+      revision,
+      expiresAt,
+      enrollmentToken: fleetString(value, "enrollmentToken"),
+    };
   }
 
   async searchAuditEvents(

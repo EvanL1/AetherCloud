@@ -20,7 +20,8 @@ describe("AetherCloud console interface", () => {
         error={undefined}
         fleet={{ items: [], nextCursor: null }}
         loading={false}
-        onRegister={() => Promise.resolve()}
+        onIssueEnrollment={() => Promise.reject(new Error("not used"))}
+        onRegister={() => Promise.reject(new Error("not used"))}
         onReload={() => undefined}
       />,
     );

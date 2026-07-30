@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: Understand the modular-monolith processes, dependency direction, and evolution rules
-updated: 2026-07-29
+updated: 2026-07-30
 status: mixed
 ---
 
@@ -111,8 +111,9 @@ PostgreSQL is the default transactional AetherCloud product store. Gateway,
 CloudLink session, telemetry, integration projection/control, and Audit query
 adapters now have migration or repository foundations. The API composition
 root queries Audit and Fleet projections and atomically registers Gateway
-identities through PostgreSQL. Enrollment claims, other bounded-context public
-writes, full production composition, and workers remain planned.
+identities and issues/consumes fingerprint-bound Enrollment Claims through
+PostgreSQL. Active credential issuance, other bounded-context public writes,
+full production composition, and workers remain planned.
 Infrastructure state is different: each provider-scoped deployment stack uses
 its own remote, locked backend. Workers are stateless with respect to infrastructure state and
 consume saved JSON plans rather than scraping terminal output or raw state

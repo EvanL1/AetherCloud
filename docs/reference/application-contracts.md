@@ -1,7 +1,7 @@
 ---
 title: Application contract catalog
 description: Discover capability governance, bounded Integration discovery, errors, events, transports, and implementation layers from one machine-readable catalog
-updated: 2026-07-29
+updated: 2026-07-30
 status: mixed
 ---
 
@@ -74,14 +74,17 @@ Capability names, error codes, event names, and operation identifiers remain
 stable within a version. Adding a field is backward compatible only when old
 readers may safely ignore it.
 
-The catalog currently documents two implemented public HTTP operations, three
-authenticated Fleet operations, and two authenticated Audit query operations
-(JSON and finite SSE snapshot); partial provider, Plan, enrollment, CloudLink
+The catalog currently documents two public metadata operations, five
+authenticated Fleet operations, one token-authorized AetherEdge Claim
+operation, and two authenticated Audit query operations (JSON and finite SSE
+snapshot); partial provider, Plan, enrollment, CloudLink
 session, Runtime Manifest, telemetry, alarm, Artifact Registry, deployment,
 governed Job, webhook, and Data Export application slices; and planned later
-IoT product capabilities. Gateway registration is production-composed because
-the PostgreSQL adapter writes it in the same transaction as Audit and Outbox
-state; enrollment claim issue/consume remains partial. The Integration projection and default-off Integration Control slices
+IoT product capabilities. Gateway registration and Enrollment Claim issue/consume are
+production-composed because the PostgreSQL adapter writes each transition in
+the same transaction as Audit and Outbox state. The Claim binds a validated
+Ed25519 credential-request fingerprint only; active credential issuance and
+CloudLink authentication remain separate planned capabilities. The Integration projection and default-off Integration Control slices
 now name their transactional PostgreSQL ledgers, including real-database
 concurrency, rollback, restart, and row-isolation evidence. This does not mean
 their production composition, signing-key lifecycle, public Agent, real Broker

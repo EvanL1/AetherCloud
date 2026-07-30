@@ -51,7 +51,7 @@
       "implementation_status": "implemented",
       "production_readiness": "not-applicable",
       "context_sensitivity": "public",
-      "updated": "2026-07-29",
+      "updated": "2026-07-30",
       "priority": "core"
     },
     {
@@ -137,7 +137,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "internal",
-      "updated": "2026-07-29",
+      "updated": "2026-07-30",
       "priority": "core"
     },
     {
@@ -175,7 +175,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "public",
-      "updated": "2026-07-16",
+      "updated": "2026-07-30",
       "priority": "core",
       "capability_refs": [
         "fleet.gateway.register",
@@ -187,13 +187,17 @@
         "domain",
         "application",
         "memory-adapter",
-        "postgresql-adapter"
+        "postgresql-adapter",
+        "production-database-composition",
+        "http",
+        "web-console",
+        "real-aetheredge-cli-local-harness"
       ],
       "missing_layers": [
-        "production-credential-binding",
+        "active-credential-issuance",
         "credential-revocation",
         "credential-recovery",
-        "public-interface"
+        "production-cloudlink"
       ],
       "preconditions": [
         "authenticated Tenant, Project, and Gateway scope",
@@ -729,12 +733,14 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-29",
+      "updated": "2026-07-30",
       "priority": "optional",
       "implemented_layers": [
         "fastify-http",
         "supabase-es256-jwks-authentication",
-        "postgresql-audit-query"
+        "postgresql-audit-query",
+        "postgresql-fleet-enrollment",
+        "aetheredge-claim-contract"
       ],
       "missing_layers": [
         "tenant-membership-administration",
@@ -758,7 +764,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-applicable",
       "context_sensitivity": "public",
-      "updated": "2026-07-29",
+      "updated": "2026-07-30",
       "priority": "core"
     },
     {

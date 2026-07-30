@@ -2,15 +2,20 @@ import { getPlatformProfile } from "@aether-cloud/application";
 import type {
   AuditApplicationFailure,
   FleetQueryFailure,
+  ClaimGatewayEnrollment,
   GatewayEnrollmentApplicationFailure,
   GetFleetGateway,
+  GetGatewayEnrollment,
+  IssueGatewayEnrollment,
   ListFleetGateways,
   RegisterGateway,
   SearchAuditEvents,
 } from "@aether-cloud/application";
 import cors from "@fastify/cors";
 import Fastify from "fastify";
+import { createHash } from "node:crypto";
 
+import type { EnrollmentClaimRateLimiter } from "./enrollment-claim-rate-limiter.js";
 import { registerMcpHttp } from "./mcp-http.js";
 import type { McpHttpDependencies } from "./mcp-http.js";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -47,6 +52,10 @@ export interface FleetHttpDependencies {
   readonly list: Pick<ListFleetGateways, "execute">;
   readonly get: Pick<GetFleetGateway, "execute">;
   readonly register: Pick<RegisterGateway, "execute">;
+  readonly issueEnrollment?: Pick<IssueGatewayEnrollment, "execute">;
+  readonly claimEnrollment?: Pick<ClaimGatewayEnrollment, "execute">;
+  readonly getEnrollment?: Pick<GetGatewayEnrollment, "execute">;
+  readonly claimRateLimiter?: EnrollmentClaimRateLimiter;
 }
 
 export interface BuildAppOptions {
@@ -226,6 +235,95 @@ const registeredGatewaySchema = {
   },
 } as const;
 
+const gatewayEnrollmentSchema = {
+  ...registeredGatewaySchema,
+  properties: {
+    ...registeredGatewaySchema.properties,
+    claimId: { type: "string", format: "uuid" },
+    claimExpiresAt: { type: "string", format: "date-time" },
+    claimedAt: { type: "string", format: "date-time" },
+  },
+} as const;
+
+const enrollmentIssuedSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schema",
+    "gatewayId",
+    "state",
+    "revision",
+    "expiresAt",
+    "enrollmentToken",
+  ],
+  properties: {
+    schema: {
+      const: "aether.cloud.gateway-enrollment-issued.v1",
+      type: "string",
+    },
+    gatewayId: { type: "string", format: "uuid" },
+    state: { const: "awaiting-claim", type: "string" },
+    revision: { type: "integer", minimum: 2 },
+    expiresAt: { type: "string", format: "date-time" },
+    enrollmentToken: { type: "string", minLength: 16, maxLength: 512 },
+  },
+} as const;
+
+const enrollmentClaimRequestSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schema",
+    "tenantId",
+    "projectId",
+    "gatewayId",
+    "enrollmentToken",
+    "credentialRequest",
+  ],
+  properties: {
+    schema: {
+      const: "aether.cloud.gateway-enrollment-claim.v1",
+      type: "string",
+    },
+    tenantId: { type: "string", format: "uuid" },
+    projectId: { type: "string", format: "uuid" },
+    gatewayId: { type: "string", format: "uuid" },
+    enrollmentToken: { type: "string", minLength: 16, maxLength: 512 },
+    credentialRequest: {
+      type: "object",
+      additionalProperties: false,
+      required: ["algorithm", "publicKey", "fingerprint"],
+      properties: {
+        algorithm: { const: "ed25519", type: "string" },
+        publicKey: {
+          type: "string",
+          pattern: "^[A-Za-z0-9_-]{43}$",
+        },
+        fingerprint: { type: "string", pattern: "^[0-9a-f]{64}$" },
+      },
+    },
+  },
+} as const;
+
+const enrollmentClaimedSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["schema", "gatewayId", "state", "revision"],
+  properties: {
+    schema: {
+      const: "aether.cloud.gateway-enrollment-claimed.v1",
+      type: "string",
+    },
+    gatewayId: { type: "string", format: "uuid" },
+    state: { const: "claimed", type: "string" },
+    revision: {
+      type: "integer",
+      minimum: 1,
+      maximum: 9_007_199_254_740_991,
+    },
+  },
+} as const;
+
 const errorResponseSchema = {
   type: "object",
   additionalProperties: false,
@@ -307,6 +405,30 @@ function isRecord(input: unknown): input is Record<string, unknown> {
   return typeof input === "object" && input !== null && !Array.isArray(input);
 }
 
+function verifiedCredentialFingerprint(input: unknown): string | undefined {
+  if (!isRecord(input)) return undefined;
+  const publicKey = input.publicKey;
+  const fingerprint = input.fingerprint;
+  if (
+    input.algorithm !== "ed25519" ||
+    typeof publicKey !== "string" ||
+    typeof fingerprint !== "string" ||
+    !/^[A-Za-z0-9_-]{43}$/.test(publicKey) ||
+    !/^[0-9a-f]{64}$/.test(fingerprint)
+  ) {
+    return undefined;
+  }
+  const decoded = Buffer.from(publicKey, "base64url");
+  if (
+    decoded.length !== 32 ||
+    decoded.toString("base64url") !== publicKey ||
+    createHash("sha256").update(decoded).digest("hex") !== fingerprint
+  ) {
+    return undefined;
+  }
+  return fingerprint;
+}
+
 function decodeAuditQuery(input: unknown): Record<string, unknown> {
   if (!isRecord(input))
     throw new HttpQueryInputError("query must be an object");
@@ -342,7 +464,7 @@ function decodeAuditQuery(input: unknown): Record<string, unknown> {
 
 function sendError(
   reply: FastifyReply,
-  statusCode: 400 | 401 | 403 | 404 | 409 | 503,
+  statusCode: 400 | 401 | 403 | 404 | 409 | 429 | 503,
   code: string,
   message: string,
   correlationId: string,
@@ -378,6 +500,7 @@ function gatewayCommandFailureStatus(
   if (
     code === "gateway-already-exists" ||
     code === "idempotency-conflict" ||
+    code === "invalid-gateway-enrollment-transition" ||
     code === "concurrent-modification"
   ) {
     return 409;
@@ -412,6 +535,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
         "content-type",
         "idempotency-key",
         "last-event-id",
+        "x-aethercloud-confirmation",
       ],
       credentials: false,
       exposedHeaders: ["x-correlation-id"],
@@ -647,6 +771,247 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
         return reply.status(200).send(result.value);
       },
     );
+
+    const issueEnrollment = fleet.issueEnrollment;
+    if (issueEnrollment !== undefined) {
+      app.post(
+        "/api/v1/fleet/gateways/:gatewayId/enrollment-claims",
+        {
+          schema: {
+            body: {
+              type: "object",
+              additionalProperties: false,
+              maxProperties: 0,
+            },
+            response: {
+              200: enrollmentIssuedSchema,
+              400: errorResponseSchema,
+              401: errorResponseSchema,
+              403: errorResponseSchema,
+              404: errorResponseSchema,
+              409: errorResponseSchema,
+              503: errorResponseSchema,
+            },
+          },
+        },
+        async (request, reply) => {
+          const correlationId = request.id;
+          reply.header("x-correlation-id", correlationId);
+          const authentication = await fleet.authenticator.authenticate({
+            authorization: request.headers.authorization,
+          });
+          if (!authentication.ok) {
+            return sendError(
+              reply,
+              401,
+              "unauthenticated",
+              "authentication is required",
+              correlationId,
+            );
+          }
+          const idempotencyKey = request.headers["idempotency-key"];
+          if (
+            typeof idempotencyKey !== "string" ||
+            idempotencyKey.length < 8 ||
+            idempotencyKey.length > 128 ||
+            request.headers["x-aethercloud-confirmation"] !==
+              "issue-enrollment-claim"
+          ) {
+            return sendError(
+              reply,
+              400,
+              "confirmation-required",
+              "explicit Enrollment Claim confirmation is required",
+              correlationId,
+            );
+          }
+          const issuedAt = new Date();
+          const commandExpiresAt = new Date(issuedAt.getTime() + 2 * 60_000);
+          const claimExpiresAt = new Date(issuedAt.getTime() + 10 * 60_000);
+          const result = await issueEnrollment.execute(
+            {
+              ...authentication.value,
+              subjectKind: "user",
+              idempotencyKey,
+              issuedAt: issuedAt.toISOString(),
+              expiresAt: commandExpiresAt.toISOString(),
+              confirmation: {
+                method: "explicit",
+                confirmedAt: issuedAt.toISOString(),
+              },
+            },
+            {
+              ...(isRecord(request.params) ? request.params : {}),
+              claimExpiresAt: claimExpiresAt.toISOString(),
+            },
+          );
+          if (!result.ok) {
+            return sendError(
+              reply,
+              gatewayCommandFailureStatus(result.failure.code),
+              result.failure.code,
+              result.failure.message,
+              correlationId,
+            );
+          }
+          if (!("enrollmentToken" in result.value)) {
+            return sendError(
+              reply,
+              409,
+              "enrollment-token-not-recoverable",
+              "the Enrollment Token was already issued and cannot be returned again",
+              correlationId,
+            );
+          }
+          return reply.status(200).send({
+            schema: "aether.cloud.gateway-enrollment-issued.v1",
+            gatewayId: result.value.gateway.gatewayId,
+            state: "awaiting-claim",
+            revision: result.value.gateway.revision,
+            expiresAt: result.value.gateway.claimExpiresAt,
+            enrollmentToken: result.value.enrollmentToken,
+          });
+        },
+      );
+    }
+
+    const getEnrollment = fleet.getEnrollment;
+    if (getEnrollment !== undefined) {
+      app.get(
+        "/api/v1/fleet/gateways/:gatewayId/enrollment",
+        {
+          schema: {
+            response: {
+              200: gatewayEnrollmentSchema,
+              400: errorResponseSchema,
+              401: errorResponseSchema,
+              403: errorResponseSchema,
+              404: errorResponseSchema,
+              503: errorResponseSchema,
+            },
+          },
+        },
+        async (request, reply) => {
+          const correlationId = request.id;
+          reply.header("x-correlation-id", correlationId);
+          const authentication = await fleet.authenticator.authenticate({
+            authorization: request.headers.authorization,
+          });
+          if (!authentication.ok) {
+            return sendError(
+              reply,
+              401,
+              "unauthenticated",
+              "authentication is required",
+              correlationId,
+            );
+          }
+          const result = await getEnrollment.execute(
+            authentication.value,
+            request.params,
+          );
+          if (!result.ok) {
+            return sendError(
+              reply,
+              gatewayCommandFailureStatus(result.failure.code),
+              result.failure.code,
+              result.failure.message,
+              correlationId,
+            );
+          }
+          return reply.status(200).send(result.value);
+        },
+      );
+    }
+
+    const claimEnrollment = fleet.claimEnrollment;
+    if (claimEnrollment !== undefined) {
+      app.post(
+        "/api/v1/fleet/enrollment-claims:claim",
+        {
+          schema: {
+            body: enrollmentClaimRequestSchema,
+            response: {
+              200: enrollmentClaimedSchema,
+              400: errorResponseSchema,
+              409: errorResponseSchema,
+              429: errorResponseSchema,
+              503: errorResponseSchema,
+            },
+          },
+        },
+        async (request, reply) => {
+          const correlationId = request.id;
+          reply.header("x-correlation-id", correlationId);
+          if (
+            fleet.claimRateLimiter !== undefined &&
+            !fleet.claimRateLimiter.allow(request.ip, Date.now())
+          ) {
+            return sendError(
+              reply,
+              429,
+              "rate-limited",
+              "too many Enrollment Claim attempts",
+              correlationId,
+            );
+          }
+          const idempotencyKey = request.headers["idempotency-key"];
+          const body = isRecord(request.body) ? request.body : {};
+          const fingerprint = verifiedCredentialFingerprint(
+            body.credentialRequest,
+          );
+          if (
+            typeof idempotencyKey !== "string" ||
+            idempotencyKey.length < 8 ||
+            idempotencyKey.length > 128 ||
+            typeof body.tenantId !== "string" ||
+            typeof body.projectId !== "string" ||
+            typeof body.gatewayId !== "string" ||
+            typeof body.enrollmentToken !== "string" ||
+            fingerprint === undefined
+          ) {
+            return sendError(
+              reply,
+              400,
+              "invalid-input",
+              "Enrollment Claim request is invalid",
+              correlationId,
+            );
+          }
+          const issuedAt = new Date();
+          const expiresAt = new Date(issuedAt.getTime() + 2 * 60_000);
+          const result = await claimEnrollment.execute(
+            {
+              tenantId: body.tenantId,
+              projectId: body.projectId,
+              idempotencyKey,
+              issuedAt: issuedAt.toISOString(),
+              expiresAt: expiresAt.toISOString(),
+            },
+            {
+              gatewayId: body.gatewayId,
+              enrollmentToken: body.enrollmentToken,
+              credentialRequestFingerprint: fingerprint,
+            },
+          );
+          if (!result.ok) {
+            return sendError(
+              reply,
+              gatewayCommandFailureStatus(result.failure.code),
+              result.failure.code,
+              result.failure.message,
+              correlationId,
+            );
+          }
+          return reply.status(200).send({
+            schema: "aether.cloud.gateway-enrollment-claimed.v1",
+            gatewayId: result.value.gatewayId,
+            state: "claimed",
+            revision: result.value.revision,
+          });
+        },
+      );
+    }
   }
 
   const audit = options.audit;

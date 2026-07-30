@@ -1,6 +1,20 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SearchAuditEvents } from "@aether-cloud/application";
+import {
+  ClaimGatewayEnrollment,
+  GetFleetGateway,
+  GetGatewayEnrollment,
+  IssueGatewayEnrollment,
+  ListFleetGateways,
+  RegisterGateway,
+  SearchAuditEvents,
+} from "@aether-cloud/application";
+import {
+  InMemoryEnrollmentTokenService,
+  InMemoryGatewayIdentityRepository,
+} from "@aether-cloud/fleet-memory-adapter";
+import { parseUtcInstant } from "@aether-cloud/domain";
+import { createHash } from "node:crypto";
 import type {
   AuditEventRepository,
   FleetGatewayView,
@@ -457,6 +471,192 @@ describe("AetherCloud API", () => {
       gatewayId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
       displayName: "Warehouse gateway",
     });
+  });
+
+  it("issues and consumes the strict AetherEdge Enrollment Claim contract", async () => {
+    const repository = new InMemoryGatewayIdentityRepository();
+    const tokens = new InMemoryEnrollmentTokenService({
+      tokenFactory: () => "edge-enrollment-token-with-entropy-123456",
+      claimIdFactory: () => "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    });
+    const clock = { now: () => parseUtcInstant(new Date().toISOString()) };
+    const authenticator: HttpAuthenticator = {
+      authenticate: () =>
+        Promise.resolve({
+          ok: true,
+          value: {
+            tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            subjectId: "operator-1",
+            permissions: [
+              "fleet.gateway.create",
+              "fleet.gateway.enrollment.issue",
+              "fleet.gateway.enrollment.read",
+            ],
+          },
+        }),
+    };
+    const app = buildApp({
+      version: "0.1.0",
+      fleet: {
+        authenticator,
+        list: new ListFleetGateways({ repository, clock }),
+        get: new GetFleetGateway({ repository, clock }),
+        register: new RegisterGateway({ repository, clock }),
+        issueEnrollment: new IssueGatewayEnrollment({
+          repository,
+          tokens,
+          clock,
+        }),
+        claimEnrollment: new ClaimGatewayEnrollment({
+          repository,
+          tokens,
+          clock,
+        }),
+        getEnrollment: new GetGatewayEnrollment({ repository }),
+        claimRateLimiter: { allow: () => true },
+      },
+    });
+    apps.push(app);
+
+    const gatewayId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const registration = await app.inject({
+      method: "POST",
+      url: "/api/v1/fleet/gateways",
+      headers: {
+        authorization: "Bearer token",
+        "idempotency-key": "register-request-001",
+      },
+      payload: { gatewayId, displayName: "Warehouse gateway" },
+    });
+    const issuance = await app.inject({
+      method: "POST",
+      url: `/api/v1/fleet/gateways/${gatewayId}/enrollment-claims`,
+      headers: {
+        authorization: "Bearer token",
+        "idempotency-key": "issue-request-001",
+        "x-aethercloud-confirmation": "issue-enrollment-claim",
+      },
+      payload: {},
+    });
+    const publicKeyBytes = Buffer.alloc(32, 7);
+    const publicKey = publicKeyBytes.toString("base64url");
+    const fingerprint = createHash("sha256")
+      .update(publicKeyBytes)
+      .digest("hex");
+    const claim = await app.inject({
+      method: "POST",
+      url: "/api/v1/fleet/enrollment-claims:claim",
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": "de57d6aa-c9b6-5b4f-8da2-771b0cf11c6c",
+      },
+      payload: {
+        schema: "aether.cloud.gateway-enrollment-claim.v1",
+        tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        gatewayId,
+        enrollmentToken: "edge-enrollment-token-with-entropy-123456",
+        credentialRequest: {
+          algorithm: "ed25519",
+          publicKey,
+          fingerprint,
+        },
+      },
+    });
+    const status = await app.inject({
+      method: "GET",
+      url: `/api/v1/fleet/gateways/${gatewayId}/enrollment`,
+      headers: { authorization: "Bearer token" },
+    });
+
+    expect(registration.statusCode).toBe(200);
+    expect(issuance.statusCode).toBe(200);
+    expect(issuance.json()).toMatchObject({
+      schema: "aether.cloud.gateway-enrollment-issued.v1",
+      gatewayId,
+      state: "awaiting-claim",
+      revision: 2,
+      enrollmentToken: "edge-enrollment-token-with-entropy-123456",
+    });
+    expect(claim.statusCode).toBe(200);
+    expect(claim.headers["content-type"]).toContain("application/json");
+    expect(claim.json()).toEqual({
+      schema: "aether.cloud.gateway-enrollment-claimed.v1",
+      gatewayId,
+      state: "claimed",
+      revision: 3,
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({
+      gatewayId,
+      state: "claimed",
+      revision: 3,
+    });
+  });
+
+  it("rejects malformed AetherEdge public-key evidence and limits Claim abuse", async () => {
+    let allowed = true;
+    const app = buildApp({
+      version: "0.1.0",
+      fleet: {
+        authenticator: {
+          authenticate: () =>
+            Promise.resolve({
+              ok: false,
+              failure: { code: "unauthenticated" },
+            }),
+        },
+        list: { execute: () => Promise.reject(new Error("not used")) },
+        get: { execute: () => Promise.reject(new Error("not used")) },
+        register: { execute: () => Promise.reject(new Error("not used")) },
+        claimEnrollment: {
+          execute: () => Promise.reject(new Error("must not be called")),
+        },
+        claimRateLimiter: { allow: () => allowed },
+      },
+    });
+    apps.push(app);
+    const payload = {
+      schema: "aether.cloud.gateway-enrollment-claim.v1",
+      tenantId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      gatewayId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      enrollmentToken: "edge-enrollment-token-with-entropy-123456",
+      credentialRequest: {
+        algorithm: "ed25519",
+        publicKey: Buffer.alloc(32, 7).toString("base64url"),
+        fingerprint: "0".repeat(64),
+      },
+    };
+
+    const malformed = await app.inject({
+      method: "POST",
+      url: "/api/v1/fleet/enrollment-claims:claim",
+      headers: { "idempotency-key": "claim-request-001" },
+      payload,
+    });
+    const unknownField = await app.inject({
+      method: "POST",
+      url: "/api/v1/fleet/enrollment-claims:claim",
+      headers: { "idempotency-key": "claim-request-001" },
+      payload: { ...payload, unexpected: true },
+    });
+    allowed = false;
+    const limited = await app.inject({
+      method: "POST",
+      url: "/api/v1/fleet/enrollment-claims:claim",
+      headers: { "idempotency-key": "claim-request-001" },
+      payload,
+    });
+
+    expect(malformed.statusCode).toBe(400);
+    expect(malformed.json()).toMatchObject({
+      error: { code: "invalid-input" },
+    });
+    expect(unknownField.statusCode).toBe(400);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json()).toMatchObject({ error: { code: "rate-limited" } });
   });
 
   it("offers a resumable finite SSE Audit feed through the same query", async () => {

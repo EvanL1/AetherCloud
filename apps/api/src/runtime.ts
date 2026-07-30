@@ -1,5 +1,8 @@
 import {
+  ClaimGatewayEnrollment,
   GetFleetGateway,
+  GetGatewayEnrollment,
+  IssueGatewayEnrollment,
   ListFleetGateways,
   RegisterGateway,
   SearchAuditEvents,
@@ -18,6 +21,8 @@ import { parseUtcInstant } from "@aether-cloud/domain";
 import { URL } from "node:url";
 
 import { buildApp } from "./app.js";
+import { FixedWindowEnrollmentClaimRateLimiter } from "./enrollment-claim-rate-limiter.js";
+import { NodeEnrollmentTokenService } from "./node-enrollment-token-service.js";
 import {
   ConfiguredBearerAuthenticator,
   type ConfiguredBearerSubject,
@@ -213,6 +218,7 @@ export function composeApiRuntime(
   const clock = {
     now: () => parseUtcInstant(new Date().toISOString()),
   };
+  const enrollmentTokens = new NodeEnrollmentTokenService();
   const identity = authenticator(environment);
   const origins = allowedOrigins(environment);
   const app = buildApp({
@@ -226,6 +232,20 @@ export function composeApiRuntime(
       list: new ListFleetGateways({ repository: fleetRepository, clock }),
       get: new GetFleetGateway({ repository: fleetRepository, clock }),
       register: new RegisterGateway({ repository: fleetRepository, clock }),
+      issueEnrollment: new IssueGatewayEnrollment({
+        repository: fleetRepository,
+        tokens: enrollmentTokens,
+        clock,
+      }),
+      claimEnrollment: new ClaimGatewayEnrollment({
+        repository: fleetRepository,
+        tokens: enrollmentTokens,
+        clock,
+      }),
+      getEnrollment: new GetGatewayEnrollment({
+        repository: fleetRepository,
+      }),
+      claimRateLimiter: new FixedWindowEnrollmentClaimRateLimiter(),
       authenticator: identity,
     },
   });

@@ -1,7 +1,7 @@
 ---
 title: Gateway identity and enrollment
 description: Build tenant-scoped Gateway identity from registration and short-lived bootstrap claims
-updated: 2026-07-16
+updated: 2026-07-30
 status: mixed
 ---
 
@@ -33,9 +33,11 @@ The current TypeScript foundation implements:
   boundary, optimistic revision checks, and atomic Gateway/Audit/Outbox writes
 - an opt-in PostgreSQL 18 integration test with a constrained application role
 
-These are application and adapter contracts. No fleet HTTP route, CloudLink
-message, production database composition/migration runner, CA, or KMS
-integration is implemented. The SQL adapter is executable but not deployed.
+Registration, Claim issue/status, and strict AetherEdge Claim consume HTTP
+routes are now composed over the deployed forced-RLS PostgreSQL adapter. A real
+compiled AetherEdge CLI local harness reaches `claimed` against the Fastify
+memory composition. Active credential issuance, production CloudLink, CA/KMS,
+and complete migration orchestration remain unavailable.
 
 ## Command boundary
 
@@ -45,9 +47,10 @@ integration is implemented. The SQL adapter is executable but not deployed.
 | `fleet.gateway.enrollment.issue` | `fleet.gateway.enrollment.issue` in Tenant context | high   | explicit     | required               |
 | `fleet.gateway.enrollment.claim` | bound enrollment token                             | medium | not required | required               |
 
-All three commands require audit by policy. They are intentionally not exposed
-through the HTTP composition root until authenticated Tenant context,
-transactional persistence, and durable audit are available.
+All three commands require audit by policy. Registration and Claim issue use
+the authenticated Tenant context; Claim consume uses only its short-lived
+Token and strict bound scope. PostgreSQL persists each aggregate, Audit, and
+Outbox transition atomically.
 
 The issue command returns the raw enrollment token once. An identical retry
 returns only public Gateway and claim state. A retry with the same idempotency
@@ -81,8 +84,8 @@ It never returns a token, token digest, or command idempotency key.
 - `invalid-gateway-enrollment-transition`
 - `concurrent-modification`
 
-Transport error envelopes remain planned. These codes are currently library
-results, not published HTTP status mappings.
+The Fastify composition maps these failures into bounded HTTP error envelopes.
+Credential activation and recovery transport mappings remain planned.
 
 ## Planned lifecycle
 
