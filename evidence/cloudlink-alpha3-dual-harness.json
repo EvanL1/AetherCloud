@@ -1,13 +1,13 @@
 {
   "schema": "aether.cloudlink.dual-harness-evidence.v1alpha1",
-  "generated_at": "2026-07-16T02:55:05.543Z",
+  "generated_at": "2026-07-30T03:41:44.085Z",
   "result": "passed",
   "command": "pnpm test:cloudlink-dual",
   "topology": {
     "broker": "mosquitto MQTT 3.1.1",
-    "edge": "AetherIot aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
+    "edge": "AetherEdge aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
     "cloud": "AetherCloud node-mqtt adapter + CloudLink ingress + application use cases",
-    "unique_topic_prefix": "aether-dual/e0c97dbbb5e6489f866b36ff2c78da03",
+    "unique_topic_prefix": "aether-dual/455de806b2b547e388817932c982ba9f",
     "broker_restarts": 1,
     "edge_process_restarts": 1,
     "cloud_process_restarts": 1
@@ -28,30 +28,51 @@
   "repositories": {
     "AetherContracts": {
       "branch": "main",
-      "head": "c5aad674f0844138e778963118e786e430ffb365"
+      "head": "3443e081f529dac6858b4d04813c510e36647aad"
     },
     "AetherCloud": {
-      "branch": "main",
-      "head": "d731ecbdd4093c8034d680e023f2ce106afbabde"
+      "branch": "agent/cloudlink-dual-challenge",
+      "head": "25c1317d5df7186497089d3a975f9b665c6f7913"
     },
-    "AetherIot": {
-      "branch": "main",
-      "head": "26937ac57c8c5cb6c0865ab27efaca71a0a22acc"
+    "AetherEdge": {
+      "branch": "feat/cloud-enrollment-cloudlink-identity",
+      "head": "a3d81d950ec96bba60f8780b0719fec1e42069ff"
     }
   },
   "observations": {
-    "cloud_ingress_results": 14,
-    "cloud_application_commands": 14,
-    "cloud_downlinks": 9,
+    "cloud_ingress_results": 17,
+    "cloud_application_commands": 28,
+    "cloud_downlinks": 12,
+    "session_challenges_issued": 3,
+    "gateway_signed_sessions_accepted": 3,
     "telemetry_application_acks": 3,
     "manifest_resume_cursor_observed": true,
     "final_edge_cursor": 1,
     "final_edge_pending_records": 0,
     "application_ack_signed": false,
     "production_crash_durable_store": false,
-    "authentication_gate": "proposal"
+    "commissioned_identity_source": "real-aether-cloud-enroll-cli",
+    "commissioned_identity_fingerprint": "f833767867935350c4f621e00f04527b9c5999dbf8a4d0f1d3117461c90eb562",
+    "cloudlink_private_key_source": "FileClaimedGatewayIdentitySource",
+    "authentication_gate": "gateway-signed-challenge"
   },
   "scenarios": [
+    {
+      "scenario": "enrollment-to-cloudlink-identity-continuity",
+      "capability": "implemented",
+      "expected": "the real Enrollment CLI persists the private key that signs every CloudLink challenge transcript",
+      "observed": "Cloud verified the public key from the Claim request while Edge loaded the matching claimed private key from FileClaimedGatewayIdentitySource",
+      "result": "passed",
+      "failure_code": null
+    },
+    {
+      "scenario": "gateway-signed-session-challenge",
+      "capability": "implemented",
+      "expected": "Cloud signs a bounded challenge and accepts only a Gateway signature bound to its transcript",
+      "observed": "3 challenges issued; 3 signed sessions accepted",
+      "result": "passed",
+      "failure_code": null
+    },
     {
       "scenario": "broker-disconnect-reconnect",
       "capability": "implemented",
@@ -136,7 +157,7 @@
       "scenario": "expiry-equality",
       "capability": "implemented",
       "expected": "evaluation_time >= expires_at is rejected before application persistence",
-      "observed": "ingress returned message-expired and published no ACK",
+      "observed": "ingress returned MESSAGE_EXPIRED and published no ACK",
       "result": "passed",
       "failure_code": "MESSAGE_EXPIRED"
     },
