@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -65,6 +67,18 @@ describe("AetherCloud console interface", () => {
     expect(html).toContain("布局只保存在此浏览器");
     expect(html).not.toContain("CPU usage");
     expect(html).not.toContain("Memory usage");
+  });
+
+  it("keeps dashboard Blocks aligned to one consistent card height", () => {
+    const css = readFileSync(
+      new URL("../src/dashboard.css", import.meta.url),
+      "utf8",
+    );
+
+    expect(css).toMatch(/\.dashboard-grid\s*\{[^}]*align-items:\s*stretch;/s);
+    expect(css).toMatch(
+      /\.dashboard-block\s*\{[^}]*height:\s*420px;[^}]*min-height:\s*420px;/s,
+    );
   });
 
   it("distinguishes production services from modules that are not exposed", () => {
