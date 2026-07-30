@@ -1,13 +1,13 @@
 {
   "schema": "aether.cloudlink.dual-harness-evidence.v1alpha1",
-  "generated_at": "2026-07-30T03:41:44.085Z",
+  "generated_at": "2026-07-30T11:07:36.785Z",
   "result": "passed",
   "command": "pnpm test:cloudlink-dual",
   "topology": {
     "broker": "mosquitto MQTT 3.1.1",
     "edge": "AetherEdge aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
     "cloud": "AetherCloud node-mqtt adapter + CloudLink ingress + application use cases",
-    "unique_topic_prefix": "aether-dual/455de806b2b547e388817932c982ba9f",
+    "unique_topic_prefix": "aether-dual/89762b6eb4c04b41a5047b6af91d993b",
     "broker_restarts": 1,
     "edge_process_restarts": 1,
     "cloud_process_restarts": 1
@@ -31,12 +31,12 @@
       "head": "3443e081f529dac6858b4d04813c510e36647aad"
     },
     "AetherCloud": {
-      "branch": "agent/cloudlink-dual-challenge",
-      "head": "25c1317d5df7186497089d3a975f9b665c6f7913"
+      "branch": "main",
+      "head": "65792e0b3c246a1b7fcc95fdee86f75ce8ea3d7f"
     },
     "AetherEdge": {
       "branch": "feat/cloud-enrollment-cloudlink-identity",
-      "head": "a3d81d950ec96bba60f8780b0719fec1e42069ff"
+      "head": "fdea72d57a84f4722b83f572264a72f6d980b305"
     }
   },
   "observations": {
@@ -52,7 +52,7 @@
     "application_ack_signed": false,
     "production_crash_durable_store": false,
     "commissioned_identity_source": "real-aether-cloud-enroll-cli",
-    "commissioned_identity_fingerprint": "f833767867935350c4f621e00f04527b9c5999dbf8a4d0f1d3117461c90eb562",
+    "commissioned_identity_fingerprint": "dbedea6b3aa00fbb9fc5a711ef89c340e761ac8421267faed1c5d3b561bba136",
     "cloudlink_private_key_source": "FileClaimedGatewayIdentitySource",
     "authentication_gate": "gateway-signed-challenge"
   },
