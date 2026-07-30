@@ -1,7 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { FleetView, LoginScreen, Overview } from "../src/app.js";
+import {
+  DashboardOverview,
+  FleetView,
+  LoginScreen,
+  Overview,
+} from "../src/app.js";
 
 describe("AetherCloud console interface", () => {
   it("renders a dedicated control-plane login rather than a marketing subpage", () => {
@@ -30,6 +35,36 @@ describe("AetherCloud console interface", () => {
     expect(html).toContain("添加网关");
     expect(html).not.toContain("Gateway ID");
     expect(html).not.toContain("fleet.gateway.create");
+  });
+
+  it("renders a customizable Block dashboard from real Fleet evidence", () => {
+    const html = renderToStaticMarkup(
+      <DashboardOverview
+        apiState="connected"
+        audit={{ items: [], nextCursor: null }}
+        fleet={{ items: [], nextCursor: null }}
+        loading={false}
+        onNavigate={() => undefined}
+        onRefresh={() => undefined}
+        scope={{
+          tenantId: "tenant-1",
+          projectId: "project-1",
+          role: "owner",
+          permissions: ["fleet.gateway.read"],
+        }}
+      />,
+    );
+
+    expect(html).toContain("添加 Block");
+    expect(html).toContain("Fleet health");
+    expect(html).toContain("CloudLink observation");
+    expect(html).toContain("Enrollment");
+    expect(html).toContain("Telemetry activity");
+    expect(html).toContain("Recent audit events");
+    expect(html).toContain("当前快照");
+    expect(html).toContain("布局只保存在此浏览器");
+    expect(html).not.toContain("CPU usage");
+    expect(html).not.toContain("Memory usage");
   });
 
   it("distinguishes production services from modules that are not exposed", () => {

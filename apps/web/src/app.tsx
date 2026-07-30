@@ -19,6 +19,7 @@ import type {
   FleetListResponse,
 } from "./api-client.js";
 import { consoleConfig } from "./config.js";
+import { CustomDashboard } from "./custom-dashboard.js";
 import { decodeSessionScope } from "./session-scope.js";
 import type { SessionScope } from "./session-scope.js";
 
@@ -265,7 +266,10 @@ function Navigation({
   const primaryItems: readonly Readonly<{
     view: ConsoleView;
     label: string;
-  }>[] = [{ view: "fleet", label: "Fleet" }];
+  }>[] = [
+    { view: "overview", label: "总览" },
+    { view: "fleet", label: "Fleet" },
+  ];
   const managementItems: readonly Readonly<{
     view: ConsoleView;
     label: string;
@@ -765,6 +769,39 @@ export function FleetView({
   );
 }
 
+interface DashboardOverviewProps {
+  readonly scope: SessionScope | null;
+  readonly apiState: ApiState;
+  readonly audit: AuditSearchResponse | undefined;
+  readonly fleet: FleetListResponse | undefined;
+  readonly loading: boolean;
+  readonly onNavigate: (view: ConsoleView) => void;
+  readonly onRefresh: () => void;
+}
+
+export function DashboardOverview({
+  scope,
+  apiState,
+  audit,
+  fleet,
+  loading,
+  onNavigate,
+  onRefresh,
+}: DashboardOverviewProps): React.JSX.Element {
+  return (
+    <CustomDashboard
+      apiState={apiState}
+      audit={audit}
+      fleet={fleet}
+      loading={loading}
+      onNavigate={onNavigate}
+      onRefresh={onRefresh}
+      projectId={scope?.projectId ?? "unassigned"}
+      tenantId={scope?.tenantId ?? "unassigned"}
+    />
+  );
+}
+
 interface OverviewProps {
   readonly email: string;
   readonly scope: SessionScope | null;
@@ -1216,7 +1253,9 @@ function Console({
   session,
   recovery,
 }: Readonly<{ session: Session; recovery: boolean }>): React.JSX.Element {
-  const [view, setView] = useState<ConsoleView>(recovery ? "account" : "fleet");
+  const [view, setView] = useState<ConsoleView>(
+    recovery ? "account" : "overview",
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("checking");
   const [fleet, setFleet] = useState<FleetListResponse>();
@@ -1389,11 +1428,15 @@ function Console({
               }}
             />
           ) : view === "overview" ? (
-            <Overview
+            <DashboardOverview
               apiState={apiState}
               audit={audit}
-              email={session.user.email ?? session.user.id}
+              fleet={fleet}
+              loading={fleetLoading || auditLoading}
               onNavigate={navigate}
+              onRefresh={() => {
+                void Promise.all([loadFleet(), loadAudit()]);
+              }}
               scope={scope}
             />
           ) : view === "audit" ? (
