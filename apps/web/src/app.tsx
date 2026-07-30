@@ -470,11 +470,12 @@ export function FleetView({
               disabled={submitting}
               type="submit"
             >
-              {submitting ? "正在创建…" : "创建网关身份"}
+              {submitting ? "正在创建…" : "创建并生成配对指令"}
             </button>
           </form>
           <p className="register-note">
-            这里只创建网关身份。安全接入与凭据绑定将在后续步骤完成。
+            系统会创建网关身份并签发一次性配对材料；只有 AetherEdge
+            提交有效证明后，身份才会变为已配对。
           </p>
           {formError === undefined ? null : (
             <p className="inline-error">{formError}</p>
