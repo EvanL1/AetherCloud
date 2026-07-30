@@ -1,13 +1,13 @@
 {
   "schema": "aether.cloudlink.dual-harness-evidence.v1alpha1",
-  "generated_at": "2026-07-30T02:58:25.582Z",
+  "generated_at": "2026-07-30T03:41:44.085Z",
   "result": "passed",
   "command": "pnpm test:cloudlink-dual",
   "topology": {
     "broker": "mosquitto MQTT 3.1.1",
     "edge": "AetherEdge aether-cloudlink-mqtt/rumqttc + FileCloudLinkSpool",
     "cloud": "AetherCloud node-mqtt adapter + CloudLink ingress + application use cases",
-    "unique_topic_prefix": "aether-dual/bb3ab9cb63bf41b69f5d934781d37ec2",
+    "unique_topic_prefix": "aether-dual/455de806b2b547e388817932c982ba9f",
     "broker_restarts": 1,
     "edge_process_restarts": 1,
     "cloud_process_restarts": 1
@@ -32,11 +32,11 @@
     },
     "AetherCloud": {
       "branch": "agent/cloudlink-dual-challenge",
-      "head": "ef7dbd0b8d73ee0963f09884fb65fb10e13c15a7"
+      "head": "25c1317d5df7186497089d3a975f9b665c6f7913"
     },
     "AetherEdge": {
-      "branch": "feat/cloud-enrollment",
-      "head": "904eb54662ce95c6e7f902ec803a758d838d9519"
+      "branch": "feat/cloud-enrollment-cloudlink-identity",
+      "head": "a3d81d950ec96bba60f8780b0719fec1e42069ff"
     }
   },
   "observations": {
@@ -51,9 +51,20 @@
     "final_edge_pending_records": 0,
     "application_ack_signed": false,
     "production_crash_durable_store": false,
+    "commissioned_identity_source": "real-aether-cloud-enroll-cli",
+    "commissioned_identity_fingerprint": "f833767867935350c4f621e00f04527b9c5999dbf8a4d0f1d3117461c90eb562",
+    "cloudlink_private_key_source": "FileClaimedGatewayIdentitySource",
     "authentication_gate": "gateway-signed-challenge"
   },
   "scenarios": [
+    {
+      "scenario": "enrollment-to-cloudlink-identity-continuity",
+      "capability": "implemented",
+      "expected": "the real Enrollment CLI persists the private key that signs every CloudLink challenge transcript",
+      "observed": "Cloud verified the public key from the Claim request while Edge loaded the matching claimed private key from FileClaimedGatewayIdentitySource",
+      "result": "passed",
+      "failure_code": null
+    },
     {
       "scenario": "gateway-signed-session-challenge",
       "capability": "implemented",
