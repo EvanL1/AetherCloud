@@ -1221,6 +1221,49 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .cloud-observations {
+    margin-top: 19px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+  }
+  .cloud-observations > div > span,
+  .cloud-observations dt {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .cloud-observations > div > strong {
+    display: block;
+    margin-top: 8px;
+    color: var(--muted-strong);
+    font-size: 11px;
+  }
+  .cloud-observations dl {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 16px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .cloud-observations dl > div {
+    min-width: 0;
+    padding: 12px 10px 12px 0;
+  }
+  .cloud-observations dd {
+    margin: 6px 0 0;
+    overflow: hidden;
+    color: var(--muted-strong);
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cloud-observations small {
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.6;
+  }
   .latest-telemetry {
     margin-top: 19px;
     padding: 18px;
@@ -1433,7 +1476,8 @@
       align-items: stretch;
       flex-direction: column;
     }
-    .detail-grid {
+    .detail-grid,
+    .cloud-observations dl {
       grid-template-columns: 1fr;
     }
     .detail-grid > div,

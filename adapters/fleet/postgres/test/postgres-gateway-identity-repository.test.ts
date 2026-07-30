@@ -142,10 +142,16 @@ function fleetProjectionRow(): Record<string, unknown> {
     revision: "3",
     enrollment_state: "claimed",
     registered_at: "2026-07-15T08:00:00.000Z",
+    session_id: "44444444-4444-4444-8444-444444444444",
     session_state: "active",
+    session_protocol_version: "1.0",
+    session_opened_at: "2026-07-15T08:00:30.000Z",
     session_activated_at: "2026-07-15T08:01:00.000Z",
     last_heartbeat_at: "2026-07-15T08:02:00.000Z",
     heartbeat_interval_ms: "30000",
+    session_suspect_at: null,
+    session_closed_at: null,
+    session_close_reason: null,
     telemetry_record_count: "7",
     telemetry_last_received_at: "2026-07-15T08:02:01.000Z",
     telemetry_stream_id: "points",
@@ -282,7 +288,10 @@ describe("PostgresGatewayIdentityRepository", () => {
         {
           gatewayId,
           session: {
+            sessionId: "44444444-4444-4444-8444-444444444444",
             state: "active",
+            protocolVersion: "1.0",
+            openedAt: "2026-07-15T08:00:30.000Z",
             heartbeatIntervalMs: "30000",
           },
           telemetry: {
@@ -294,6 +303,7 @@ describe("PostgresGatewayIdentityRepository", () => {
       nextCursor: null,
     });
     expect(client.calls[2]?.text).toContain("cloudlink_sessions");
+    expect(client.calls[2]?.text).not.toContain("state <> 'closed'");
     expect(client.calls[2]?.text).toContain("telemetry_records");
     expect(client.calls[2]?.values).toEqual([tenantId, projectId, null, 26]);
   });

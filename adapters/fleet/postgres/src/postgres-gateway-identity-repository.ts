@@ -23,12 +23,14 @@ import type {
 import {
   claimGatewayEnrollment,
   issueGatewayEnrollmentClaim,
+  parseCloudLinkSessionId,
   parseCredentialRequestFingerprint,
   parseEnrollmentClaimId,
   parseEnrollmentRequestId,
   parseEnrollmentTokenDigest,
   parseGatewayId,
   parseProjectId,
+  parseProtocolVersion,
   parseTenantId,
   parseUtcInstant,
   registerGatewayIdentity,
@@ -72,10 +74,16 @@ const fleetProjectionColumnsSql = `
   gateway.revision::text AS revision,
   gateway.enrollment_state,
   to_char(gateway.registered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS registered_at,
+  session.session_id::text AS session_id,
   session.state AS session_state,
+  session.protocol_version AS session_protocol_version,
+  CASE WHEN session.opened_at IS NULL THEN NULL ELSE to_char(session.opened_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS session_opened_at,
   CASE WHEN session.activated_at IS NULL THEN NULL ELSE to_char(session.activated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS session_activated_at,
   CASE WHEN session.last_heartbeat_at IS NULL THEN NULL ELSE to_char(session.last_heartbeat_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS last_heartbeat_at,
   session.heartbeat_interval_ms::text AS heartbeat_interval_ms,
+  CASE WHEN session.suspect_at IS NULL THEN NULL ELSE to_char(session.suspect_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS session_suspect_at,
+  CASE WHEN session.closed_at IS NULL THEN NULL ELSE to_char(session.closed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS session_closed_at,
+  session.close_reason AS session_close_reason,
   COALESCE(usage.record_count, 0)::text AS telemetry_record_count,
   CASE WHEN latest.received_at IS NULL THEN NULL ELSE to_char(latest.received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') END AS telemetry_last_received_at,
   latest.stream_id AS telemetry_stream_id,
@@ -88,12 +96,12 @@ const fleetProjectionColumnsSql = `
 
 const fleetProjectionJoinsSql = `
 LEFT JOIN LATERAL (
-  SELECT state, activated_at, last_heartbeat_at, heartbeat_interval_ms
+  SELECT session_id, state, protocol_version, opened_at, activated_at,
+    last_heartbeat_at, heartbeat_interval_ms, suspect_at, closed_at, close_reason
   FROM aethercloud.cloudlink_sessions
   WHERE tenant_id = gateway.tenant_id
     AND project_id = gateway.project_id
     AND gateway_id = gateway.gateway_id
-    AND state <> 'closed'
   ORDER BY epoch DESC
   LIMIT 1
 ) AS session ON true
@@ -357,11 +365,29 @@ function decodeFleetSession(row: Row): FleetSessionSnapshot | null {
   ) {
     throw new Error("PostgreSQL Fleet row has invalid session_state");
   }
+  const protocolVersion = optionalString(row, "session_protocol_version");
+  const openedAt = requireString(row, "session_opened_at");
   const activatedAt = optionalString(row, "session_activated_at");
   const lastHeartbeatAt = optionalString(row, "last_heartbeat_at");
   const heartbeatIntervalMs = optionalString(row, "heartbeat_interval_ms");
+  const suspectAt = optionalString(row, "session_suspect_at");
+  const closedAt = optionalString(row, "session_closed_at");
+  const closeReason = optionalString(row, "session_close_reason");
+  if (
+    closeReason !== undefined &&
+    closeReason !== "drained" &&
+    closeReason !== "fenced" &&
+    closeReason !== "heartbeat-timeout"
+  ) {
+    throw new Error("PostgreSQL Fleet row has invalid session_close_reason");
+  }
   return {
+    sessionId: parseCloudLinkSessionId(row.session_id),
     state,
+    ...(protocolVersion === undefined
+      ? {}
+      : { protocolVersion: parseProtocolVersion(protocolVersion) }),
+    openedAt: parseUtcInstant(openedAt),
     ...(activatedAt === undefined
       ? {}
       : { activatedAt: parseUtcInstant(activatedAt) }),
@@ -373,6 +399,11 @@ function decodeFleetSession(row: Row): FleetSessionSnapshot | null {
       : {
           heartbeatIntervalMs: decimalString(row, "heartbeat_interval_ms"),
         }),
+    ...(suspectAt === undefined
+      ? {}
+      : { suspectAt: parseUtcInstant(suspectAt) }),
+    ...(closedAt === undefined ? {} : { closedAt: parseUtcInstant(closedAt) }),
+    ...(closeReason === undefined ? {} : { closeReason }),
   };
 }
 

@@ -36,7 +36,10 @@ function snapshot(
     revision: 3,
     registeredAt: parseUtcInstant("2026-07-29T10:00:00.000Z"),
     session: {
+      sessionId: "44444444-4444-4444-8444-444444444444",
       state: "active",
+      protocolVersion: "1.0",
+      openedAt: parseUtcInstant("2026-07-29T11:57:50.000Z"),
       activatedAt: parseUtcInstant("2026-07-29T11:58:00.000Z"),
       lastHeartbeatAt: parseUtcInstant("2026-07-29T11:59:50.000Z"),
       heartbeatIntervalMs: "30000",
@@ -104,10 +107,15 @@ describe("Fleet gateway queries", () => {
             gatewayId,
             connection: {
               status: "online",
+              reason: "heartbeat-current",
+              sessionId: "44444444-4444-4444-8444-444444444444",
               sessionState: "active",
+              protocolVersion: "1.0",
               lastSeenAt: "2026-07-29T11:59:50.000Z",
+              staleAfter: "2026-07-29T12:01:20.000Z",
             },
             telemetry: {
+              status: "receiving",
               recordCount: "42",
               latest: { position: "42" },
             },
@@ -124,7 +132,9 @@ describe("Fleet gateway queries", () => {
       outcome: "found",
       gateway: snapshot({
         session: {
+          sessionId: "44444444-4444-4444-8444-444444444444",
           state: "active",
+          openedAt: parseUtcInstant("2026-07-29T11:49:50.000Z"),
           activatedAt: parseUtcInstant("2026-07-29T11:50:00.000Z"),
           lastHeartbeatAt: parseUtcInstant("2026-07-29T11:51:00.000Z"),
           heartbeatIntervalMs: "30000",
@@ -140,7 +150,50 @@ describe("Fleet gateway queries", () => {
     expect(result).toMatchObject({
       ok: true,
       value: {
-        connection: { status: "stale" },
+        connection: {
+          status: "stale",
+          reason: "heartbeat-overdue",
+          staleAfter: "2026-07-29T11:52:30.000Z",
+        },
+      },
+    });
+  });
+
+  it("preserves the latest closed session as offline diagnostic evidence", async () => {
+    const repository = new Repository();
+    repository.result = {
+      outcome: "found",
+      gateway: snapshot({
+        session: {
+          sessionId: "44444444-4444-4444-8444-444444444444",
+          state: "closed",
+          protocolVersion: "1.0",
+          openedAt: parseUtcInstant("2026-07-29T11:40:00.000Z"),
+          activatedAt: parseUtcInstant("2026-07-29T11:41:00.000Z"),
+          lastHeartbeatAt: parseUtcInstant("2026-07-29T11:50:00.000Z"),
+          heartbeatIntervalMs: "30000",
+          closedAt: parseUtcInstant("2026-07-29T11:51:30.000Z"),
+          closeReason: "heartbeat-timeout",
+        },
+        telemetry: { recordCount: "0" },
+      }),
+    };
+    const query = new GetFleetGateway({
+      repository,
+      clock: new FixedClock(),
+    });
+
+    await expect(query.execute(context, { gatewayId })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        connection: {
+          status: "offline",
+          reason: "session-closed",
+          lastSeenAt: "2026-07-29T11:50:00.000Z",
+          closedAt: "2026-07-29T11:51:30.000Z",
+          closeReason: "heartbeat-timeout",
+        },
+        telemetry: { status: "no-data", recordCount: "0" },
       },
     });
   });

@@ -335,8 +335,11 @@ describe("AetherCloud API", () => {
                   revision: 1,
                   registeredAt:
                     "2026-07-29T12:00:00.000Z" as FleetGatewayView["registeredAt"],
-                  connection: { status: "never-connected" },
-                  telemetry: { recordCount: "0" },
+                  connection: {
+                    status: "never-connected",
+                    reason: "no-session",
+                  },
+                  telemetry: { status: "no-data", recordCount: "0" },
                 },
               ],
               nextCursor: null,

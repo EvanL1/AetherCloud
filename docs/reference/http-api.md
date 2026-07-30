@@ -82,8 +82,13 @@ Lists Gateway identities in the authenticated Tenant and Project. It requires
 `fleet.gateway.read`; optional `limit` is 1–100 and `cursor` is the last Gateway
 UUID from the previous page. The response includes enrollment state, a
 CloudLink-derived connection status, canonical string telemetry counts, and the
-latest persisted telemetry record when one exists. It never reads live point
-state from an edge connection.
+latest persisted telemetry record when one exists. Connection output includes a
+machine-readable reason, latest Session evidence, protocol version, observation
+time, heartbeat interval, and the derived `staleAfter` boundary when available.
+The latest closed Session remains visible with its close time and reason instead
+of being rewritten as `never-connected`. Telemetry status is only `no-data` or
+`receiving`; neither value claims that the source or physical process is healthy.
+The projection never reads live point state from an edge connection.
 
 ## `GET /api/v1/fleet/gateways/:gatewayId`
 

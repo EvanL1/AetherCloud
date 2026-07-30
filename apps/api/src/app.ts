@@ -134,8 +134,9 @@ const platformResponseSchema = {
 const fleetTelemetrySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["recordCount"],
+  required: ["status", "recordCount"],
   properties: {
+    status: { enum: ["no-data", "receiving"], type: "string" },
     recordCount: { type: "string", pattern: "^(?:0|[1-9][0-9]*)$" },
     lastReceivedAt: { type: "string", format: "date-time" },
     latest: {
@@ -188,14 +189,43 @@ const fleetGatewaySchema = {
     connection: {
       type: "object",
       additionalProperties: false,
-      required: ["status"],
+      required: ["status", "reason"],
       properties: {
         status: {
           enum: ["connecting", "never-connected", "offline", "online", "stale"],
           type: "string",
         },
+        reason: {
+          enum: [
+            "heartbeat-current",
+            "heartbeat-overdue",
+            "heartbeat-pending",
+            "no-session",
+            "session-closed",
+            "session-draining",
+            "session-negotiating",
+            "session-resuming",
+            "session-suspect",
+          ],
+          type: "string",
+        },
+        sessionId: { type: "string", format: "uuid" },
         sessionState: { type: "string" },
+        protocolVersion: { type: "string" },
+        openedAt: { type: "string", format: "date-time" },
+        activatedAt: { type: "string", format: "date-time" },
         lastSeenAt: { type: "string", format: "date-time" },
+        heartbeatIntervalMs: {
+          type: "string",
+          pattern: "^(?:0|[1-9][0-9]*)$",
+        },
+        staleAfter: { type: "string", format: "date-time" },
+        suspectAt: { type: "string", format: "date-time" },
+        closedAt: { type: "string", format: "date-time" },
+        closeReason: {
+          enum: ["drained", "fenced", "heartbeat-timeout"],
+          type: "string",
+        },
       },
     },
     telemetry: fleetTelemetrySchema,

@@ -323,6 +323,7 @@ export type {
 export { GetFleetGateway, ListFleetGateways } from "./fleet-query.js";
 export type {
   FleetConnectionStatus,
+  FleetConnectionStatusReason,
   FleetGatewayGetResult,
   FleetGatewayListResult,
   FleetGatewayQueryRepository,

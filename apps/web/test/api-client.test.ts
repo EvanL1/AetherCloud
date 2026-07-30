@@ -53,10 +53,15 @@ describe("AetherCloud web API client", () => {
             registeredAt: "2026-07-29T10:00:00.000Z",
             connection: {
               status: "online",
+              reason: "heartbeat-current",
+              sessionId: "44444444-4444-4444-8444-444444444444",
               sessionState: "active",
+              protocolVersion: "1.0",
               lastSeenAt: "2026-07-29T11:59:50.000Z",
+              staleAfter: "2026-07-29T12:01:20.000Z",
             },
             telemetry: {
+              status: "receiving",
               recordCount: "9007199254740993",
               latest: {
                 streamId: "points",
@@ -73,8 +78,13 @@ describe("AetherCloud web API client", () => {
       }).items[0],
     ).toMatchObject({
       displayName: "Warehouse gateway",
-      connection: { status: "online" },
+      connection: {
+        status: "online",
+        reason: "heartbeat-current",
+        protocolVersion: "1.0",
+      },
       telemetry: {
+        status: "receiving",
         recordCount: "9007199254740993",
         latest: { position: "9007199254740993" },
       },

@@ -25,6 +25,17 @@ export type FleetConnectionStatus =
   | "online"
   | "stale";
 
+export type FleetConnectionStatusReason =
+  | "heartbeat-current"
+  | "heartbeat-overdue"
+  | "heartbeat-pending"
+  | "no-session"
+  | "session-closed"
+  | "session-draining"
+  | "session-negotiating"
+  | "session-resuming"
+  | "session-suspect";
+
 export interface FleetGatewayView {
   readonly gatewayId: string;
   readonly displayName: string;
@@ -33,10 +44,21 @@ export interface FleetGatewayView {
   readonly registeredAt: string;
   readonly connection: Readonly<{
     status: FleetConnectionStatus;
+    reason: FleetConnectionStatusReason;
+    sessionId?: string;
     sessionState?: string;
+    protocolVersion?: string;
+    openedAt?: string;
+    activatedAt?: string;
     lastSeenAt?: string;
+    heartbeatIntervalMs?: string;
+    staleAfter?: string;
+    suspectAt?: string;
+    closedAt?: string;
+    closeReason?: "drained" | "fenced" | "heartbeat-timeout";
   }>;
   readonly telemetry: Readonly<{
+    status: "no-data" | "receiving";
     recordCount: string;
     lastReceivedAt?: string;
     latest?: Readonly<{
@@ -203,6 +225,16 @@ function fleetRecord(input: unknown): Readonly<Record<string, unknown>> {
   return isRecord(input) ? input : fleetFailure();
 }
 
+function optionalFleetInstant(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string | undefined {
+  const value = optionalFleetString(input, field);
+  if (value !== undefined && Number.isNaN(Date.parse(value)))
+    return fleetFailure();
+  return value;
+}
+
 function decodeFleetGateway(input: unknown): FleetGatewayView {
   const gateway = fleetRecord(input);
   const gatewayId = fleetString(gateway, "gatewayId");
@@ -238,14 +270,57 @@ function decodeFleetGateway(input: unknown): FleetGatewayView {
     status !== "stale"
   )
     return fleetFailure();
+  const reason = fleetString(connection, "reason");
+  if (
+    reason !== "heartbeat-current" &&
+    reason !== "heartbeat-overdue" &&
+    reason !== "heartbeat-pending" &&
+    reason !== "no-session" &&
+    reason !== "session-closed" &&
+    reason !== "session-draining" &&
+    reason !== "session-negotiating" &&
+    reason !== "session-resuming" &&
+    reason !== "session-suspect"
+  )
+    return fleetFailure();
+  const sessionId = optionalFleetString(connection, "sessionId");
+  if (
+    sessionId !== undefined &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      sessionId,
+    )
+  )
+    return fleetFailure();
   const sessionState = optionalFleetString(connection, "sessionState");
-  const lastSeenAt = optionalFleetString(connection, "lastSeenAt");
-  if (lastSeenAt !== undefined && Number.isNaN(Date.parse(lastSeenAt)))
+  const protocolVersion = optionalFleetString(connection, "protocolVersion");
+  const openedAt = optionalFleetInstant(connection, "openedAt");
+  const activatedAt = optionalFleetInstant(connection, "activatedAt");
+  const lastSeenAt = optionalFleetInstant(connection, "lastSeenAt");
+  const heartbeatIntervalMs = optionalFleetString(
+    connection,
+    "heartbeatIntervalMs",
+  );
+  if (
+    heartbeatIntervalMs !== undefined &&
+    !/^(?:0|[1-9][0-9]*)$/.test(heartbeatIntervalMs)
+  )
+    return fleetFailure();
+  const staleAfter = optionalFleetInstant(connection, "staleAfter");
+  const suspectAt = optionalFleetInstant(connection, "suspectAt");
+  const closedAt = optionalFleetInstant(connection, "closedAt");
+  const closeReason = optionalFleetString(connection, "closeReason");
+  if (
+    closeReason !== undefined &&
+    closeReason !== "drained" &&
+    closeReason !== "fenced" &&
+    closeReason !== "heartbeat-timeout"
+  )
     return fleetFailure();
   const telemetry = fleetRecord(gateway.telemetry);
-  const lastReceivedAt = optionalFleetString(telemetry, "lastReceivedAt");
-  if (lastReceivedAt !== undefined && Number.isNaN(Date.parse(lastReceivedAt)))
+  const telemetryStatus = fleetString(telemetry, "status");
+  if (telemetryStatus !== "no-data" && telemetryStatus !== "receiving")
     return fleetFailure();
+  const lastReceivedAt = optionalFleetInstant(telemetry, "lastReceivedAt");
   const latestInput = telemetry.latest;
   let latest: FleetGatewayView["telemetry"]["latest"];
   if (latestInput !== undefined) {
@@ -272,10 +347,21 @@ function decodeFleetGateway(input: unknown): FleetGatewayView {
     registeredAt,
     connection: {
       status,
+      reason,
+      ...(sessionId === undefined ? {} : { sessionId }),
       ...(sessionState === undefined ? {} : { sessionState }),
+      ...(protocolVersion === undefined ? {} : { protocolVersion }),
+      ...(openedAt === undefined ? {} : { openedAt }),
+      ...(activatedAt === undefined ? {} : { activatedAt }),
       ...(lastSeenAt === undefined ? {} : { lastSeenAt }),
+      ...(heartbeatIntervalMs === undefined ? {} : { heartbeatIntervalMs }),
+      ...(staleAfter === undefined ? {} : { staleAfter }),
+      ...(suspectAt === undefined ? {} : { suspectAt }),
+      ...(closedAt === undefined ? {} : { closedAt }),
+      ...(closeReason === undefined ? {} : { closeReason }),
     },
     telemetry: {
+      status: telemetryStatus,
       recordCount: decimal(telemetry, "recordCount"),
       ...(lastReceivedAt === undefined ? {} : { lastReceivedAt }),
       ...(latest === undefined ? {} : { latest }),

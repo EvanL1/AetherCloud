@@ -62,6 +62,10 @@ function formatTime(input: string): string {
   }).format(new Date(input));
 }
 
+function formatOptionalTime(input: string | undefined): string {
+  return input === undefined ? "—" : formatTime(input);
+}
+
 function outcomeLabel(outcome: string): string {
   if (outcome === "succeeded" || outcome === "success") return "成功";
   if (outcome === "failed" || outcome === "failure") return "失败";
@@ -345,6 +349,28 @@ function connectionLabel(
   if (status === "connecting") return "连接中";
   if (status === "offline") return "离线";
   return "从未连接";
+}
+
+function connectionReasonLabel(
+  reason: FleetGatewayView["connection"]["reason"],
+): string {
+  if (reason === "heartbeat-current") return "心跳位于允许窗口内";
+  if (reason === "heartbeat-overdue") return "心跳已超过允许窗口";
+  if (reason === "heartbeat-pending") return "会话已激活，等待首个心跳";
+  if (reason === "session-negotiating") return "正在协商 CloudLink 协议";
+  if (reason === "session-resuming") return "正在恢复持久化游标";
+  if (reason === "session-draining") return "会话正在排空";
+  if (reason === "session-suspect") return "会话已被标记为可疑";
+  if (reason === "session-closed") return "最近一次会话已关闭";
+  return "尚无 CloudLink 会话证据";
+}
+
+function closeReasonLabel(
+  reason: NonNullable<FleetGatewayView["connection"]["closeReason"]>,
+): string {
+  if (reason === "heartbeat-timeout") return "心跳超时";
+  if (reason === "fenced") return "被较新的会话隔离";
+  return "正常排空";
 }
 
 export function FleetView({
@@ -685,6 +711,43 @@ export function FleetView({
               <span>创建时间</span>
               <strong>{formatTime(selectedGateway.registeredAt)}</strong>
             </div>
+          </div>
+          <div className="cloud-observations">
+            <div>
+              <span>CLOUDLINK OBSERVATION</span>
+              <strong>
+                {connectionReasonLabel(selectedGateway.connection.reason)}
+              </strong>
+            </div>
+            <dl>
+              <div>
+                <dt>最近观测</dt>
+                <dd>
+                  {formatOptionalTime(selectedGateway.connection.lastSeenAt)}
+                </dd>
+              </div>
+              <div>
+                <dt>协议版本</dt>
+                <dd>{selectedGateway.connection.protocolVersion ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>失联阈值</dt>
+                <dd>
+                  {formatOptionalTime(selectedGateway.connection.staleAfter)}
+                </dd>
+              </div>
+              <div>
+                <dt>会话关闭</dt>
+                <dd>
+                  {selectedGateway.connection.closeReason === undefined
+                    ? "—"
+                    : closeReasonLabel(selectedGateway.connection.closeReason)}
+                </dd>
+              </div>
+            </dl>
+            <small>
+              以上状态仅来自云端已持久化的会话与心跳证据，不代表现场设备或物理过程健康。
+            </small>
           </div>
           <div className="latest-telemetry">
             <span>LATEST TELEMETRY</span>

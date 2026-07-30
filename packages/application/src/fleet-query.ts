@@ -3,6 +3,7 @@ import {
   parseGatewayId,
   parseProjectId,
   parseTenantId,
+  parseUtcInstant,
 } from "@aether-cloud/domain";
 import type { GatewayId, UtcInstant } from "@aether-cloud/domain";
 
@@ -23,6 +24,7 @@ export type FleetConnectionStatus =
   | "stale";
 
 export interface FleetSessionSnapshot {
+  readonly sessionId: string;
   readonly state:
     | "active"
     | "closed"
@@ -30,9 +32,14 @@ export interface FleetSessionSnapshot {
     | "negotiating"
     | "resuming"
     | "suspect";
+  readonly protocolVersion?: string;
+  readonly openedAt: UtcInstant;
   readonly activatedAt?: UtcInstant;
   readonly lastHeartbeatAt?: UtcInstant;
   readonly heartbeatIntervalMs?: string;
+  readonly suspectAt?: UtcInstant;
+  readonly closedAt?: UtcInstant;
+  readonly closeReason?: "drained" | "fenced" | "heartbeat-timeout";
 }
 
 export interface FleetLatestTelemetrySnapshot {
@@ -58,6 +65,17 @@ export interface FleetGatewaySnapshot extends GatewayScope {
   }>;
 }
 
+export type FleetConnectionStatusReason =
+  | "heartbeat-current"
+  | "heartbeat-overdue"
+  | "heartbeat-pending"
+  | "no-session"
+  | "session-closed"
+  | "session-draining"
+  | "session-negotiating"
+  | "session-resuming"
+  | "session-suspect";
+
 export interface FleetGatewayView {
   readonly gatewayId: GatewayId;
   readonly displayName: string;
@@ -66,10 +84,21 @@ export interface FleetGatewayView {
   readonly registeredAt: UtcInstant;
   readonly connection: Readonly<{
     status: FleetConnectionStatus;
+    reason: FleetConnectionStatusReason;
+    sessionId?: string;
     sessionState?: FleetSessionSnapshot["state"];
+    protocolVersion?: string;
+    openedAt?: UtcInstant;
+    activatedAt?: UtcInstant;
     lastSeenAt?: UtcInstant;
+    heartbeatIntervalMs?: string;
+    staleAfter?: UtcInstant;
+    suspectAt?: UtcInstant;
+    closedAt?: UtcInstant;
+    closeReason?: FleetSessionSnapshot["closeReason"];
   }>;
-  readonly telemetry: FleetGatewaySnapshot["telemetry"];
+  readonly telemetry: FleetGatewaySnapshot["telemetry"] &
+    Readonly<{ status: "no-data" | "receiving" }>;
 }
 
 export type FleetGatewayListResult =
@@ -178,26 +207,67 @@ function connectionView(
   session: FleetSessionSnapshot | null,
   now: UtcInstant,
 ): FleetGatewayView["connection"] {
-  if (session === null) return { status: "never-connected" };
+  if (session === null)
+    return { status: "never-connected", reason: "no-session" };
   const lastSeenAt = session.lastHeartbeatAt ?? session.activatedAt;
   const common = {
+    sessionId: session.sessionId,
     sessionState: session.state,
+    ...(session.protocolVersion === undefined
+      ? {}
+      : { protocolVersion: session.protocolVersion }),
+    openedAt: session.openedAt,
+    ...(session.activatedAt === undefined
+      ? {}
+      : { activatedAt: session.activatedAt }),
     ...(lastSeenAt === undefined ? {} : { lastSeenAt }),
+    ...(session.heartbeatIntervalMs === undefined
+      ? {}
+      : { heartbeatIntervalMs: session.heartbeatIntervalMs }),
+    ...(session.suspectAt === undefined
+      ? {}
+      : { suspectAt: session.suspectAt }),
+    ...(session.closedAt === undefined ? {} : { closedAt: session.closedAt }),
+    ...(session.closeReason === undefined
+      ? {}
+      : { closeReason: session.closeReason }),
   };
-  if (session.state === "suspect") return { status: "stale", ...common };
-  if (session.state !== "active") return { status: "offline", ...common };
-  if (lastSeenAt === undefined || session.heartbeatIntervalMs === undefined)
-    return { status: "connecting", ...common };
+  if (session.state === "closed")
+    return { status: "offline", reason: "session-closed", ...common };
+  if (session.state === "draining")
+    return { status: "offline", reason: "session-draining", ...common };
+  if (session.state === "negotiating")
+    return { status: "connecting", reason: "session-negotiating", ...common };
+  if (session.state === "resuming")
+    return { status: "connecting", reason: "session-resuming", ...common };
+  if (session.state === "suspect")
+    return { status: "stale", reason: "session-suspect", ...common };
+  if (lastSeenAt === undefined || session.heartbeatIntervalMs === undefined) {
+    return { status: "connecting", reason: "heartbeat-pending", ...common };
+  }
   const lastSeenMs = Date.parse(lastSeenAt);
   const nowMs = Date.parse(now);
   if (Number.isNaN(lastSeenMs) || Number.isNaN(nowMs))
     throw new Error("Fleet repository returned invalid session time");
-  const elapsedMs = BigInt(Math.max(0, nowMs - lastSeenMs));
   const graceMs =
     parseDecimal(session.heartbeatIntervalMs, "heartbeatIntervalMs") * 3n;
+  const staleAfterMs = BigInt(lastSeenMs) + graceMs;
+  if (
+    staleAfterMs < -8_640_000_000_000_000n ||
+    staleAfterMs > 8_640_000_000_000_000n
+  )
+    throw new Error(
+      "Fleet repository returned an excessive heartbeat interval",
+    );
+  const staleAfter = parseUtcInstant(
+    new Date(Number(staleAfterMs)).toISOString(),
+  );
+  const elapsedMs = BigInt(Math.max(0, nowMs - lastSeenMs));
   return {
     status: elapsedMs <= graceMs ? "online" : "stale",
+    reason: elapsedMs <= graceMs ? "heartbeat-current" : "heartbeat-overdue",
     ...common,
+    staleAfter,
   };
 }
 
@@ -212,7 +282,10 @@ function toView(
     revision: snapshot.revision,
     registeredAt: snapshot.registeredAt,
     connection: Object.freeze(connectionView(snapshot.session, now)),
-    telemetry: snapshot.telemetry,
+    telemetry: Object.freeze({
+      ...snapshot.telemetry,
+      status: snapshot.telemetry.recordCount === "0" ? "no-data" : "receiving",
+    }),
   });
 }
 
