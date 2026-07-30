@@ -107,6 +107,67 @@ describe("API runtime composition", () => {
     ).toThrow(/verify-full TLS/);
   });
 
+  it("runs CloudLink health through an isolated worker role and closes its pool", async () => {
+    const statements: string[] = [];
+    let ended = false;
+    let configuredUrl = "";
+    const client: PostgresAuditClient = {
+      query: <Row extends Record<string, unknown>>(
+        text: string,
+      ): Promise<PostgresAuditQueryResult<Row>> => {
+        statements.push(text);
+        return Promise.resolve({ rows: [] as readonly Row[], rowCount: 0 });
+      },
+      release: () => undefined,
+    };
+    const runtime = composeApiRuntime(
+      {
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_CLOUDLINK_HEALTH_WORKER: "enabled",
+        AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL:
+          "postgresql://aethercloud_cloudlink_health_worker.pooler-project:secret@database.example:5432/postgres?sslmode=verify-full",
+      },
+      {
+        cloudLinkHealthPostgresPoolFactory: (configuration) => {
+          configuredUrl = configuration.connectionString;
+          return {
+            connect: () => Promise.resolve(client),
+            end: () => {
+              ended = true;
+              return Promise.resolve();
+            },
+          };
+        },
+      },
+    );
+    runtimes.push(runtime);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(configuredUrl).toContain(
+      "aethercloud_cloudlink_health_worker.pooler-project",
+    );
+    expect(statements).toEqual([
+      "BEGIN",
+      expect.stringContaining("cloudlink-session-health:lease-due"),
+      "COMMIT",
+    ]);
+    await runtime.close();
+    expect(ended).toBe(true);
+  });
+
+  it("rejects unsafe CloudLink health worker database identities", () => {
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_CLOUDLINK_HEALTH_WORKER: "enabled",
+        AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL:
+          "postgresql://aethercloud_app:secret@database.example:5432/postgres?sslmode=verify-full",
+      }),
+    ).toThrow(/isolated non-owner worker role/);
+  });
+
   it("selects Supabase JWT authentication explicitly", async () => {
     const runtime = composeApiRuntime({
       ...authenticatedEnvironment,

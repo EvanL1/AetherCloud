@@ -4,6 +4,7 @@ import {
   activateCloudLinkSession,
   createCloudLinkSession,
   fenceCloudLinkSession,
+  markCloudLinkSessionHeartbeatTimedOut,
   markCloudLinkSessionSuspect,
   negotiateCloudLinkSession,
   observeCloudLinkHeartbeat,
@@ -174,6 +175,39 @@ describe("CloudLink session domain", () => {
       ok: true,
       replayed: false,
       value: { state: "active", lastHeartbeatAt: "2026-07-14T08:02:01.000Z" },
+    });
+  });
+
+  it("closes only a suspect session after a persisted heartbeat timeout", () => {
+    const suspect = markCloudLinkSessionSuspect(
+      activeSession(),
+      parseUtcInstant("2026-07-14T08:02:00.000Z"),
+    );
+    expect(suspect.ok).toBe(true);
+    if (!suspect.ok) return;
+
+    expect(
+      markCloudLinkSessionHeartbeatTimedOut(
+        suspect.value,
+        parseUtcInstant("2026-07-14T08:03:30.000Z"),
+      ),
+    ).toMatchObject({
+      ok: true,
+      replayed: false,
+      value: {
+        state: "closed",
+        closedAt: "2026-07-14T08:03:30.000Z",
+        closeReason: "heartbeat-timeout",
+      },
+    });
+    expect(
+      markCloudLinkSessionHeartbeatTimedOut(
+        activeSession(),
+        parseUtcInstant("2026-07-14T08:03:30.000Z"),
+      ),
+    ).toMatchObject({
+      ok: false,
+      failure: { code: "invalid-cloudlink-session-transition" },
     });
   });
 

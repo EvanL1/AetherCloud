@@ -4,10 +4,12 @@ import {
   GetGatewayEnrollment,
   IssueGatewayEnrollment,
   ListFleetGateways,
+  ReconcileCloudLinkSessionHealth,
   RegisterGateway,
   SearchAuditEvents,
 } from "@aether-cloud/application";
 import { InMemoryAuditEventStore } from "@aether-cloud/audit-memory-adapter";
+import { PostgresCloudLinkSessionRepository } from "@aether-cloud/cloudlink-postgres-adapter";
 import { InMemoryGatewayIdentityRepository } from "@aether-cloud/fleet-memory-adapter";
 import {
   PostgresAuditEventRepository,
@@ -18,9 +20,14 @@ import {
   PostgresGatewayIdentityRepository,
 } from "@aether-cloud/fleet-postgres-adapter";
 import { parseUtcInstant } from "@aether-cloud/domain";
+import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
 
 import { buildApp } from "./app.js";
+import {
+  startCloudLinkHealthScheduler,
+  type RunningCloudLinkHealthScheduler,
+} from "./cloudlink-health-scheduler.js";
 import { FixedWindowEnrollmentClaimRateLimiter } from "./enrollment-claim-rate-limiter.js";
 import { NodeEnrollmentTokenService } from "./node-enrollment-token-service.js";
 import {
@@ -50,6 +57,9 @@ export interface ApiRuntime {
 
 export interface ApiRuntimeFactories {
   readonly postgresPoolFactory?: (
+    configuration: PostgresPoolConfiguration,
+  ) => ClosablePostgresPool;
+  readonly cloudLinkHealthPostgresPoolFactory?: (
     configuration: PostgresPoolConfiguration,
   ) => ClosablePostgresPool;
 }
@@ -176,6 +186,64 @@ function postgresConnectionString(environment: NodeJS.ProcessEnv): string {
   return input;
 }
 
+function cloudLinkHealthConnectionString(
+  environment: NodeJS.ProcessEnv,
+): string {
+  const input = environment.AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL;
+  if (input === undefined || input.length === 0) {
+    throw new Error(
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL is required when the CloudLink health worker is enabled",
+    );
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    throw new Error(
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must be a PostgreSQL URL",
+    );
+  }
+  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
+    throw new Error(
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must be a PostgreSQL URL",
+    );
+  }
+  const username = decodeURIComponent(parsed.username);
+  if (
+    username !== "aethercloud_cloudlink_health_worker" &&
+    !username.startsWith("aethercloud_cloudlink_health_worker.")
+  ) {
+    throw new Error(
+      "CloudLink health must use its isolated non-owner worker role",
+    );
+  }
+  if (
+    parsed.password.length === 0 ||
+    parsed.searchParams.get("sslmode") !== "verify-full"
+  ) {
+    throw new Error(
+      "CloudLink health PostgreSQL must include a password and use verify-full TLS",
+    );
+  }
+  return input;
+}
+
+function positiveInteger(
+  input: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  name: string,
+): number {
+  if (input === undefined) return fallback;
+  if (!/^[1-9][0-9]*$/.test(input)) throw new Error(`${name} is invalid`);
+  const value = Number(input);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new Error(`${name} is invalid`);
+  }
+  return value;
+}
+
 function auditRepository(
   environment: NodeJS.ProcessEnv,
   factories: ApiRuntimeFactories,
@@ -206,6 +274,62 @@ function auditRepository(
   };
 }
 
+function cloudLinkHealthWorker(
+  environment: NodeJS.ProcessEnv,
+  factories: ApiRuntimeFactories,
+  clock: Readonly<{ now(): ReturnType<typeof parseUtcInstant> }>,
+): Readonly<{
+  scheduler?: RunningCloudLinkHealthScheduler;
+  pool?: ClosablePostgresPool;
+}> {
+  const mode = environment.AETHER_CLOUD_CLOUDLINK_HEALTH_WORKER ?? "disabled";
+  if (mode === "disabled") return {};
+  if (mode !== "enabled") {
+    throw new Error(
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_WORKER must be disabled or enabled",
+    );
+  }
+  const configuration: PostgresPoolConfiguration = {
+    connectionString: cloudLinkHealthConnectionString(environment),
+    max: 2,
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 10_000,
+  };
+  const pool =
+    factories.cloudLinkHealthPostgresPoolFactory?.(configuration) ??
+    NodePostgresPool.fromConfig(configuration);
+  const repository = new PostgresCloudLinkSessionRepository(pool);
+  const reconcile = new ReconcileCloudLinkSessionHealth({
+    repository,
+    clock,
+    ids: { next: randomUUID },
+  });
+  const scheduler = startCloudLinkHealthScheduler({
+    reconcile,
+    observer: {
+      sweepFailed() {
+        process.stderr.write("CloudLink health sweep failed\n");
+      },
+    },
+    intervalMs: positiveInteger(
+      environment.AETHER_CLOUD_CLOUDLINK_HEALTH_INTERVAL_MS,
+      30_000,
+      1_000,
+      300_000,
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_INTERVAL_MS",
+    ),
+    batchSize: positiveInteger(
+      environment.AETHER_CLOUD_CLOUDLINK_HEALTH_BATCH_SIZE,
+      100,
+      1,
+      500,
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_BATCH_SIZE",
+    ),
+  });
+  return { scheduler, pool };
+}
+
 export function composeApiRuntime(
   environment: NodeJS.ProcessEnv,
   factories: ApiRuntimeFactories = {},
@@ -219,6 +343,7 @@ export function composeApiRuntime(
     now: () => parseUtcInstant(new Date().toISOString()),
   };
   const enrollmentTokens = new NodeEnrollmentTokenService();
+  const cloudLinkHealth = cloudLinkHealthWorker(environment, factories, clock);
   const identity = authenticator(environment);
   const origins = allowedOrigins(environment);
   const app = buildApp({
@@ -255,7 +380,8 @@ export function composeApiRuntime(
     close(): Promise<void> {
       closePromise ??= (async () => {
         await app.close();
-        await audit.pool?.end();
+        await cloudLinkHealth.scheduler?.close();
+        await Promise.all([audit.pool?.end(), cloudLinkHealth.pool?.end()]);
       })();
       return closePromise;
     },

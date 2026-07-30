@@ -370,6 +370,9 @@ importers:
       '@aether-cloud/audit-postgres-adapter':
         specifier: workspace:*
         version: link:../../adapters/audit/postgres
+      '@aether-cloud/cloudlink-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/cloudlink/postgres
       '@aether-cloud/domain':
         specifier: workspace:*
         version: link:../../packages/domain

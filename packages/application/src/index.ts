@@ -62,6 +62,7 @@ export {
   ROLLBACK_EDGE_DEPLOYMENT_COMMAND,
   START_EDGE_DEPLOYMENT_COMMAND,
   RECORD_CLOUDLINK_HEARTBEAT_COMMAND,
+  RECONCILE_CLOUDLINK_SESSION_HEALTH_COMMAND,
   REQUEST_CLOUDLINK_SESSION_CHALLENGE_COMMAND,
   REDRIVE_WEBHOOK_DELIVERY_COMMAND,
   REPORT_GATEWAY_RUNTIME_MANIFEST_COMMAND,
@@ -367,6 +368,11 @@ export {
   RecordCloudLinkDurableCursor,
   RecordCloudLinkHeartbeat,
 } from "./cloudlink-session.js";
+export { ReconcileCloudLinkSessionHealth } from "./cloudlink-session-health.js";
+export type {
+  CloudLinkSessionHealthSweepResult,
+  CloudLinkSessionHealthSweepView,
+} from "./cloudlink-session-health.js";
 export type {
   CloudLinkApplicationFailure,
   CloudLinkApplicationResult,
@@ -375,6 +381,12 @@ export type {
   CloudLinkSessionView,
 } from "./cloudlink-session.js";
 export type {
+  CloudLinkSessionHealthIdGenerator,
+  CloudLinkSessionHealthLease,
+  CloudLinkSessionHealthRepository,
+  CompleteCloudLinkSessionHealthInput,
+  CompleteCloudLinkSessionHealthResult,
+  LeaseDueCloudLinkSessionHealthResult,
   CloudLinkSessionIdGenerator,
   CloudLinkSessionChallengeAuthentication,
   CloudLinkSessionChallengeRecord,

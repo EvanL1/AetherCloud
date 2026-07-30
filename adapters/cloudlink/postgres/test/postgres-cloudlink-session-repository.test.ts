@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  markCloudLinkSessionSuspect,
   parseCloudLinkSessionEpoch,
   parseGatewayCredentialGeneration,
   parseProtocolVersion,
   parseStreamEpoch,
   parseStreamId,
   parseStreamPosition,
+  parseUtcInstant,
 } from "@aether-cloud/domain";
 
 import {
@@ -327,6 +329,66 @@ describe("PostgresCloudLinkSessionRepository sessions", () => {
     await expect(
       repository(missing).replace(sessionRowToDomain(), 2),
     ).resolves.toBe("not-found");
+  });
+
+  it("leases due health work across Tenants and atomically persists evidence", async () => {
+    const client = new ScenarioClient();
+    route(client, {
+      "cloudlink-session-health:lease-due": result([
+        sessionRow({
+          gateway_key_id: "gateway-key-1",
+          heartbeat_interval_ms: "30000",
+          last_heartbeat_at: "2026-07-15T08:00:30.000Z",
+        }),
+      ]),
+    });
+    const store = repository(client);
+    const leaseId = "77777777-7777-4777-8777-777777777777";
+    const evaluatedAt = parseUtcInstant("2026-07-15T08:02:00.000Z");
+
+    const leased = await store.leaseDue({
+      leaseId,
+      evaluatedAt,
+      leaseExpiresAt: parseUtcInstant("2026-07-15T08:02:30.000Z"),
+      limit: 50,
+    });
+    expect(leased).toMatchObject({
+      outcome: "leased",
+      leases: [{ leaseId, session: { state: "active", revision: 3 } }],
+    });
+    expect(client.calls.map((call) => call.text)).toEqual([
+      "BEGIN",
+      expect.stringContaining("cloudlink-session-health:lease-due"),
+      "COMMIT",
+    ]);
+
+    const active =
+      leased.outcome === "leased" ? leased.leases[0]?.session : undefined;
+    if (active === undefined) throw new Error("expected health lease");
+    const suspect = markCloudLinkSessionSuspect(active, evaluatedAt);
+    if (!suspect.ok) throw new Error(suspect.failure.message);
+    client.calls.length = 0;
+    await expect(
+      store.complete({
+        leaseId,
+        session: suspect.value,
+        expectedRevision: active.revision,
+        evidence: {
+          eventId: "88888888-8888-4888-8888-888888888888",
+          outboxId: "99999999-9999-4999-8999-999999999999",
+          occurredAt: evaluatedAt,
+          eventName: "cloudlink.session.suspected.v1",
+        },
+      }),
+    ).resolves.toBe("completed");
+    expect(client.calls.map((call) => call.text)).toEqual([
+      "BEGIN",
+      expect.stringContaining("set_config"),
+      expect.stringContaining("cloudlink-session-health:complete"),
+      expect.stringContaining("cloudlink-session-health:insert-audit"),
+      expect.stringContaining("cloudlink-session-health:insert-outbox"),
+      "COMMIT",
+    ]);
   });
 
   it.each([

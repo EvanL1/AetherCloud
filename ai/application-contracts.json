@@ -252,11 +252,33 @@
       ],
       "missing_layers": [
         "production-credential-binding",
-        "postgresql",
+        "postgresql-heartbeat-composition",
         "durable-audit",
         "joint-aetheriot-conformance",
         "production-cloudlink-composition"
       ]
+    },
+    {
+      "name": "cloudlink.session.health.reconcile",
+      "kind": "command",
+      "permission": "cloudlink.session.health.reconcile",
+      "risk": "low",
+      "confirmation": "not-required",
+      "idempotency": "required",
+      "expiry": "required",
+      "audit": "required",
+      "authorization": "platform-worker",
+      "status": "implemented",
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-durable-lease",
+        "postgresql-audit-outbox",
+        "isolated-nobypassrls-worker-role",
+        "api-process-scheduler"
+      ],
+      "missing_layers": []
     },
     {
       "name": "fleet.cloudlink.session.get",

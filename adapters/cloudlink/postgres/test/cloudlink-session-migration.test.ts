@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
 
-import { cloudLinkSessionPostgresMigrationUrl } from "../src/index.js";
+import {
+  cloudLinkSessionHealthPostgresMigrationUrl,
+  cloudLinkSessionPostgresMigrationUrl,
+} from "../src/index.js";
 
 describe("CloudLink session PostgreSQL migration", () => {
   it("defines one Gateway lock head plus scoped session, request, cursor, and challenge tables", async () => {
@@ -33,6 +36,21 @@ describe("CloudLink session PostgreSQL migration", () => {
       );
     }
     expect(sql).toMatch(/PRIMARY KEY \(tenant_id, project_id, gateway_id\)/);
+  });
+
+  it("adds complete durable health leases without weakening Session RLS", async () => {
+    const sql = await readFile(
+      cloudLinkSessionHealthPostgresMigrationUrl,
+      "utf8",
+    );
+
+    expect(sql).toContain("ADD COLUMN health_lease_id uuid");
+    expect(sql).toContain("ADD COLUMN health_lease_expires_at timestamptz");
+    expect(sql).toMatch(
+      /\(health_lease_id IS NULL\) = \(health_lease_expires_at IS NULL\)/,
+    );
+    expect(sql).toContain("cloudlink_sessions_health_due_idx");
+    expect(sql).not.toContain("DISABLE ROW LEVEL SECURITY");
   });
 
   it("bounds uint64, identifiers, closed JSON, authentication fingerprints, and one pending challenge", async () => {

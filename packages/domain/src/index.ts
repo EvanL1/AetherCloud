@@ -154,6 +154,7 @@ export {
   activateCloudLinkSession,
   createCloudLinkSession,
   fenceCloudLinkSession,
+  markCloudLinkSessionHeartbeatTimedOut,
   markCloudLinkSessionSuspect,
   negotiateCloudLinkSession,
   observeCloudLinkHeartbeat,

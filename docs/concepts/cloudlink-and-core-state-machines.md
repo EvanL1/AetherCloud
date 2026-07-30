@@ -1,7 +1,7 @@
 ---
 title: CloudLink reliability and lifecycle
 description: Understand delivery, retries, acknowledgements, offline recovery, and current production limits
-updated: 2026-07-16
+updated: 2026-07-30
 status: mixed
 ---
 
@@ -13,10 +13,13 @@ startable ingress lifecycle, Schemas, fixtures, and real-broker harness now
 exist, and the public AetherContracts alpha.3 release is the sole shared
 authority. The opt-in real Mosquitto dual harness and fault matrix are
 executable alpha evidence. They do not constitute a production process;
-production authentication and PostgreSQL durability remain gates. Production
-readiness requires authentication, one wire profile, shared fixtures, a dual
+production authentication, complete inbox/outbox composition, and current
+cross-repository conformance remain gates. Production readiness requires
+authentication, one wire profile, shared fixtures, a dual
 real-Broker harness, fault injection, crash-durable persistence, and an
-explicit legacy cutover in that order.
+explicit legacy cutover in that order. Transactional PostgreSQL Session,
+challenge, cursor, and heartbeat-health persistence now exists, but does not by
+itself prove end-to-end production authentication.
 
 ## CloudLink responsibility
 
@@ -72,9 +75,20 @@ server-preference protocol negotiation, monotonic session epochs, old-session
 fencing, lossless per-stream resume cursors, authenticated heartbeat, and a
 Tenant-scoped current-session query. The experimental MQTT layer adds strict
 wire decoding, topic/session binding, non-retained QoS-1 enforcement, an
-application bridge, and lifecycle composition. PostgreSQL, multi-instance
-socket ownership, timeout scheduling, credit flow control, durable inbox/outbox,
-and production configuration remain planned.
+application bridge, and lifecycle composition. Multi-instance socket ownership,
+credit flow control, the complete durable inbox/outbox path, and production MQTT
+configuration remain planned.
+
+The PostgreSQL adapter persists Session/challenge state, durable cursors and
+Gateway-signed heartbeat observations. A platform-authorized health reconciler
+uses expiring PostgreSQL leases with `FOR UPDATE SKIP LOCKED` so multiple API
+instances can safely persist `active -> suspect -> closed` transitions. Every
+completed transition atomically updates the Session and writes Audit and Outbox
+evidence. Its isolated login role is non-owner, non-superuser and `NOBYPASSRLS`;
+it can scan/update Session health rows but cannot read Gateway identity tables
+or delete Sessions. Heartbeat recovery racing a worker clears the lease through
+revision-checked normal Session replacement, while an expired or lost lease
+cannot emit evidence.
 
 The implemented structural signature evidence is not sufficient shared-Broker
 production authentication. Alpha.3 first uses a signed Cloud challenge and a

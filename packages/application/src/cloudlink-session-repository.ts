@@ -189,3 +189,50 @@ export interface CloudLinkSessionRepository {
 export interface CloudLinkSessionIdGenerator {
   next(): CloudLinkSessionId;
 }
+
+export interface CloudLinkSessionHealthLease {
+  readonly leaseId: string;
+  readonly session: CloudLinkSession;
+}
+
+export type LeaseDueCloudLinkSessionHealthResult =
+  | Readonly<{
+      outcome: "leased";
+      leases: readonly CloudLinkSessionHealthLease[];
+    }>
+  | Readonly<{ outcome: "storage-unavailable" }>;
+
+export interface CompleteCloudLinkSessionHealthInput {
+  readonly leaseId: string;
+  readonly session: CloudLinkSession;
+  readonly expectedRevision: number;
+  readonly evidence: Readonly<{
+    eventId: string;
+    outboxId: string;
+    occurredAt: UtcInstant;
+    eventName:
+      | "cloudlink.session.heartbeat-timed-out.v1"
+      | "cloudlink.session.suspected.v1";
+  }>;
+}
+
+export type CompleteCloudLinkSessionHealthResult =
+  | "completed"
+  | "lease-lost"
+  | "storage-unavailable";
+
+export interface CloudLinkSessionHealthRepository {
+  leaseDue(input: {
+    readonly leaseId: string;
+    readonly evaluatedAt: UtcInstant;
+    readonly leaseExpiresAt: UtcInstant;
+    readonly limit: number;
+  }): Promise<LeaseDueCloudLinkSessionHealthResult>;
+  complete(
+    input: CompleteCloudLinkSessionHealthInput,
+  ): Promise<CompleteCloudLinkSessionHealthResult>;
+}
+
+export interface CloudLinkSessionHealthIdGenerator {
+  next(): string;
+}

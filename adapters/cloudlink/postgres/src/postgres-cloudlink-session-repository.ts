@@ -3,11 +3,15 @@ import type {
   AcceptCloudLinkSessionChallengeRepositoryResult,
   CloudLinkSessionChallengeRecord,
   CloudLinkSessionChallengeRepository,
+  CloudLinkSessionHealthRepository,
   CloudLinkSessionReplaceResult,
+  CompleteCloudLinkSessionHealthInput,
+  CompleteCloudLinkSessionHealthResult,
   CloudLinkSessionRepository,
   CloudLinkSessionScope,
   IssueCloudLinkSessionChallengeRepositoryInput,
   IssueCloudLinkSessionChallengeRepositoryResult,
+  LeaseDueCloudLinkSessionHealthResult,
   OpenCloudLinkSessionRepositoryInput,
   OpenCloudLinkSessionRepositoryResult,
   RecordCloudLinkDurableCursorRepositoryInput,
@@ -301,12 +305,150 @@ SET
   suspect_at = $17::timestamptz,
   closed_at = $18::timestamptz,
   close_reason = $19,
+  health_lease_id = NULL,
+  health_lease_expires_at = NULL,
   updated_at = clock_timestamp()
 WHERE tenant_id = $1::uuid
   AND project_id = $2::uuid
   AND gateway_id = $3::uuid
   AND session_id = $4::uuid
   AND revision = $20::bigint
+`;
+
+const leaseDueHealthSql = `
+/* cloudlink-session-health:lease-due */
+WITH due AS (
+  SELECT tenant_id, project_id, gateway_id, session_id
+  FROM aethercloud.cloudlink_sessions
+  WHERE state IN ('active', 'suspect')
+    AND heartbeat_interval_ms IS NOT NULL
+    AND (
+      health_lease_expires_at IS NULL OR
+      health_lease_expires_at <= $2::timestamptz
+    )
+    AND (
+      (
+        state = 'active' AND
+        EXTRACT(EPOCH FROM $2::timestamptz) * 1000 >
+          EXTRACT(EPOCH FROM COALESCE(last_heartbeat_at, activated_at)) * 1000 +
+          heartbeat_interval_ms * 3
+      ) OR (
+        state = 'suspect' AND
+        EXTRACT(EPOCH FROM $2::timestamptz) * 1000 >
+          EXTRACT(EPOCH FROM suspect_at) * 1000 +
+          heartbeat_interval_ms * 3
+      )
+    )
+  ORDER BY
+    COALESCE(last_heartbeat_at, suspect_at, activated_at),
+    tenant_id,
+    project_id,
+    gateway_id,
+    session_id
+  FOR UPDATE SKIP LOCKED
+  LIMIT $4
+), leased AS (
+  UPDATE aethercloud.cloudlink_sessions AS session
+  SET
+    health_lease_id = $1::uuid,
+    health_lease_expires_at = $3::timestamptz,
+    updated_at = clock_timestamp()
+  FROM due
+  WHERE session.tenant_id = due.tenant_id
+    AND session.project_id = due.project_id
+    AND session.gateway_id = due.gateway_id
+    AND session.session_id = due.session_id
+  RETURNING session.*
+)
+SELECT ${sessionColumns}
+FROM leased
+`;
+
+const completeHealthSql = `
+/* cloudlink-session-health:complete */
+UPDATE aethercloud.cloudlink_sessions
+SET
+  credential_generation = $5::numeric,
+  epoch = $6::numeric,
+  state = $7,
+  opened_at = $8::timestamptz,
+  revision = $9::bigint,
+  protocol_version = $10,
+  resume_cursors = $11::jsonb,
+  activated_at = $12::timestamptz,
+  gateway_key_id = $13,
+  heartbeat_interval_ms = $14::numeric,
+  last_heartbeat_at = $15::timestamptz,
+  last_heartbeat_request_id = $16,
+  suspect_at = $17::timestamptz,
+  closed_at = $18::timestamptz,
+  close_reason = $19,
+  health_lease_id = NULL,
+  health_lease_expires_at = NULL,
+  updated_at = clock_timestamp()
+WHERE tenant_id = $1::uuid
+  AND project_id = $2::uuid
+  AND gateway_id = $3::uuid
+  AND session_id = $4::uuid
+  AND revision = $20::bigint
+  AND health_lease_id = $21::uuid
+  AND health_lease_expires_at > $22::timestamptz
+`;
+
+const insertHealthAuditSql = `
+/* cloudlink-session-health:insert-audit */
+INSERT INTO aethercloud.audit_events (
+  event_id,
+  tenant_id,
+  project_id,
+  occurred_at,
+  subject_kind,
+  subject_id,
+  action,
+  resource_kind,
+  resource_id,
+  outcome,
+  risk,
+  confirmation,
+  correlation_id
+) VALUES (
+  $1,
+  $2::uuid,
+  $3::uuid,
+  $4::timestamptz,
+  'system',
+  'cloudlink-health-worker',
+  'cloudlink.session.health.reconcile',
+  'cloudlink-session',
+  $5,
+  'succeeded',
+  'low',
+  'not-required',
+  $6
+)
+`;
+
+const insertHealthOutboxSql = `
+/* cloudlink-session-health:insert-outbox */
+INSERT INTO aethercloud.outbox_events (
+  event_id,
+  tenant_id,
+  project_id,
+  occurred_at,
+  event_name,
+  aggregate_kind,
+  aggregate_id,
+  payload
+) VALUES (
+  $1,
+  $2::uuid,
+  $3::uuid,
+  $4::timestamptz,
+  $5,
+  'cloudlink-session',
+  $6,
+  $7::jsonb
+)
 `;
 
 const sessionExistsSql = `
@@ -659,7 +801,10 @@ function decodeCursors(
 }
 
 export class PostgresCloudLinkSessionRepository
-  implements CloudLinkSessionRepository, CloudLinkSessionChallengeRepository
+  implements
+    CloudLinkSessionRepository,
+    CloudLinkSessionChallengeRepository,
+    CloudLinkSessionHealthRepository
 {
   readonly #pool: PostgresCloudLinkSessionPool;
 
@@ -782,6 +927,96 @@ export class PostgresCloudLinkSessionRepository
       }
       return "replaced";
     });
+  }
+
+  async leaseDue(input: {
+    readonly leaseId: string;
+    readonly evaluatedAt: UtcInstant;
+    readonly leaseExpiresAt: UtcInstant;
+    readonly limit: number;
+  }): Promise<LeaseDueCloudLinkSessionHealthResult> {
+    try {
+      return await this.platformTransaction(async (client) => {
+        const leased = await client.query<CloudLinkPostgresRow>(
+          leaseDueHealthSql,
+          [input.leaseId, input.evaluatedAt, input.leaseExpiresAt, input.limit],
+        );
+        return {
+          outcome: "leased" as const,
+          leases: Object.freeze(
+            leased.rows.map((row) =>
+              Object.freeze({
+                leaseId: input.leaseId,
+                session: decodeSessionRow(row),
+              }),
+            ),
+          ),
+        };
+      });
+    } catch {
+      return { outcome: "storage-unavailable" };
+    }
+  }
+
+  async complete(
+    input: CompleteCloudLinkSessionHealthInput,
+  ): Promise<CompleteCloudLinkSessionHealthResult> {
+    try {
+      return await this.transaction(input.session.tenantId, async (client) => {
+        const completed = await client.query(completeHealthSql, [
+          ...sessionWriteValues(input.session),
+          input.expectedRevision,
+          input.leaseId,
+          input.evidence.occurredAt,
+        ]);
+        if (completed.rowCount !== 1) return "lease-lost";
+        await client.query(insertHealthAuditSql, [
+          input.evidence.eventId,
+          input.session.tenantId,
+          input.session.projectId,
+          input.evidence.occurredAt,
+          input.session.sessionId,
+          input.leaseId,
+        ]);
+        await client.query(insertHealthOutboxSql, [
+          input.evidence.outboxId,
+          input.session.tenantId,
+          input.session.projectId,
+          input.evidence.occurredAt,
+          input.evidence.eventName,
+          input.session.sessionId,
+          JSON.stringify({
+            tenantId: input.session.tenantId,
+            projectId: input.session.projectId,
+            gatewayId: input.session.gatewayId,
+            sessionId: input.session.sessionId,
+            sessionEpoch: input.session.epoch,
+            state: input.session.state,
+            revision: input.session.revision,
+            ...(input.session.suspectAt === undefined
+              ? {}
+              : { suspectAt: input.session.suspectAt }),
+            ...(input.session.closedAt === undefined
+              ? {}
+              : { closedAt: input.session.closedAt }),
+            ...(input.session.closeReason === undefined
+              ? {}
+              : { closeReason: input.session.closeReason }),
+          }),
+        ]);
+        if (input.session.state === "closed") {
+          await client.query(clearClosedHeadSql, [
+            input.session.tenantId,
+            input.session.projectId,
+            input.session.gatewayId,
+            input.session.sessionId,
+          ]);
+        }
+        return "completed";
+      });
+    } catch {
+      return "storage-unavailable";
+    }
   }
 
   recordDurableCursor(
@@ -1136,6 +1371,32 @@ export class PostgresCloudLinkSessionRepository
     ]);
     if (updated.rowCount !== 1) {
       throw new Error("PostgreSQL CloudLink Gateway head update failed");
+    }
+  }
+
+  private async platformTransaction<Result>(
+    operation: (client: PostgresCloudLinkSessionClient) => Promise<Result>,
+  ): Promise<Result> {
+    let client: PostgresCloudLinkSessionClient | undefined;
+    let began = false;
+    try {
+      client = await this.#pool.connect();
+      await client.query("BEGIN");
+      began = true;
+      const result = await operation(client);
+      await client.query("COMMIT");
+      return result;
+    } catch {
+      if (client !== undefined && began) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          // The fixed public storage error stays authoritative.
+        }
+      }
+      throw new CloudLinkPostgresStorageError();
+    } finally {
+      client?.release();
     }
   }
 

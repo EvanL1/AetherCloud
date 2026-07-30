@@ -26,6 +26,10 @@ const migrationBindings = [
     "supabase/migrations/20260728000500_cloudlink_session.sql",
     "adapters/cloudlink/postgres/migrations/0005_cloudlink_session.sql",
   ],
+  [
+    "supabase/migrations/20260728000700_cloudlink_session_health.sql",
+    "adapters/cloudlink/postgres/migrations/0006_cloudlink_session_health.sql",
+  ],
 ];
 
 test("the deployed Supabase CA is pinned and valid for certificate signing", async () => {
@@ -90,6 +94,26 @@ test("Supabase provisions a non-login least-privilege application role", async (
   assert.doesNotMatch(migration, /\bPASSWORD\b/);
   assert.doesNotMatch(migration, /\bBYPASSRLS\b(?!\s*=\s*false)/);
   assert.doesNotMatch(migration, /GRANT[^;]*DELETE/);
+});
+
+test("Supabase provisions an isolated CloudLink health worker role", async () => {
+  const migration = await readFile(
+    new URL(
+      "supabase/migrations/20260728000800_cloudlink_health_worker_role.sql",
+      root,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /CREATE ROLE aethercloud_cloudlink_health_worker/);
+  assert.match(migration, /NOLOGIN/);
+  assert.match(migration, /NOBYPASSRLS/);
+  assert.match(
+    migration,
+    /GRANT SELECT, UPDATE ON aethercloud\.cloudlink_sessions/,
+  );
+  assert.doesNotMatch(migration, /GRANT[^;]*DELETE/);
+  assert.doesNotMatch(migration, /\bPASSWORD\b/);
 });
 
 test("Supabase migration history follows the adapter-owned SQL in order", async () => {

@@ -1,4 +1,7 @@
-export { cloudLinkSessionPostgresMigrationUrl } from "./migrations.js";
+export {
+  cloudLinkSessionHealthPostgresMigrationUrl,
+  cloudLinkSessionPostgresMigrationUrl,
+} from "./migrations.js";
 export { CloudLinkPostgresStorageError } from "./postgres-cloudlink-session-contracts.js";
 export type {
   PostgresCloudLinkSessionClient,

@@ -8,6 +8,7 @@ import {
   gatewayEnrollmentMigrationUrl,
 } from "@aether-cloud/fleet-postgres-adapter";
 import {
+  markCloudLinkSessionSuspect,
   parseCloudLinkSessionChallengeId,
   parseCloudLinkSessionId,
   parseProtocolVersion,
@@ -15,10 +16,12 @@ import {
   parseStreamId,
   parseStreamPosition,
   parseTenantId,
+  parseUtcInstant,
 } from "@aether-cloud/domain";
 
 import {
   PostgresCloudLinkSessionRepository,
+  cloudLinkSessionHealthPostgresMigrationUrl,
   cloudLinkSessionPostgresMigrationUrl,
 } from "../src/index.js";
 import {
@@ -35,6 +38,7 @@ import {
 const databaseUrl = process.env.AETHER_CLOUD_POSTGRES_URL;
 const integration = databaseUrl === undefined ? describe.skip : describe;
 const testRole = "aethercloud_cloudlink_app_test";
+const testWorkerRole = "aethercloud_cloudlink_health_worker_test";
 const testPassword = "local-cloudlink-password";
 const otherTenantId = parseTenantId("99999999-9999-4999-8999-999999999999");
 const protocolVersion = parseProtocolVersion("1.0");
@@ -56,13 +60,25 @@ integration("CloudLink session PostgreSQL durability", () => {
     max: 4,
     statement_timeout: 5_000,
   });
+  const workerUrl = new URL(databaseUrl);
+  workerUrl.username = testWorkerRole;
+  workerUrl.password = testPassword;
+  const workerDatabase = NodePostgresPool.fromConfig({
+    connectionString: workerUrl.toString(),
+    max: 2,
+    statement_timeout: 5_000,
+  });
 
   beforeAll(async () => {
     await admin.query("DROP SCHEMA IF EXISTS aethercloud CASCADE");
     await admin.query(`DROP ROLE IF EXISTS ${testRole}`);
+    await admin.query(`DROP ROLE IF EXISTS ${testWorkerRole}`);
     await admin.query(await readFile(gatewayEnrollmentMigrationUrl, "utf8"));
     await admin.query(
       await readFile(cloudLinkSessionPostgresMigrationUrl, "utf8"),
+    );
+    await admin.query(
+      await readFile(cloudLinkSessionHealthPostgresMigrationUrl, "utf8"),
     );
     await admin.query(
       `CREATE ROLE ${testRole} LOGIN PASSWORD '${testPassword}' NOSUPERUSER NOBYPASSRLS`,
@@ -71,6 +87,26 @@ integration("CloudLink session PostgreSQL durability", () => {
     await admin.query(
       `GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA aethercloud TO ${testRole}`,
     );
+    await admin.query(
+      `CREATE ROLE ${testWorkerRole} LOGIN PASSWORD '${testPassword}' NOSUPERUSER NOBYPASSRLS`,
+    );
+    await admin.query(`GRANT USAGE ON SCHEMA aethercloud TO ${testWorkerRole}`);
+    await admin.query(
+      `GRANT SELECT, UPDATE ON aethercloud.cloudlink_sessions, aethercloud.cloudlink_session_heads TO ${testWorkerRole}`,
+    );
+    await admin.query(
+      `GRANT INSERT ON aethercloud.audit_events, aethercloud.outbox_events TO ${testWorkerRole}`,
+    );
+    await admin.query(
+      `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA aethercloud TO ${testWorkerRole}`,
+    );
+    await admin.query(`
+      CREATE POLICY cloudlink_sessions_health_test_policy
+        ON aethercloud.cloudlink_sessions
+        FOR ALL TO ${testWorkerRole}
+        USING (true)
+        WITH CHECK (true)
+    `);
     for (const scopedTenantId of [tenantId, otherTenantId]) {
       await admin.query(
         `
@@ -101,8 +137,10 @@ integration("CloudLink session PostgreSQL durability", () => {
 
   afterAll(async () => {
     await database.end();
+    await workerDatabase.end();
     await admin.query("DROP SCHEMA IF EXISTS aethercloud CASCADE");
     await admin.query(`DROP ROLE IF EXISTS ${testRole}`);
+    await admin.query(`DROP ROLE IF EXISTS ${testWorkerRole}`);
     await admin.end();
   });
 
@@ -226,6 +264,43 @@ integration("CloudLink session PostgreSQL durability", () => {
       sessionId: acceptedSession.sessionId,
       epoch: acceptedSession.epoch,
     });
+
+    const workerRepository = new PostgresCloudLinkSessionRepository(
+      workerDatabase,
+    );
+    const leaseId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const evaluatedAt = parseUtcInstant("2026-07-17T08:02:00.000Z");
+    const leased = await workerRepository.leaseDue({
+      leaseId,
+      evaluatedAt,
+      leaseExpiresAt: parseUtcInstant("2026-07-17T08:02:30.000Z"),
+      limit: 10,
+    });
+    expect(leased).toMatchObject({
+      outcome: "leased",
+      leases: [{ leaseId, session: { sessionId: acceptedSession.sessionId } }],
+    });
+    const healthSession =
+      leased.outcome === "leased" ? leased.leases[0]?.session : undefined;
+    if (healthSession === undefined) throw new Error("health lease missing");
+    const suspect = markCloudLinkSessionSuspect(healthSession, evaluatedAt);
+    if (!suspect.ok) throw new Error(suspect.failure.message);
+    await expect(
+      workerRepository.complete({
+        leaseId,
+        session: suspect.value,
+        expectedRevision: healthSession.revision,
+        evidence: {
+          eventId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          outboxId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          occurredAt: evaluatedAt,
+          eventName: "cloudlink.session.suspected.v1",
+        },
+      }),
+    ).resolves.toBe("completed");
+    await expect(
+      repository.findCurrent(binding, gatewayId),
+    ).resolves.toMatchObject({ state: "suspect", suspectAt: evaluatedAt });
 
     await expect(
       repository.find(

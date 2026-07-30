@@ -12,6 +12,7 @@ export interface CommandDefinition {
     | "gateway-credential"
     | "gateway-credential-claim"
     | "gateway-session-challenge"
+    | "platform-worker"
     | "tenant-permission";
 }
 
@@ -121,6 +122,18 @@ export const RECORD_CLOUDLINK_HEARTBEAT_COMMAND = Object.freeze({
   expiry: "required",
   audit: "required",
   authorization: "gateway-credential",
+} as const satisfies CommandDefinition);
+
+export const RECONCILE_CLOUDLINK_SESSION_HEALTH_COMMAND = Object.freeze({
+  kind: "command",
+  name: "cloudlink.session.health.reconcile",
+  permission: "cloudlink.session.health.reconcile",
+  risk: "low",
+  confirmation: "not-required",
+  idempotency: "required",
+  expiry: "required",
+  audit: "required",
+  authorization: "platform-worker",
 } as const satisfies CommandDefinition);
 
 export const GET_CLOUDLINK_SESSION_QUERY = Object.freeze({

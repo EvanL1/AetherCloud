@@ -403,6 +403,35 @@ export function markCloudLinkSessionSuspect(
   };
 }
 
+export function markCloudLinkSessionHeartbeatTimedOut(
+  session: CloudLinkSession,
+  closedAt: UtcInstant,
+): CloudLinkSessionTransitionResult {
+  if (session.state !== "suspect" || session.suspectAt === undefined) {
+    return transitionFailure(
+      "invalid-cloudlink-session-transition",
+      "only a suspect CloudLink session can close after heartbeat timeout",
+    );
+  }
+  if (closedAt < session.suspectAt) {
+    return transitionFailure(
+      "invalid-cloudlink-session-transition",
+      "heartbeat timeout cannot precede the suspect observation",
+    );
+  }
+  return {
+    ok: true,
+    replayed: false,
+    value: freezeSession({
+      ...session,
+      state: "closed",
+      closedAt,
+      closeReason: "heartbeat-timeout",
+      revision: session.revision + 1,
+    }),
+  };
+}
+
 export function fenceCloudLinkSession(
   session: CloudLinkSession,
   closedAt: UtcInstant,

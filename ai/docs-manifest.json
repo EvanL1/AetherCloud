@@ -501,12 +501,27 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "public",
-      "updated": "2026-07-16",
+      "updated": "2026-07-30",
       "priority": "core",
       "capability_refs": [
         "cloudlink.session.open",
         "cloudlink.session.heartbeat",
+        "cloudlink.session.health.reconcile",
         "fleet.cloudlink.session.get"
+      ],
+      "implemented_layers": [
+        "domain",
+        "application",
+        "memory-adapter",
+        "postgresql-session-challenge-cursor",
+        "postgresql-health-leases",
+        "durable-health-audit-outbox",
+        "isolated-platform-worker-scheduler"
+      ],
+      "missing_layers": [
+        "active-credential-lifecycle",
+        "production-mqtt-composition",
+        "current-joint-aetheredge-conformance"
       ],
       "recovery_route": "docs/recovery/cloudlink-offline-and-reconnect.md",
       "human_escalation": "required for identity conflicts, persistent gaps, or data-loss evidence"

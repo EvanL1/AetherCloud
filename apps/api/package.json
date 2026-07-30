@@ -12,6 +12,7 @@
     "@aether-cloud/application": "workspace:*",
     "@aether-cloud/audit-memory-adapter": "workspace:*",
     "@aether-cloud/audit-postgres-adapter": "workspace:*",
+    "@aether-cloud/cloudlink-postgres-adapter": "workspace:*",
     "@aether-cloud/domain": "workspace:*",
     "@aether-cloud/fleet-memory-adapter": "workspace:*",
     "@aether-cloud/fleet-postgres-adapter": "workspace:*",

@@ -3,7 +3,10 @@ import type {
   AcceptCloudLinkSessionChallengeRepositoryResult,
   CloudLinkSessionChallengeRecord,
   CloudLinkSessionChallengeRepository,
+  CloudLinkSessionHealthRepository,
   CloudLinkSessionReplaceResult,
+  CompleteCloudLinkSessionHealthInput,
+  CompleteCloudLinkSessionHealthResult,
   CloudLinkSessionRepository,
   CloudLinkSessionScope,
   CloudLinkUplinkAuthenticationRepository,
@@ -13,6 +16,7 @@ import type {
   AcceptCloudLinkHeartbeatAuthenticationInput,
   IssueCloudLinkSessionChallengeRepositoryInput,
   IssueCloudLinkSessionChallengeRepositoryResult,
+  LeaseDueCloudLinkSessionHealthResult,
   OpenCloudLinkSessionRepositoryInput,
   OpenCloudLinkSessionRepositoryResult,
   RecordCloudLinkDurableCursorRepositoryInput,
@@ -32,6 +36,7 @@ import type {
   GatewayCredentialBinding,
   GatewayId,
   ProtocolVersion,
+  UtcInstant,
   StreamEpoch,
   StreamId,
   StreamPosition,
@@ -160,6 +165,7 @@ export class InMemoryCloudLinkSessionRepository
   implements
     CloudLinkSessionRepository,
     CloudLinkSessionChallengeRepository,
+    CloudLinkSessionHealthRepository,
     CloudLinkUplinkAuthenticationRepository,
     IntegrationCloudLinkSessionFenceVerifier
 {
@@ -171,6 +177,10 @@ export class InMemoryCloudLinkSessionRepository
   readonly #challenges = new Map<string, StoredChallenge>();
   readonly #currentChallenges = new Map<string, CloudLinkSessionChallengeId>();
   readonly #challengeRequestWindows = new Map<string, ChallengeRequestWindow>();
+  readonly #healthLeases = new Map<
+    string,
+    Readonly<{ leaseId: string; expiresAt: UtcInstant }>
+  >();
   readonly #heartbeatAuthentication = new Map<
     string,
     Readonly<{
@@ -505,6 +515,87 @@ export class InMemoryCloudLinkSessionRepository
     return Promise.resolve({ outcome: "accepted" });
   }
 
+  leaseDue(input: {
+    readonly leaseId: string;
+    readonly evaluatedAt: UtcInstant;
+    readonly leaseExpiresAt: UtcInstant;
+    readonly limit: number;
+  }): Promise<LeaseDueCloudLinkSessionHealthResult> {
+    const evaluatedAtMs = BigInt(Date.parse(input.evaluatedAt));
+    const due = [...this.#sessions.values()]
+      .filter((session) => {
+        if (
+          (session.state !== "active" && session.state !== "suspect") ||
+          session.heartbeatIntervalMs === undefined
+        ) {
+          return false;
+        }
+        const existingLease = this.#healthLeases.get(
+          sessionKey(session.sessionId),
+        );
+        if (
+          existingLease !== undefined &&
+          Date.parse(existingLease.expiresAt) > Date.parse(input.evaluatedAt)
+        ) {
+          return false;
+        }
+        const baseline =
+          session.state === "suspect"
+            ? session.suspectAt
+            : (session.lastHeartbeatAt ?? session.activatedAt);
+        return (
+          baseline !== undefined &&
+          evaluatedAtMs >
+            BigInt(Date.parse(baseline)) +
+              BigInt(session.heartbeatIntervalMs) * 3n
+        );
+      })
+      .sort((left, right) => left.sessionId.localeCompare(right.sessionId))
+      .slice(0, input.limit);
+    for (const session of due) {
+      this.#healthLeases.set(
+        sessionKey(session.sessionId),
+        Object.freeze({
+          leaseId: input.leaseId,
+          expiresAt: input.leaseExpiresAt,
+        }),
+      );
+    }
+    return Promise.resolve({
+      outcome: "leased",
+      leases: Object.freeze(
+        due.map((session) =>
+          Object.freeze({ leaseId: input.leaseId, session }),
+        ),
+      ),
+    });
+  }
+
+  complete(
+    input: CompleteCloudLinkSessionHealthInput,
+  ): Promise<CompleteCloudLinkSessionHealthResult> {
+    const key = sessionKey(input.session.sessionId);
+    const current = this.#sessions.get(key);
+    const lease = this.#healthLeases.get(key);
+    if (
+      current === undefined ||
+      current.revision !== input.expectedRevision ||
+      lease?.leaseId !== input.leaseId ||
+      Date.parse(lease.expiresAt) <= Date.parse(input.evidence.occurredAt)
+    ) {
+      return Promise.resolve("lease-lost");
+    }
+    this.#sessions.set(key, input.session);
+    this.#healthLeases.delete(key);
+    if (input.session.state === "closed") {
+      const gateway = gatewayKey(input.session, input.session.gatewayId);
+      if (this.#currentSessions.get(gateway) === input.session.sessionId) {
+        this.#currentSessions.delete(gateway);
+      }
+    }
+    return Promise.resolve("completed");
+  }
+
   replace(
     session: CloudLinkSession,
     expectedRevision: number,
@@ -516,6 +607,7 @@ export class InMemoryCloudLinkSessionRepository
       return Promise.resolve("version-conflict");
     }
     this.#sessions.set(key, session);
+    this.#healthLeases.delete(key);
     return Promise.resolve("replaced");
   }
 
