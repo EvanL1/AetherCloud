@@ -18,7 +18,6 @@ import {
   CLOUDLINK_DUAL_CLOUD_KEY_ID,
   CLOUDLINK_DUAL_CREDENTIAL_GENERATION,
   CLOUDLINK_DUAL_CREDENTIAL_ID,
-  CLOUDLINK_DUAL_GATEWAY_KEY_ID,
   createCloudLinkDualSessionComposition,
 } from "../../../scripts/cloudlink-dual-session-composition.js";
 import {
@@ -32,6 +31,7 @@ const topicPrefix = "aether-dual/composition-test";
 const gatewayId = parseGatewayId("33333333-3333-4333-8333-333333333333");
 const tenantId = parseTenantId("11111111-1111-4111-8111-111111111111");
 const projectId = parseProjectId("22222222-2222-4222-8222-222222222222");
+const commissionedGatewayKeyId = `ed25519:${"a".repeat(64)}`;
 
 class FixedClock {
   now() {
@@ -68,7 +68,7 @@ function ed25519PrivateKeyFromSeed(seedByte: number): KeyObject {
 }
 
 describe("CloudLink dual worker Gateway-signed session composition", () => {
-  it("issues an Edge-verifiable challenge and accepts only the configured Gateway key", async () => {
+  it("issues an Edge-verifiable challenge and accepts only the commissioned Gateway key", async () => {
     const sessions = new InMemoryCloudLinkSessionRepository();
     const composition = createCloudLinkDualSessionComposition({
       sessions,
@@ -77,6 +77,8 @@ describe("CloudLink dual worker Gateway-signed session composition", () => {
       tenantId,
       projectId,
       gatewayId,
+      gatewayKeyId: commissionedGatewayKeyId,
+      gatewayPublicKey: createPublicKey(ed25519PrivateKeyFromSeed(11)),
     });
     await expect(
       composition.sessionCommands.authenticateGatewaySignedUplink.execute({}),
@@ -142,7 +144,7 @@ describe("CloudLink dual worker Gateway-signed session composition", () => {
       topicPrefix,
       request: request.message,
       challenge,
-      gatewayKeyId: CLOUDLINK_DUAL_GATEWAY_KEY_ID,
+      gatewayKeyId: commissionedGatewayKeyId,
       privateKey: ed25519PrivateKeyFromSeed(8),
     });
     await expect(bridge.handle(invalidHello)).resolves.toMatchObject({
@@ -155,8 +157,8 @@ describe("CloudLink dual worker Gateway-signed session composition", () => {
       topicPrefix,
       request: request.message,
       challenge,
-      gatewayKeyId: CLOUDLINK_DUAL_GATEWAY_KEY_ID,
-      privateKey: ed25519PrivateKeyFromSeed(9),
+      gatewayKeyId: commissionedGatewayKeyId,
+      privateKey: ed25519PrivateKeyFromSeed(11),
     });
     await expect(bridge.handle(hello)).resolves.toEqual({
       outcome: "acknowledged",

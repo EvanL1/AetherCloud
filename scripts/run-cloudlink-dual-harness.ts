@@ -10,8 +10,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createServer, connect } from "node:net";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, resolve } from "node:path";
+
+import { composeApiRuntime } from "../apps/api/src/runtime.js";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -36,6 +38,16 @@ const mosquitto =
   (existsSync("/opt/homebrew/sbin/mosquitto")
     ? "/opt/homebrew/sbin/mosquitto"
     : "mosquitto");
+const tenantId = "11111111-1111-4111-8111-111111111111";
+const projectId = "22222222-2222-4222-8222-222222222222";
+const enrollmentBearerToken = "local-dual-harness-enrollment-token";
+
+interface CommissionedIdentity {
+  readonly directory: string;
+  readonly publicKey: string;
+  readonly keyId: string;
+  readonly fingerprint: string;
+}
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -160,11 +172,195 @@ function sha256(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+async function jsonRequest(
+  url: string,
+  options: RequestInit,
+): Promise<JsonRecord> {
+  const response = await fetch(url, options);
+  const value: unknown = await response.json();
+  assert(
+    response.ok && typeof value === "object" && value !== null,
+    `Enrollment HTTP request failed with ${String(response.status)}`,
+  );
+  return value as JsonRecord;
+}
+
+async function runEnrollmentCli(input: {
+  readonly binary: string;
+  readonly cloudOrigin: string;
+  readonly configDirectory: string;
+  readonly dataDirectory: string;
+  readonly enrollmentToken: string;
+  readonly gatewayId: string;
+}): Promise<void> {
+  const child = spawn(
+    input.binary,
+    [
+      "--json",
+      "--config-path",
+      input.configDirectory,
+      "--db-path",
+      input.dataDirectory,
+      "cloud",
+      "enroll",
+      "--cloud-url",
+      input.cloudOrigin,
+      "--tenant-id",
+      tenantId,
+      "--project-id",
+      projectId,
+      "--gateway-id",
+      input.gatewayId,
+      "--token-stdin",
+      "--allow-insecure-localhost",
+    ],
+    { stdio: ["pipe", "pipe", "pipe"] },
+  );
+  child.stdin.end(`${input.enrollmentToken}\n`);
+  const stdout: Buffer[] = [];
+  const stderr: Buffer[] = [];
+  child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+  child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+  const code = await childExit(child);
+  assert(
+    code === 0,
+    `AetherEdge commissioning failed: ${Buffer.concat(stderr).toString("utf8")}`,
+  );
+  const result: unknown = JSON.parse(Buffer.concat(stdout).toString("utf8"));
+  assert(
+    typeof result === "object" &&
+      result !== null &&
+      (result as JsonRecord).success === true,
+    "AetherEdge commissioning did not report success",
+  );
+}
+
+async function commissionIdentity(input: {
+  readonly gatewayId: string;
+  readonly workspace: string;
+}): Promise<CommissionedIdentity> {
+  const build = spawnSync(
+    "cargo",
+    ["build", "-p", "aether", "--bin", "aether"],
+    {
+      cwd: iotRoot,
+      encoding: "utf8",
+    },
+  );
+  assert(
+    build.status === 0,
+    `AetherEdge CLI build failed: ${build.stderr.slice(-8_192)}`,
+  );
+  const configDirectory = resolve(input.workspace, "config");
+  const dataDirectory = resolve(input.workspace, "data");
+  mkdirSync(configDirectory, { recursive: true, mode: 0o700 });
+  mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
+  const port = await freePort();
+  const cloudOrigin = `http://127.0.0.1:${String(port)}`;
+  const runtime = composeApiRuntime({
+    AETHER_CLOUD_AUTH_MODE: "configured",
+    AETHER_CLOUD_API_BEARER_TOKEN: enrollmentBearerToken,
+    AETHER_CLOUD_API_TENANT_ID: tenantId,
+    AETHER_CLOUD_API_PROJECT_ID: projectId,
+    AETHER_CLOUD_API_SUBJECT_ID: "dual-harness-enrollment",
+    AETHER_CLOUD_API_PERMISSIONS:
+      "fleet.gateway.create,fleet.gateway.read,fleet.gateway.enrollment.issue,fleet.gateway.enrollment.read",
+    AETHER_CLOUD_AUDIT_STORE: "memory",
+  });
+  try {
+    await runtime.app.listen({ host: "127.0.0.1", port });
+    const authorization = `Bearer ${enrollmentBearerToken}`;
+    await jsonRequest(`${cloudOrigin}/api/v1/fleet/gateways`, {
+      method: "POST",
+      headers: {
+        authorization,
+        "content-type": "application/json",
+        "idempotency-key": `register-${input.gatewayId}`,
+      },
+      body: JSON.stringify({
+        gatewayId: input.gatewayId,
+        displayName: "CloudLink commissioned identity harness",
+      }),
+    });
+    const issuance = await jsonRequest(
+      `${cloudOrigin}/api/v1/fleet/gateways/${input.gatewayId}/enrollment-claims`,
+      {
+        method: "POST",
+        headers: {
+          authorization,
+          "content-type": "application/json",
+          "idempotency-key": `issue-${input.gatewayId}`,
+          "x-aethercloud-confirmation": "issue-enrollment-claim",
+        },
+        body: "{}",
+      },
+    );
+    assert(
+      typeof issuance.enrollmentToken === "string",
+      "Enrollment token is absent",
+    );
+    await runEnrollmentCli({
+      binary: resolve(iotRoot, "target/debug/aether"),
+      cloudOrigin,
+      configDirectory,
+      dataDirectory,
+      enrollmentToken: issuance.enrollmentToken,
+      gatewayId: input.gatewayId,
+    });
+    const statePath = resolve(
+      dataDirectory,
+      "uplink/identity/gateway-enrollment.json",
+    );
+    const state = JSON.parse(readFileSync(statePath, "utf8")) as JsonRecord;
+    assert(
+      state.gatewayId === input.gatewayId,
+      "commissioned Gateway ID drifted",
+    );
+    assert(
+      typeof state.phase === "object" &&
+        state.phase !== null &&
+        (state.phase as JsonRecord).state === "claimed",
+      "commissioned identity is not claimed",
+    );
+    assert(
+      typeof state.publicKey === "string" &&
+        /^[A-Za-z0-9_-]{43}$/.test(state.publicKey),
+      "commissioned public key is invalid",
+    );
+    assert(
+      typeof state.fingerprint === "string" &&
+        /^[0-9a-f]{64}$/.test(state.fingerprint),
+      "commissioned public-key fingerprint is invalid",
+    );
+    assert(
+      createHash("sha256")
+        .update(Buffer.from(state.publicKey, "base64url"))
+        .digest("hex") === state.fingerprint,
+      "commissioned public key does not match its fingerprint",
+    );
+    return {
+      directory: resolve(dataDirectory, "uplink/identity"),
+      publicKey: state.publicKey,
+      keyId: `ed25519:${state.fingerprint}`,
+      fingerprint: state.fingerprint,
+    };
+  } finally {
+    await runtime.close();
+  }
+}
+
 const runId = randomUUID().replaceAll("-", "");
 const gatewayId = `33333333-3333-4333-8333-${runId.slice(0, 12)}`;
 const topicPrefix = `aether-dual/${runId}`;
 const temporaryRoot = mkdtempSync(resolve(tmpdir(), "aether-dual-"));
 chmodSync(temporaryRoot, 0o700);
+const secureHarnessParent = resolve(homedir(), ".config/aethercloud");
+mkdirSync(secureHarnessParent, { recursive: true, mode: 0o700 });
+chmodSync(secureHarnessParent, 0o700);
+const commissioningRoot = mkdtempSync(
+  resolve(secureHarnessParent, "cloudlink-commissioning-harness-"),
+);
+chmodSync(commissioningRoot, 0o700);
 const controlRoot = resolve(temporaryRoot, "control");
 const spoolRoot = resolve(temporaryRoot, "spool");
 mkdirSync(controlRoot, { recursive: true, mode: 0o700 });
@@ -183,6 +379,7 @@ writeFileSync(
 
 let broker: ChildProcess | undefined;
 let cloud: ChildProcess | undefined;
+let commissionedIdentity: CommissionedIdentity | undefined;
 let brokerRestarts = 0;
 let cloudRestarts = 0;
 const childDiagnostics: string[] = [];
@@ -205,6 +402,10 @@ function startBroker(): ChildProcess {
 }
 
 function startCloud(generation: number): ChildProcess {
+  assert(
+    commissionedIdentity !== undefined,
+    "Gateway identity is not commissioned",
+  );
   const child = spawn("pnpm", ["exec", "tsx", workerPath], {
     cwd: cloudRoot,
     env: {
@@ -213,6 +414,8 @@ function startCloud(generation: number): ChildProcess {
       AETHER_DUAL_CLOUD_GENERATION: String(generation),
       AETHER_DUAL_EVIDENCE_LOG: cloudLog,
       AETHER_DUAL_GATEWAY_ID: gatewayId,
+      AETHER_DUAL_GATEWAY_KEY_ID: commissionedIdentity.keyId,
+      AETHER_DUAL_GATEWAY_PUBLIC_KEY: commissionedIdentity.publicKey,
       AETHER_DUAL_TOPIC_PREFIX: topicPrefix,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -286,6 +489,8 @@ async function runEdgePhase(
         AETHER_CLOUDLINK_EDGE_EVIDENCE: evidencePath,
         AETHER_CLOUDLINK_EDGE_PHASE: phase,
         AETHER_CLOUDLINK_GATEWAY_ID: gatewayId,
+        AETHER_CLOUDLINK_IDENTITY_DIRECTORY:
+          commissionedIdentity?.directory ?? "",
         AETHER_CLOUDLINK_SPOOL_ROOT: spoolRoot,
         AETHER_CLOUDLINK_TOPIC_PREFIX: topicPrefix,
       },
@@ -308,6 +513,10 @@ async function runEdgePhase(
 }
 
 try {
+  commissionedIdentity = await commissionIdentity({
+    gatewayId,
+    workspace: commissioningRoot,
+  });
   broker = startBroker();
   await waitForPort(port);
   cloud = startCloud(1);
@@ -416,6 +625,16 @@ try {
     "contracts/cloudlink/v1/fixture-manifest.json",
   );
   const scenarios = [
+    {
+      scenario: "enrollment-to-cloudlink-identity-continuity",
+      capability: "implemented",
+      expected:
+        "the real Enrollment CLI persists the private key that signs every CloudLink challenge transcript",
+      observed:
+        "Cloud verified the public key from the Claim request while Edge loaded the matching claimed private key from FileClaimedGatewayIdentitySource",
+      result: "passed",
+      failure_code: null,
+    },
     {
       scenario: "gateway-signed-session-challenge",
       capability: "implemented",
@@ -588,6 +807,9 @@ try {
       final_edge_pending_records: phase2.pending_records,
       application_ack_signed: false,
       production_crash_durable_store: false,
+      commissioned_identity_source: "real-aether-cloud-enroll-cli",
+      commissioned_identity_fingerprint: commissionedIdentity.fingerprint,
+      cloudlink_private_key_source: "FileClaimedGatewayIdentitySource",
       authentication_gate: "gateway-signed-challenge",
     },
     scenarios,
@@ -633,4 +855,5 @@ try {
   await stopChild(cloud);
   await stopChild(broker);
   rmSync(temporaryRoot, { recursive: true, force: true });
+  rmSync(commissioningRoot, { recursive: true, force: true });
 }

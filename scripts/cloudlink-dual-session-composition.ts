@@ -61,6 +61,8 @@ export function createCloudLinkDualSessionComposition(input: {
   readonly tenantId: TenantId;
   readonly projectId: ProjectId;
   readonly gatewayId: GatewayId;
+  readonly gatewayKeyId?: string;
+  readonly gatewayPublicKey?: KeyObject;
 }) {
   const credentialGeneration = parseGatewayCredentialGeneration(
     CLOUDLINK_DUAL_CREDENTIAL_GENERATION,
@@ -81,7 +83,9 @@ export function createCloudLinkDualSessionComposition(input: {
     },
   ]);
   const cloudPrivateKey = ed25519PrivateKeyFromSeed(7);
-  const gatewayPublicKey = createPublicKey(ed25519PrivateKeyFromSeed(9));
+  const gatewayKeyId = input.gatewayKeyId ?? CLOUDLINK_DUAL_GATEWAY_KEY_ID;
+  const gatewayPublicKey =
+    input.gatewayPublicKey ?? createPublicKey(ed25519PrivateKeyFromSeed(9));
   const requestSessionChallenge = new RequestCloudLinkSessionChallenge({
     repository: input.sessions,
     credentials: credentialVerifier,
@@ -103,7 +107,7 @@ export function createCloudLinkDualSessionComposition(input: {
           key.gatewayId === input.gatewayId &&
             key.credentialId === CLOUDLINK_DUAL_CREDENTIAL_ID &&
             key.credentialGeneration === credentialGeneration &&
-            key.gatewayKeyId === CLOUDLINK_DUAL_GATEWAY_KEY_ID
+            key.gatewayKeyId === gatewayKeyId
             ? gatewayPublicKey
             : undefined,
         );
@@ -125,7 +129,7 @@ export function createCloudLinkDualSessionComposition(input: {
               key.projectId === input.projectId &&
               key.gatewayId === input.gatewayId &&
               key.credentialGeneration === credentialGeneration &&
-              key.gatewayKeyId === CLOUDLINK_DUAL_GATEWAY_KEY_ID
+              key.gatewayKeyId === gatewayKeyId
               ? {
                   status: "active" as const,
                   publicKey: gatewayPublicKey,

@@ -1,3 +1,4 @@
+import { createPublicKey } from "node:crypto";
 import { appendFileSync } from "node:fs";
 
 import {
@@ -54,6 +55,29 @@ function requiredEnvironment(name: string): string {
 const evidencePath = requiredEnvironment("AETHER_DUAL_EVIDENCE_LOG");
 const topicPrefix = requiredEnvironment("AETHER_DUAL_TOPIC_PREFIX");
 const gatewayId = parseGatewayId(requiredEnvironment("AETHER_DUAL_GATEWAY_ID"));
+const gatewayKeyId = requiredEnvironment("AETHER_DUAL_GATEWAY_KEY_ID");
+if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(gatewayKeyId)) {
+  throw new Error("AETHER_DUAL_GATEWAY_KEY_ID is invalid");
+}
+const encodedGatewayPublicKey = requiredEnvironment(
+  "AETHER_DUAL_GATEWAY_PUBLIC_KEY",
+);
+if (!/^[A-Za-z0-9_-]{43}$/.test(encodedGatewayPublicKey)) {
+  throw new Error("AETHER_DUAL_GATEWAY_PUBLIC_KEY is invalid");
+}
+const gatewayPublicKeyBytes = Buffer.from(encodedGatewayPublicKey, "base64url");
+if (
+  gatewayPublicKeyBytes.length !== 32 ||
+  gatewayPublicKeyBytes.toString("base64url") !== encodedGatewayPublicKey
+) {
+  throw new Error("AETHER_DUAL_GATEWAY_PUBLIC_KEY is not canonical Ed25519");
+}
+const ed25519SpkiPrefix = Buffer.from("302a300506032b6570032100", "hex");
+const gatewayPublicKey = createPublicKey({
+  key: Buffer.concat([ed25519SpkiPrefix, gatewayPublicKeyBytes]),
+  format: "der",
+  type: "spki",
+});
 const configuredBrokerUrl = process.env.AETHER_DUAL_BROKER_URL;
 const configuredBrokerPort = process.env.AETHER_DUAL_BROKER_PORT;
 const brokerPort =
@@ -346,6 +370,8 @@ const { credentialVerifier, sessionCommands } =
     tenantId,
     projectId,
     gatewayId,
+    gatewayKeyId,
+    gatewayPublicKey,
   });
 const telemetry = new InMemoryTelemetryRepository();
 const runtimeManifests = new InMemoryRuntimeManifestRepository();
