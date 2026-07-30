@@ -8,10 +8,8 @@ import {
   ReportGatewayRuntimeManifest,
   type ApplicationClock,
 } from "../packages/application/src/index.js";
-import {
-  InMemoryCloudLinkSessionRepository,
-  InMemoryGatewayCredentialVerifier,
-} from "../adapters/cloudlink/memory/src/index.js";
+import { InMemoryCloudLinkSessionRepository } from "../adapters/cloudlink/memory/src/index.js";
+import { NodeCloudLinkBusinessPayloadDigestor } from "../adapters/cloudlink/node-crypto/src/index.js";
 import {
   connectNodeMqttTransport,
   type MqttInboundEvent,
@@ -26,7 +24,6 @@ import {
 } from "../adapters/telemetry/memory/src/index.js";
 import {
   parseCloudLinkSessionId,
-  parseGatewayCredentialGeneration,
   parseGatewayId,
   parseProjectId,
   parseTenantId,
@@ -35,9 +32,14 @@ import {
 import {
   startCloudLinkMqttIngress,
   type CloudLinkApplicationCommand,
+  type CloudLinkApplicationUnaryCommand,
   type CloudLinkMqttDuplexTransport,
   type CloudLinkMqttTransportConnector,
 } from "../apps/cloudlink/src/index.js";
+import {
+  createCloudLinkDualSessionComposition,
+  type GatewaySignedSessionCommands,
+} from "./cloudlink-dual-session-composition.js";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -152,6 +154,10 @@ class HarnessClock implements ApplicationClock {
   now() {
     return parseUtcInstant("2024-07-14T23:33:20.400Z");
   }
+
+  nowMilliseconds(): string {
+    return "1721000000400";
+  }
 }
 
 class SessionIds {
@@ -176,6 +182,25 @@ class ObservedCommand implements CloudLinkApplicationCommand {
 
   async execute(context: unknown, input: unknown): Promise<unknown> {
     const result = await this.#inner.execute(context, input);
+    evidence("application-command", {
+      command: this.#name,
+      ...resultEvidence(result),
+    });
+    return result;
+  }
+}
+
+class ObservedUnaryCommand implements CloudLinkApplicationUnaryCommand {
+  readonly #name: string;
+  readonly #inner: CloudLinkApplicationUnaryCommand;
+
+  constructor(name: string, inner: CloudLinkApplicationUnaryCommand) {
+    this.#name = name;
+    this.#inner = inner;
+  }
+
+  async execute(input: unknown): Promise<unknown> {
+    const result = await this.#inner.execute(input);
     evidence("application-command", {
       command: this.#name,
       ...resultEvidence(result),
@@ -310,27 +335,36 @@ const connector: CloudLinkMqttTransportConnector = {
 
 const tenantId = parseTenantId("11111111-1111-4111-8111-111111111111");
 const projectId = parseProjectId("22222222-2222-4222-8222-222222222222");
-const credential = {
-  credentialId: "development-integration-binding",
-  proof: "B".repeat(86),
-};
-const gatewayBinding = {
-  tenantId,
-  projectId,
-  gatewayId,
-  generation: parseGatewayCredentialGeneration("1"),
-  status: "active" as const,
-};
-const credentialVerifier = new InMemoryGatewayCredentialVerifier([
-  {
-    assertion: credential,
-    binding: gatewayBinding,
-  },
-]);
 const clock = new HarnessClock();
 const sessions = new InMemoryCloudLinkSessionRepository();
+const sessionIds = new SessionIds();
+const { credentialVerifier, sessionCommands } =
+  createCloudLinkDualSessionComposition({
+    sessions,
+    clock,
+    sessionIds,
+    tenantId,
+    projectId,
+    gatewayId,
+  });
 const telemetry = new InMemoryTelemetryRepository();
 const runtimeManifests = new InMemoryRuntimeManifestRepository();
+const businessPayloadDigestor = new NodeCloudLinkBusinessPayloadDigestor();
+const observedSessionCommands = {
+  requestSessionChallenge: new ObservedUnaryCommand(
+    "request-gateway-signed-session-challenge",
+    sessionCommands.requestSessionChallenge,
+  ),
+  acceptGatewaySignedSession: new ObservedUnaryCommand(
+    "accept-gateway-signed-session",
+    sessionCommands.acceptGatewaySignedSession,
+  ),
+  authenticateGatewaySignedUplink: new ObservedUnaryCommand(
+    "authenticate-gateway-signed-uplink",
+    sessionCommands.authenticateGatewaySignedUplink,
+  ),
+  gatewaySignedScope: sessionCommands.gatewaySignedScope,
+} satisfies GatewaySignedSessionCommands;
 
 const ingress = await startCloudLinkMqttIngress({
   connection: {
@@ -342,13 +376,14 @@ const ingress = await startCloudLinkMqttIngress({
   },
   connector,
   topicPrefix,
+  ...observedSessionCommands,
   openSession: new ObservedCommand(
     "open-session",
     new OpenCloudLinkSession({
       repository: sessions,
       credentialVerifier,
       clock,
-      sessionIds: new SessionIds(),
+      sessionIds,
       supportedProtocolVersions: ["1.0"],
     }),
   ),
@@ -366,6 +401,7 @@ const ingress = await startCloudLinkMqttIngress({
       repository: runtimeManifests,
       credentialVerifier,
       integrityVerifier: new NodeRuntimeManifestIntegrityVerifier(),
+      businessPayloadDigestor,
       clock,
     }),
   ),
@@ -374,6 +410,7 @@ const ingress = await startCloudLinkMqttIngress({
     new RecordCloudLinkDurableCursor({
       repository: sessions,
       credentialVerifier,
+      businessPayloadDigestor,
       clock,
     }),
   ),
@@ -382,6 +419,7 @@ const ingress = await startCloudLinkMqttIngress({
       credentialVerifier,
       digestor: new NodeTelemetryBatchDigestor(),
       repository: telemetry,
+      businessPayloadDigestor,
       clock,
     }),
   ),
@@ -412,7 +450,7 @@ const ingress = await startCloudLinkMqttIngress({
 evidence("worker-ready", {
   broker_kind: process.env.AETHER_DUAL_BROKER_KIND ?? "local-mqtt",
   topic_prefix: topicPrefix,
-  authentication_gate: "proposal",
+  authentication_gate: "gateway-signed-challenge",
   persistence: "process-local-memory",
 });
 

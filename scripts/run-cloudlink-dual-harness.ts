@@ -145,6 +145,17 @@ function gitHead(root: string): string {
   return result.stdout.trim();
 }
 
+function gitBranch(root: string): string {
+  const result = spawnSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert(result.status === 0, `cannot read Git branch for ${root}`);
+  const branch = result.stdout.trim();
+  assert(branch.length > 0, `Git branch is empty for ${root}`);
+  return branch;
+}
+
 function sha256(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
@@ -331,6 +342,16 @@ try {
   const telemetryAcks = downlinks.filter(
     (entry) => entry.batch_id === "telemetry-ack-loss",
   );
+  const issuedSessionChallenges = commands.filter(
+    (entry) =>
+      entry.command === "request-gateway-signed-session-challenge" &&
+      entry.outcome === "ok",
+  );
+  const acceptedGatewaySignedSessions = commands.filter(
+    (entry) =>
+      entry.command === "accept-gateway-signed-session" &&
+      entry.outcome === "ok",
+  );
   const generationOneSessions = downlinks.filter(
     (entry) =>
       entry.cloud_generation === 1 && entry.message_kind === "session-accepted",
@@ -355,6 +376,14 @@ try {
     "Cloud process restart was not executed exactly once",
   );
   assert(
+    issuedSessionChallenges.length > 0,
+    "Cloud did not issue a Gateway-signed session challenge",
+  );
+  assert(
+    acceptedGatewaySignedSessions.length > 0,
+    "Cloud did not verify and accept a Gateway-signed session hello",
+  );
+  assert(
     phase1.pending_records === 1,
     "ACK loss did not retain the Edge record",
   );
@@ -368,7 +397,7 @@ try {
     manifestResumeObserved,
     "the resumed Edge process did not receive Cloud's manifest/1/1 cursor",
   );
-  assert(hasIngressFailure("message-expired"), "expiry rejection is absent");
+  assert(hasIngressFailure("MESSAGE_EXPIRED"), "expiry rejection is absent");
   assert(
     hasCommandFailure("telemetry-conflicting-replay") ||
       hasCommandFailure("telemetry-position-conflict"),
@@ -387,6 +416,15 @@ try {
     "contracts/cloudlink/v1/fixture-manifest.json",
   );
   const scenarios = [
+    {
+      scenario: "gateway-signed-session-challenge",
+      capability: "implemented",
+      expected:
+        "Cloud signs a bounded challenge and accepts only a Gateway signature bound to its transcript",
+      observed: `${String(issuedSessionChallenges.length)} challenges issued; ${String(acceptedGatewaySignedSessions.length)} signed sessions accepted`,
+      result: "passed",
+      failure_code: null,
+    },
     {
       scenario: "broker-disconnect-reconnect",
       capability: "implemented",
@@ -482,7 +520,7 @@ try {
       capability: "implemented",
       expected:
         "evaluation_time >= expires_at is rejected before application persistence",
-      observed: "ingress returned message-expired and published no ACK",
+      observed: "ingress returned MESSAGE_EXPIRED and published no ACK",
       result: "passed",
       failure_code: "MESSAGE_EXPIRED",
     },
@@ -525,21 +563,32 @@ try {
       pending: (lock.pending_imports as unknown[]).length,
     },
     repositories: {
-      AetherContracts: { branch: "main", head: gitHead(contractsRoot) },
-      AetherCloud: { branch: "main", head: gitHead(cloudRoot) },
-      AetherEdge: { branch: "main", head: gitHead(iotRoot) },
+      AetherContracts: {
+        branch: gitBranch(contractsRoot),
+        head: gitHead(contractsRoot),
+      },
+      AetherCloud: {
+        branch: gitBranch(cloudRoot),
+        head: gitHead(cloudRoot),
+      },
+      AetherEdge: {
+        branch: gitBranch(iotRoot),
+        head: gitHead(iotRoot),
+      },
     },
     observations: {
       cloud_ingress_results: ingressResults.length,
       cloud_application_commands: commands.length,
       cloud_downlinks: downlinks.length,
+      session_challenges_issued: issuedSessionChallenges.length,
+      gateway_signed_sessions_accepted: acceptedGatewaySignedSessions.length,
       telemetry_application_acks: telemetryAcks.length,
       manifest_resume_cursor_observed: manifestResumeObserved,
       final_edge_cursor: phase2.final_cursor,
       final_edge_pending_records: phase2.pending_records,
       application_ack_signed: false,
       production_crash_durable_store: false,
-      authentication_gate: "proposal",
+      authentication_gate: "gateway-signed-challenge",
     },
     scenarios,
     safety: {
@@ -570,9 +619,14 @@ try {
   process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
 } catch (error: unknown) {
   const details = childDiagnostics.slice(-12).join("").slice(-24_000);
+  const cloudDetails = parseJsonLines(cloudLog).slice(-20);
   throw new Error(
     `${error instanceof Error ? error.message : String(error)}${
       details.length === 0 ? "" : `\nChild diagnostics:\n${details}`
+    }${
+      cloudDetails.length === 0
+        ? ""
+        : `\nCloud evidence tail:\n${JSON.stringify(cloudDetails, null, 2)}`
     }`,
   );
 } finally {
