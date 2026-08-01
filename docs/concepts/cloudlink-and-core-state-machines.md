@@ -159,12 +159,12 @@ path; it describes the whole of the authentication in this mode.
   Gateway's uplink topics. Nothing in this repository configures, enforces, or
   verifies per-Gateway publisher ACLs, and the ingress starts successfully
   whether or not the operator created them.
-- **No publisher attestation is consumed.** ADR-0014 decision 5 permits a
-  reviewed trusted connector or Broker-specific adapter to supply verified
-  publisher attestation out of band _for every publish_. This composition
-  consumes no attestation of any kind. It assumes the Broker ACL is correct and
-  has no way to detect that it is not. That gap is the difference between this
-  mode and the alternative ADR-0014 decision 5 describes.
+- **No publisher attestation is consumed.** A reviewed trusted connector or
+  Broker-specific adapter could supply verified publisher attestation out of
+  band _for every publish_; this composition consumes no attestation of any
+  kind. It assumes the Broker ACL is correct and has no way to detect that it
+  is not. That gap is the difference between this mode and an
+  attestation-verifying alternative.
 - **Scope.** This mode suits a small deployment where the operator owns the
   Broker and can confirm publisher identity out of band, such as a single-home
   Home Assistant installation. It is not Gateway authentication and must not be

@@ -42,11 +42,10 @@ wire and AetherCloud never stores it.
   write a Gateway's uplink topics. Nothing in this repository configures,
   enforces, or verifies those ACLs, and the ingress starts successfully whether
   or not you created them.
-- **No publisher attestation is consumed.**
-  [ADR-0014](../adr/0014-cloudlink-mqtt-transport-binding.md) decision 5 expects
-  a reviewed trusted connector to supply verified publisher attestation out of
-  band for every publish. This composition consumes none of it. It assumes the
-  Broker ACL is correct and has no way to detect that it is not.
+- **No publisher attestation is consumed.** A reviewed trusted connector
+  could supply verified publisher attestation out of band for every publish.
+  This composition consumes none of it. It assumes the Broker ACL is correct
+  and has no way to detect that it is not.
 
 Restricting each Gateway's Broker credentials to that Gateway's own topic
 namespace is a required deployment step, not an optional hardening measure. This
@@ -127,9 +126,8 @@ and rotate it by changing the Gateway binding and its `generation` together.
 
 ## Broker TLS trust
 
-[ADR-0014](../adr/0014-cloudlink-mqtt-transport-binding.md) decision 2 makes TLS
-trust operator configuration, alongside the Broker URL and topic prefix. A0
-exposes it, with one constraint inherited from the transport.
+TLS trust is operator configuration, alongside the Broker URL and topic
+prefix. A0 exposes it, with one constraint inherited from the transport.
 
 **The three TLS variables are one bundle.** Set all three or none. A CA alone
 cannot be configured: the transport accepts the trust material only as a mutual

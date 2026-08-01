@@ -79,10 +79,10 @@ and AetherCloud never stores it.
   the Broker. They say nothing about which publishers may write a Gateway's
   uplink topics. Nothing in this repository configures, enforces, or verifies
   those ACLs, and the ingress starts whether or not you created them.
-- **No publisher attestation is consumed.** ADR-0014 decision 5 expects a
-  reviewed trusted connector to supply verified publisher attestation out of
-  band for every publish. This composition consumes none of it. It assumes the
-  Broker ACL is correct and has no way to detect that it is not.
+- **No publisher attestation is consumed.** A reviewed trusted connector
+  could supply verified publisher attestation out of band for every publish.
+  This composition consumes none of it. It assumes the Broker ACL is correct
+  and has no way to detect that it is not.
 
 Restricting each Gateway's Broker credentials to that Gateway's own topic
 namespace is therefore a required deployment step, not an optional hardening
