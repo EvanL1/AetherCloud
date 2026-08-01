@@ -382,6 +382,12 @@ importers:
       '@aether-cloud/fleet-postgres-adapter':
         specifier: workspace:*
         version: link:../../adapters/fleet/postgres
+      '@aether-cloud/integration-projection-memory-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/memory
+      '@aether-cloud/integration-projection-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/postgres
       '@aether-cloud/mcp-interface':
         specifier: workspace:*
         version: link:../mcp
@@ -403,31 +409,43 @@ importers:
       '@aether-cloud/application':
         specifier: workspace:*
         version: link:../../packages/application
-      '@aether-cloud/cloudlink-mqtt-adapter':
-        specifier: workspace:*
-        version: link:../../adapters/cloudlink/mqtt
-      '@aether-cloud/domain':
-        specifier: workspace:*
-        version: link:../../packages/domain
-      '@aether-cloud/integration-aether-contracts-adapter':
-        specifier: workspace:*
-        version: link:../../adapters/integration-projection/aether-contracts
-    devDependencies:
       '@aether-cloud/cloudlink-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/cloudlink/memory
+      '@aether-cloud/cloudlink-mqtt-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/cloudlink/mqtt
+      '@aether-cloud/cloudlink-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/cloudlink/postgres
+      '@aether-cloud/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@aether-cloud/fleet-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/fleet/postgres
+      '@aether-cloud/integration-aether-contracts-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/aether-contracts
+      '@aether-cloud/integration-projection-memory-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/memory
+      '@aether-cloud/integration-projection-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/postgres
+      '@aether-cloud/runtime-memory-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/runtime/memory
+      tsx:
+        specifier: 4.23.1
+        version: 4.23.1
+    devDependencies:
       '@aether-cloud/integration-control-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/integration-control/memory
       '@aether-cloud/integration-control-node-crypto-adapter':
         specifier: workspace:*
         version: link:../../adapters/integration-control/node-crypto
-      '@aether-cloud/integration-projection-memory-adapter':
-        specifier: workspace:*
-        version: link:../../adapters/integration-projection/memory
-      '@aether-cloud/runtime-memory-adapter':
-        specifier: workspace:*
-        version: link:../../adapters/runtime/memory
       '@aether-cloud/telemetry-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/telemetry/memory

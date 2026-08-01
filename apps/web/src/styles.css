@@ -957,7 +957,8 @@
     color: var(--text);
     font-size: 10px;
   }
-  .outcome {
+  .outcome,
+  .quality {
     display: inline-block;
     padding: 4px 7px;
     border: 1px solid var(--line);
@@ -965,14 +966,21 @@
     font-size: 8px;
   }
   .outcome-succeeded,
-  .outcome-success {
+  .outcome-success,
+  .quality-good {
     border-color: color-mix(in srgb, var(--success) 42%, transparent);
     color: var(--success);
   }
   .outcome-failed,
-  .outcome-failure {
+  .outcome-failure,
+  .quality-bad,
+  .quality-unavailable {
     border-color: var(--error-line);
     color: var(--danger);
+  }
+  .quality-uncertain {
+    border-color: color-mix(in srgb, var(--amber) 42%, transparent);
+    color: var(--amber);
   }
   .empty-state {
     display: grid;
@@ -1004,6 +1012,13 @@
     font-size: 11px;
     line-height: 1.65;
   }
+  .empty-state p + p {
+    margin-top: 10px;
+  }
+  .empty-state code {
+    color: var(--cyan);
+    font-size: 10px;
+  }
   .empty-state .compact-button {
     margin-top: 20px;
   }
@@ -1021,8 +1036,31 @@
   .register-surface,
   .pairing-surface,
   .fleet-surface,
-  .gateway-detail {
+  .gateway-detail,
+  .authority-banner,
+  .integration-surface,
+  .integration-detail {
     padding: 25px;
+  }
+  .authority-banner h2 {
+    margin: 0 0 14px;
+    font-size: 20px;
+    font-weight: 570;
+    letter-spacing: -0.035em;
+  }
+  .authority-banner p:not(.eyebrow) {
+    max-width: 780px;
+    margin: 0 0 12px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.75;
+  }
+  .authority-banner code {
+    display: inline-block;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    color: var(--cyan);
+    font-size: 9px;
   }
   .register-grid {
     display: grid;
@@ -1119,10 +1157,12 @@
     font-size: 8px;
     letter-spacing: 0.1em;
   }
-  .fleet-list {
+  .fleet-list,
+  .integration-list {
     margin: -25px;
   }
-  .fleet-list-row {
+  .fleet-list-row,
+  .integration-list-row {
     display: grid;
     width: 100%;
     min-height: 64px;
@@ -1137,7 +1177,8 @@
     gap: 18px;
     text-align: left;
   }
-  .fleet-list-header {
+  .fleet-list-header,
+  .integration-list-header {
     min-height: 42px;
     border-top: 0;
     color: var(--muted);
@@ -1145,27 +1186,35 @@
     font-size: 8px;
     letter-spacing: 0.07em;
   }
-  .fleet-list-item {
+  .fleet-list-item,
+  .integration-list-item {
     cursor: pointer;
     font-size: 10px;
   }
   .fleet-list-item:hover,
-  .fleet-list-item-active {
+  .fleet-list-item-active,
+  .integration-list-item:hover,
+  .integration-list-item-active {
     background: var(--hover-bg);
   }
-  .fleet-list-item-active {
+  .fleet-list-item-active,
+  .integration-list-item-active {
     box-shadow: inset 2px 0 0 var(--mint);
   }
   .fleet-gateway-name strong,
-  .fleet-gateway-name small {
+  .fleet-gateway-name small,
+  .integration-name strong,
+  .integration-name small {
     display: block;
   }
-  .fleet-gateway-name strong {
+  .fleet-gateway-name strong,
+  .integration-name strong {
     color: var(--text);
     font-size: 12px;
     font-weight: 580;
   }
-  .fleet-gateway-name small {
+  .fleet-gateway-name small,
+  .integration-name small {
     margin-top: 5px;
     color: var(--muted);
     font-family: "SFMono-Regular", Consolas, monospace;
@@ -1396,12 +1445,16 @@
     .scope-crumb {
       display: none;
     }
-    .fleet-list-row {
+    .fleet-list-row,
+    .integration-list-row {
       grid-template-columns:
         minmax(170px, 2fr) minmax(100px, 0.8fr) minmax(80px, 0.5fr)
         18px;
     }
     .fleet-list-row > :nth-child(3) {
+      display: none;
+    }
+    .integration-list-row > :nth-child(2) {
       display: none;
     }
     .register-grid {
@@ -1465,11 +1518,13 @@
     .page-actions > button {
       flex: 1;
     }
-    .fleet-list-row {
+    .fleet-list-row,
+    .integration-list-row {
       grid-template-columns: minmax(130px, 1.5fr) minmax(90px, 1fr) 18px;
       gap: 10px;
     }
-    .fleet-list-row > :nth-child(4) {
+    .fleet-list-row > :nth-child(4),
+    .integration-list-row > :nth-child(4) {
       display: none;
     }
     .pairing-secret {
@@ -1510,7 +1565,8 @@
     .audit-surface,
     .identity-card,
     .password-card,
-    .permission-card {
+    .permission-card,
+    .authority-banner {
       padding: 20px;
     }
     .page-heading .outline-button {

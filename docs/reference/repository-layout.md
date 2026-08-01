@@ -1,7 +1,7 @@
 ---
 title: Repository layout
 description: Place code in the correct application, domain, adapter, or composition-root package
-updated: 2026-07-29
+updated: 2026-08-01
 status: mixed
 ---
 
@@ -15,7 +15,7 @@ when their first vertical slice is implemented.
 apps/
   api/                  HTTP composition root with Supabase JWKS authentication
   mcp/                  implemented transport-neutral MCP application interface; wire root planned
-  cloudlink/            experimental MQTT ingress composition; production wiring planned
+  cloudlink/            experimental deployable MQTT ingress process; authenticated only by the Broker ACL
   worker/               planned background-work composition root
   web/                  implemented independent Cloudflare operator console
 packages/
@@ -27,7 +27,7 @@ adapters/
   fleet/memory/          implemented Gateway repository/token test adapters
   fleet/postgres/        implemented Gateway SQL/migration/driver adapter; production composition planned
   cloudlink/memory/      implemented session, challenge, and heartbeat test adapter
-  cloudlink/postgres/    implemented session/challenge SQL adapter; production composition planned
+  cloudlink/postgres/    implemented session/challenge SQL adapter; composed by the CloudLink ingress in postgres mode
   cloudlink/mqtt/        experimental strict codec and MQTT.js transport adapter
   cloudlink/node-crypto/ experimental Ed25519 challenge and hello authentication adapter
   runtime/memory/        implemented Runtime Manifest history test adapter

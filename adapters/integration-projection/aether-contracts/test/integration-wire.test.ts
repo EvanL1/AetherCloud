@@ -15,7 +15,7 @@ import {
 } from "../src/index.js";
 
 const candidateRoot = new URL(
-  "../../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/",
+  "../../../../contracts/aether-contracts/v0.1.0-alpha.4/",
   import.meta.url,
 );
 const fixtureRoot = new URL("fixtures/integration/v1alpha1/", candidateRoot);

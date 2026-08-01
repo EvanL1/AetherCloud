@@ -1,7 +1,7 @@
 ---
 title: Home Assistant integration
-description: Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, safety boundary, and remaining release gates
-updated: 2026-07-17
+description: Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, the Broker-ACL-only cloud ingress, safety boundary, and remaining release gates
+updated: 2026-08-01
 status: mixed
 ---
 
@@ -35,7 +35,10 @@ This is still an experimental integration, not a released household product.
 The contract is an unpublished candidate, several Cloud composition adapters
 remain memory-backed, the optional Agent-facing query adapters have no public
 wire service, and production enrollment and credential lifecycles are not
-complete.
+complete. The cloud ingress also performs no Gateway authentication of its own;
+it depends entirely on your Broker's per-Gateway ACLs, as
+[Cloud ingress authentication depends on your Broker ACL](#cloud-ingress-authentication-depends-on-your-broker-acl)
+explains.
 
 ## Authority and secret boundary
 
@@ -51,6 +54,42 @@ The Home Assistant URL, access token, refresh token, and OAuth client material
 remain in edge-local configuration or a secret provider. They are forbidden in
 topology, observations, CloudLink payloads, cloud persistence, audit details,
 logs, prompts, and Agent context.
+
+## Cloud ingress authentication depends on your Broker ACL
+
+The cloud side of this path runs a deliberately restricted CloudLink mode.
+[CloudLink reliability and lifecycle](https://docs.aetheriot.dev/aethercloud/concepts/cloudlink-and-core-state-machines.md)
+carries the full description, but a reader who stops at this page must still
+leave knowing the constraint below.
+
+The cloud ingress verifies no Gateway signature, on the opening session or on
+any later uplink, because no production message-origin key source exists yet.
+It instead resolves an operator-configured credential from the Gateway ID,
+credential ID, and credential generation carried in the message. Those three
+values are non-secret identifiers. The configured secret never crosses the wire
+and AetherCloud never stores it.
+
+- **Authentication depends entirely on Broker-side per-Gateway ACLs. Without
+  them there is effectively no authentication.** Any publisher that can write a
+  Gateway's uplink topics and knows those three identifiers obtains a session,
+  and can then report a Runtime Manifest and overwrite that Gateway's projected
+  home topology and observations.
+- **The ingress Broker login is not a per-Gateway ACL.** The optional Broker
+  username and password authenticate AetherCloud's own subscriber connection to
+  the Broker. They say nothing about which publishers may write a Gateway's
+  uplink topics. Nothing in this repository configures, enforces, or verifies
+  those ACLs, and the ingress starts whether or not you created them.
+- **No publisher attestation is consumed.** ADR-0014 decision 5 expects a
+  reviewed trusted connector to supply verified publisher attestation out of
+  band for every publish. This composition consumes none of it. It assumes the
+  Broker ACL is correct and has no way to detect that it is not.
+
+Restricting each Gateway's Broker credentials to that Gateway's own topic
+namespace is therefore a required deployment step, not an optional hardening
+measure. This mode suits a single household where you own the Broker and can
+confirm publisher identity out of band. It is not Gateway authentication, must
+not be described as such, and does not support multi-tenant or multi-Gateway
+scale.
 
 ## Contract candidate
 
@@ -140,9 +179,13 @@ unknown topology, or treats `unknown` and `unavailable` as fabricated strings.
 - prebuilt AetherEdge packages, installer configuration, and a published
   Home Assistant compatibility baseline;
 - installer-managed enrollment, Broker ACL templates, credential rotation,
-  and production secret-manager adapters;
+  and production secret-manager adapters; until they exist, the per-Gateway
+  Broker ACLs that this integration's authentication rests on must be written
+  and audited by hand, and AetherCloud never checks them;
 - a fully PostgreSQL-backed CloudLink session and Runtime Manifest production
-  composition;
+  composition; the Runtime Manifest is memory-only today, so a cloud restart
+  drops accepted declarations and projection uplinks fail closed until each
+  Gateway reports its manifest again;
 - production API and Agent discovery exposure;
 - bounded historical observation queries and a complete freshness model;
 - floors, labels, configuration-entry provenance, and service capability

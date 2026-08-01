@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract": "aether.cloudlink",
-  "contracts_release": "0.1.0-alpha.3",
+  "contracts_release": "0.1.0-alpha.4",
   "status": "non-authoritative-aethercloud-readiness-overlay",
   "authoritative_gate_definition": "AetherContracts compatibility/cloudlink-v1alpha1-gates.json",
   "default_mode": "legacy",
@@ -10,6 +10,14 @@
     "shared-broker-authentication": {
       "status": "proposal",
       "evidence": ["session-authentication.schema.json", "ADR-0015"]
+    },
+    "signed-correlated-session-accepted": {
+      "status": "blocked",
+      "evidence": [
+        "alpha.4 adds this gate; it depends on shared-broker-authentication, which is still a proposal",
+        "the alpha.4 session-accepted response is unsigned and has no frozen signing projection",
+        "AetherCloud has no Cloud key lifecycle, so it cannot bind an accepted challenge to its response"
+      ]
     },
     "single-wire-contract": {
       "status": "implemented-alpha3",

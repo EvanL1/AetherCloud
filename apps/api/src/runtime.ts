@@ -2,8 +2,10 @@ import {
   ClaimGatewayEnrollment,
   GetFleetGateway,
   GetGatewayEnrollment,
+  GetIntegrationProjection,
   IssueGatewayEnrollment,
   ListFleetGateways,
+  ListIntegrationProjections,
   ReconcileCloudLinkSessionHealth,
   RegisterGateway,
   SearchAuditEvents,
@@ -12,16 +14,26 @@ import { InMemoryAuditEventStore } from "@aether-cloud/audit-memory-adapter";
 import { PostgresCloudLinkSessionRepository } from "@aether-cloud/cloudlink-postgres-adapter";
 import { InMemoryGatewayIdentityRepository } from "@aether-cloud/fleet-memory-adapter";
 import {
+  InMemoryIntegrationProjectionRepository,
+  NodeIntegrationPayloadDigestor,
+} from "@aether-cloud/integration-projection-memory-adapter";
+import { PostgresIntegrationProjectionRepository } from "@aether-cloud/integration-projection-postgres-adapter";
+import {
   PostgresAuditEventRepository,
   type PostgresAuditPool,
 } from "@aether-cloud/audit-postgres-adapter";
 import {
+  assertPostgresConnectionString,
   NodePostgresPool,
   PostgresGatewayIdentityRepository,
 } from "@aether-cloud/fleet-postgres-adapter";
 import { parseUtcInstant } from "@aether-cloud/domain";
 import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
+import type {
+  IntegrationProjectionCatalog,
+  IntegrationProjectionRepository,
+} from "@aether-cloud/application";
 
 import { buildApp } from "./app.js";
 import {
@@ -60,6 +72,9 @@ export interface ApiRuntimeFactories {
     configuration: PostgresPoolConfiguration,
   ) => ClosablePostgresPool;
   readonly cloudLinkHealthPostgresPoolFactory?: (
+    configuration: PostgresPoolConfiguration,
+  ) => ClosablePostgresPool;
+  readonly integrationProjectionPostgresPoolFactory?: (
     configuration: PostgresPoolConfiguration,
   ) => ClosablePostgresPool;
 }
@@ -152,80 +167,28 @@ function allowedOrigins(
   return Object.freeze([...unique]);
 }
 
-function postgresConnectionString(environment: NodeJS.ProcessEnv): string {
-  const input = environment.AETHER_CLOUD_POSTGRES_URL;
-  if (input === undefined || input.length === 0) {
-    throw new Error(
-      "AETHER_CLOUD_POSTGRES_URL is required when AETHER_CLOUD_AUDIT_STORE=postgres",
-    );
-  }
-  let parsed: URL;
-  try {
-    parsed = new URL(input);
-  } catch {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must be a PostgreSQL URL");
-  }
-  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must be a PostgreSQL URL");
-  }
-  const username = decodeURIComponent(parsed.username);
-  if (
-    username !== "aethercloud_app" &&
-    !username.startsWith("aethercloud_app.")
-  ) {
-    throw new Error(
-      "AETHER_CLOUD_POSTGRES_URL must use the dedicated non-owner application role",
-    );
-  }
-  if (parsed.password.length === 0) {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must include a password");
-  }
-  if (parsed.searchParams.get("sslmode") !== "verify-full") {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must use verify-full TLS");
-  }
-  return input;
+function postgresConnectionString(
+  environment: NodeJS.ProcessEnv,
+  requiredWhen: string,
+): string {
+  return assertPostgresConnectionString(environment.AETHER_CLOUD_POSTGRES_URL, {
+    variable: "AETHER_CLOUD_POSTGRES_URL",
+    roleName: "aethercloud_app",
+    requiredWhen,
+  });
 }
 
 function cloudLinkHealthConnectionString(
   environment: NodeJS.ProcessEnv,
 ): string {
-  const input = environment.AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL;
-  if (input === undefined || input.length === 0) {
-    throw new Error(
-      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL is required when the CloudLink health worker is enabled",
-    );
-  }
-  let parsed: URL;
-  try {
-    parsed = new URL(input);
-  } catch {
-    throw new Error(
-      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must be a PostgreSQL URL",
-    );
-  }
-  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
-    throw new Error(
-      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must be a PostgreSQL URL",
-    );
-  }
-  const username = decodeURIComponent(parsed.username);
-  if (
-    username !== "aethercloud_cloudlink_health_worker" &&
-    !username.startsWith("aethercloud_cloudlink_health_worker.")
-  ) {
-    throw new Error(
-      "CloudLink health must use its isolated non-owner worker role",
-    );
-  }
-  if (
-    parsed.password.length === 0 ||
-    parsed.searchParams.get("sslmode") !== "verify-full"
-  ) {
-    throw new Error(
-      "CloudLink health PostgreSQL must include a password and use verify-full TLS",
-    );
-  }
-  return input;
+  return assertPostgresConnectionString(
+    environment.AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL,
+    {
+      variable: "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL",
+      roleName: "aethercloud_cloudlink_health_worker",
+      requiredWhen: "the CloudLink health worker is enabled",
+    },
+  );
 }
 
 function positiveInteger(
@@ -259,7 +222,10 @@ function auditRepository(
     throw new Error("AETHER_CLOUD_AUDIT_STORE must be memory or postgres");
   }
   const configuration: PostgresPoolConfiguration = {
-    connectionString: postgresConnectionString(environment),
+    connectionString: postgresConnectionString(
+      environment,
+      "AETHER_CLOUD_AUDIT_STORE=postgres",
+    ),
     max: 5,
     connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 30_000,
@@ -270,6 +236,48 @@ function auditRepository(
     NodePostgresPool.fromConfig(configuration);
   return {
     repository: new PostgresAuditEventRepository(pool),
+    pool,
+  };
+}
+
+/**
+ * The read-only projection surface reads as `aethercloud_app` through
+ * `AETHER_CLOUD_POSTGRES_URL`. CloudLink ingress writes the same tables as
+ * `aethercloud_cloudlink_ingress` through its own variable, so the two
+ * processes never share a role or a connection string.
+ */
+function integrationProjectionStore(
+  environment: NodeJS.ProcessEnv,
+  factories: ApiRuntimeFactories,
+): Readonly<{
+  repository: IntegrationProjectionRepository & IntegrationProjectionCatalog;
+  pool?: ClosablePostgresPool;
+}> {
+  const mode =
+    environment.AETHER_CLOUD_INTEGRATION_PROJECTION_STORE ?? "memory";
+  if (mode === "memory") {
+    return { repository: new InMemoryIntegrationProjectionRepository() };
+  }
+  if (mode !== "postgres") {
+    throw new Error(
+      "AETHER_CLOUD_INTEGRATION_PROJECTION_STORE must be memory or postgres",
+    );
+  }
+  const configuration: PostgresPoolConfiguration = {
+    connectionString: postgresConnectionString(
+      environment,
+      "AETHER_CLOUD_INTEGRATION_PROJECTION_STORE=postgres",
+    ),
+    max: 5,
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 5_000,
+  };
+  const pool =
+    factories.integrationProjectionPostgresPoolFactory?.(configuration) ??
+    NodePostgresPool.fromConfig(configuration);
+  return {
+    repository: new PostgresIntegrationProjectionRepository(pool),
     pool,
   };
 }
@@ -343,6 +351,7 @@ export function composeApiRuntime(
     now: () => parseUtcInstant(new Date().toISOString()),
   };
   const enrollmentTokens = new NodeEnrollmentTokenService();
+  const projections = integrationProjectionStore(environment, factories);
   const cloudLinkHealth = cloudLinkHealthWorker(environment, factories, clock);
   const identity = authenticator(environment);
   const origins = allowedOrigins(environment);
@@ -373,6 +382,18 @@ export function composeApiRuntime(
       claimRateLimiter: new FixedWindowEnrollmentClaimRateLimiter(),
       authenticator: identity,
     },
+    integrations: {
+      list: new ListIntegrationProjections({
+        catalog: projections.repository,
+        clock,
+      }),
+      get: new GetIntegrationProjection({
+        repository: projections.repository,
+        digestor: new NodeIntegrationPayloadDigestor(),
+        clock,
+      }),
+      authenticator: identity,
+    },
   });
   let closePromise: Promise<void> | undefined;
   return {
@@ -381,7 +402,11 @@ export function composeApiRuntime(
       closePromise ??= (async () => {
         await app.close();
         await cloudLinkHealth.scheduler?.close();
-        await Promise.all([audit.pool?.end(), cloudLinkHealth.pool?.end()]);
+        await Promise.all([
+          audit.pool?.end(),
+          cloudLinkHealth.pool?.end(),
+          projections.pool?.end(),
+        ]);
       })();
       return closePromise;
     },

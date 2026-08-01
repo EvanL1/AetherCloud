@@ -383,6 +383,446 @@ export function decodeFleetListResponse(input: unknown): FleetListResponse {
   });
 }
 
+export type IntegrationPointKind = "event" | "status" | "telemetry";
+
+export type IntegrationValueType =
+  | "boolean"
+  | "bytes"
+  | "decimal"
+  | "float64"
+  | "int64"
+  | "string"
+  | "uint64";
+
+export type IntegrationObservationQuality =
+  | "bad"
+  | "good"
+  | "uncertain"
+  | "unavailable";
+
+export interface IntegrationCatalogItemView {
+  readonly gatewayId: string;
+  readonly integrationId: string;
+  readonly integrationKind: string;
+  readonly snapshotGeneration: string;
+  readonly entityCount: number;
+  readonly latestObservationCount: number;
+  readonly receivedAt: string;
+  readonly revision: number;
+}
+
+export interface IntegrationCatalogResponse {
+  readonly authority: "edge-reported-copy";
+  readonly liveStateAuthoritative: false;
+  readonly items: readonly IntegrationCatalogItemView[];
+  readonly nextCursor?: string;
+}
+
+export interface IntegrationAreaView {
+  readonly areaId: string;
+  readonly name: string;
+}
+
+export interface IntegrationDeviceView {
+  readonly deviceId: string;
+  readonly name: string;
+  readonly areaId?: string;
+  readonly manufacturer?: string;
+  readonly model?: string;
+  readonly softwareVersion?: string;
+  readonly hardwareVersion?: string;
+}
+
+export interface IntegrationPointView {
+  readonly pointKey: string;
+  readonly title: string;
+  readonly kind: IntegrationPointKind;
+  readonly valueType: IntegrationValueType;
+  readonly unit?: string;
+}
+
+export interface IntegrationEntityView {
+  readonly entityId: string;
+  readonly sourceAddress: string;
+  readonly name: string;
+  readonly entityKind: string;
+  readonly deviceId?: string;
+  readonly areaId?: string;
+  readonly points: readonly IntegrationPointView[];
+}
+
+export interface IntegrationTopologyView {
+  readonly schema: string;
+  readonly integrationId: string;
+  readonly integrationKind: string;
+  readonly snapshotGeneration: string;
+  readonly observedAtMs: string;
+  readonly areas: readonly IntegrationAreaView[];
+  readonly devices: readonly IntegrationDeviceView[];
+  readonly entities: readonly IntegrationEntityView[];
+}
+
+export interface IntegrationObservedValueView {
+  readonly type: IntegrationValueType;
+  readonly value: boolean | number | string;
+  readonly encoding?: "base64url";
+}
+
+export interface IntegrationObservationView {
+  readonly entityId: string;
+  readonly pointKey: string;
+  readonly observedAtMs: string;
+  readonly quality: IntegrationObservationQuality;
+  readonly value?: IntegrationObservedValueView;
+  readonly diagnostic?: string;
+}
+
+export interface IntegrationProjectionView {
+  readonly authority: "edge-reported-copy";
+  readonly liveStateAuthoritative: false;
+  readonly tenantId: string;
+  readonly projectId: string;
+  readonly gatewayId: string;
+  readonly integrationId: string;
+  readonly topology: IntegrationTopologyView;
+  readonly topologyDigest: string;
+  readonly latestObservations: readonly IntegrationObservationView[];
+  readonly receivedAt: string;
+  readonly revision: number;
+}
+
+export interface IntegrationCatalogInput {
+  readonly limit: number;
+  readonly gatewayId?: string;
+  readonly cursor?: string;
+}
+
+function integrationFailure(): never {
+  throw new Error("invalid Integration response");
+}
+
+function integrationRecord(input: unknown): Readonly<Record<string, unknown>> {
+  return isRecord(input) ? input : integrationFailure();
+}
+
+function integrationString(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string {
+  const value = input[field];
+  if (typeof value !== "string" || value.length === 0)
+    return integrationFailure();
+  return value;
+}
+
+function optionalIntegrationString(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string | undefined {
+  const value = input[field];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0)
+    return integrationFailure();
+  return value;
+}
+
+function integrationUnsigned64(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string {
+  const value = integrationString(input, field);
+  return /^(?:0|[1-9][0-9]*)$/.test(value) ? value : integrationFailure();
+}
+
+function integrationInstant(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): string {
+  const value = integrationString(input, field);
+  return Number.isNaN(Date.parse(value)) ? integrationFailure() : value;
+}
+
+function integrationCount(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): number {
+  const value = input[field];
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
+    return integrationFailure();
+  return value;
+}
+
+function integrationRevision(input: Readonly<Record<string, unknown>>): number {
+  const value = input.revision;
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1)
+    return integrationFailure();
+  return value;
+}
+
+/**
+ * The API pins `authority` and `liveStateAuthoritative` as schema constants so
+ * the read-only claim cannot drift. A response that does not carry both is not
+ * an Integration projection and never reaches the console.
+ */
+function requireEdgeReportedCopy(
+  input: Readonly<Record<string, unknown>>,
+): void {
+  if (
+    input.authority !== "edge-reported-copy" ||
+    input.liveStateAuthoritative !== false
+  ) {
+    integrationFailure();
+  }
+}
+
+function integrationArray(
+  input: Readonly<Record<string, unknown>>,
+  field: string,
+): readonly unknown[] {
+  const value = input[field];
+  return Array.isArray(value) ? value : integrationFailure();
+}
+
+function decodeIntegrationCatalogItem(
+  input: unknown,
+): IntegrationCatalogItemView {
+  const item = integrationRecord(input);
+  return {
+    gatewayId: integrationString(item, "gatewayId"),
+    integrationId: integrationString(item, "integrationId"),
+    integrationKind: integrationString(item, "integrationKind"),
+    snapshotGeneration: integrationUnsigned64(item, "snapshotGeneration"),
+    entityCount: integrationCount(item, "entityCount"),
+    latestObservationCount: integrationCount(item, "latestObservationCount"),
+    receivedAt: integrationInstant(item, "receivedAt"),
+    revision: integrationRevision(item),
+  };
+}
+
+export function decodeIntegrationCatalogResponse(
+  input: unknown,
+): IntegrationCatalogResponse {
+  const response = integrationRecord(input);
+  requireEdgeReportedCopy(response);
+  const items = integrationArray(response, "items");
+  const nextCursor = optionalIntegrationString(response, "nextCursor");
+  return Object.freeze({
+    authority: "edge-reported-copy" as const,
+    liveStateAuthoritative: false as const,
+    items: Object.freeze(
+      items.map((item) => decodeIntegrationCatalogItem(item)),
+    ),
+    ...(nextCursor === undefined ? {} : { nextCursor }),
+  });
+}
+
+function decodeIntegrationArea(input: unknown): IntegrationAreaView {
+  const area = integrationRecord(input);
+  return {
+    areaId: integrationString(area, "areaId"),
+    name: integrationString(area, "name"),
+  };
+}
+
+function decodeIntegrationDevice(input: unknown): IntegrationDeviceView {
+  const device = integrationRecord(input);
+  const areaId = optionalIntegrationString(device, "areaId");
+  const manufacturer = optionalIntegrationString(device, "manufacturer");
+  const model = optionalIntegrationString(device, "model");
+  const softwareVersion = optionalIntegrationString(device, "softwareVersion");
+  const hardwareVersion = optionalIntegrationString(device, "hardwareVersion");
+  return {
+    deviceId: integrationString(device, "deviceId"),
+    name: integrationString(device, "name"),
+    ...(areaId === undefined ? {} : { areaId }),
+    ...(manufacturer === undefined ? {} : { manufacturer }),
+    ...(model === undefined ? {} : { model }),
+    ...(softwareVersion === undefined ? {} : { softwareVersion }),
+    ...(hardwareVersion === undefined ? {} : { hardwareVersion }),
+  };
+}
+
+function decodeIntegrationValueType(input: unknown): IntegrationValueType {
+  if (
+    input === "boolean" ||
+    input === "bytes" ||
+    input === "decimal" ||
+    input === "float64" ||
+    input === "int64" ||
+    input === "string" ||
+    input === "uint64"
+  ) {
+    return input;
+  }
+  return integrationFailure();
+}
+
+function decodeIntegrationPoint(input: unknown): IntegrationPointView {
+  const point = integrationRecord(input);
+  const kind = point.kind;
+  if (kind !== "event" && kind !== "status" && kind !== "telemetry")
+    return integrationFailure();
+  const unit = optionalIntegrationString(point, "unit");
+  return {
+    pointKey: integrationString(point, "pointKey"),
+    title: integrationString(point, "title"),
+    kind,
+    valueType: decodeIntegrationValueType(point.valueType),
+    ...(unit === undefined ? {} : { unit }),
+  };
+}
+
+function decodeIntegrationEntity(input: unknown): IntegrationEntityView {
+  const entity = integrationRecord(input);
+  const deviceId = optionalIntegrationString(entity, "deviceId");
+  const areaId = optionalIntegrationString(entity, "areaId");
+  return {
+    entityId: integrationString(entity, "entityId"),
+    sourceAddress: integrationString(entity, "sourceAddress"),
+    name: integrationString(entity, "name"),
+    entityKind: integrationString(entity, "entityKind"),
+    ...(deviceId === undefined ? {} : { deviceId }),
+    ...(areaId === undefined ? {} : { areaId }),
+    points: Object.freeze(
+      integrationArray(entity, "points").map((point) =>
+        decodeIntegrationPoint(point),
+      ),
+    ),
+  };
+}
+
+function decodeIntegrationTopology(input: unknown): IntegrationTopologyView {
+  const topology = integrationRecord(input);
+  return {
+    schema: integrationString(topology, "schema"),
+    integrationId: integrationString(topology, "integrationId"),
+    integrationKind: integrationString(topology, "integrationKind"),
+    snapshotGeneration: integrationUnsigned64(topology, "snapshotGeneration"),
+    observedAtMs: integrationUnsigned64(topology, "observedAtMs"),
+    areas: Object.freeze(
+      integrationArray(topology, "areas").map((area) =>
+        decodeIntegrationArea(area),
+      ),
+    ),
+    devices: Object.freeze(
+      integrationArray(topology, "devices").map((device) =>
+        decodeIntegrationDevice(device),
+      ),
+    ),
+    entities: Object.freeze(
+      integrationArray(topology, "entities").map((entity) =>
+        decodeIntegrationEntity(entity),
+      ),
+    ),
+  };
+}
+
+/**
+ * `int64`, `uint64` and `decimal` observations stay textual so a protocol
+ * integer never passes through a JavaScript number.
+ */
+function decodeIntegrationObservedValue(
+  input: unknown,
+): IntegrationObservedValueView {
+  const observed = integrationRecord(input);
+  const type = decodeIntegrationValueType(observed.type);
+  const value = observed.value;
+  if (type === "boolean") {
+    if (typeof value !== "boolean") return integrationFailure();
+    return { type, value };
+  }
+  if (type === "float64") {
+    if (typeof value !== "number" || !Number.isFinite(value))
+      return integrationFailure();
+    return { type, value };
+  }
+  if (typeof value !== "string") return integrationFailure();
+  if (type === "bytes") {
+    if (observed.encoding !== "base64url") return integrationFailure();
+    return { type, value, encoding: "base64url" };
+  }
+  return { type, value };
+}
+
+function decodeIntegrationObservation(
+  input: unknown,
+): IntegrationObservationView {
+  const observation = integrationRecord(input);
+  const quality = observation.quality;
+  if (
+    quality !== "bad" &&
+    quality !== "good" &&
+    quality !== "uncertain" &&
+    quality !== "unavailable"
+  ) {
+    return integrationFailure();
+  }
+  const rawValue = observation.value;
+  const value =
+    rawValue === undefined
+      ? undefined
+      : decodeIntegrationObservedValue(rawValue);
+  const diagnostic = optionalIntegrationString(observation, "diagnostic");
+  return {
+    entityId: integrationString(observation, "entityId"),
+    pointKey: integrationString(observation, "pointKey"),
+    observedAtMs: integrationUnsigned64(observation, "observedAtMs"),
+    quality,
+    ...(value === undefined ? {} : { value }),
+    ...(diagnostic === undefined ? {} : { diagnostic }),
+  };
+}
+
+export function decodeIntegrationProjectionResponse(
+  input: unknown,
+): IntegrationProjectionView {
+  const response = integrationRecord(input);
+  requireEdgeReportedCopy(response);
+  const topologyDigest = integrationString(response, "topologyDigest");
+  if (!/^[0-9a-f]{64}$/.test(topologyDigest)) return integrationFailure();
+  return Object.freeze({
+    authority: "edge-reported-copy" as const,
+    liveStateAuthoritative: false as const,
+    tenantId: integrationString(response, "tenantId"),
+    projectId: integrationString(response, "projectId"),
+    gatewayId: integrationString(response, "gatewayId"),
+    integrationId: integrationString(response, "integrationId"),
+    topology: decodeIntegrationTopology(response.topology),
+    topologyDigest,
+    latestObservations: Object.freeze(
+      integrationArray(response, "latestObservations").map((observation) =>
+        decodeIntegrationObservation(observation),
+      ),
+    ),
+    receivedAt: integrationInstant(response, "receivedAt"),
+    revision: integrationRevision(response),
+  });
+}
+
+export function buildIntegrationCatalogUrl(
+  apiBaseUrl: string,
+  input: IntegrationCatalogInput,
+): URL {
+  const url = new URL("/api/v1/integrations", apiBaseUrl);
+  url.searchParams.set("limit", String(input.limit));
+  if (input.gatewayId !== undefined && input.gatewayId.length > 0)
+    url.searchParams.set("gatewayId", input.gatewayId);
+  if (input.cursor !== undefined && input.cursor.length > 0)
+    url.searchParams.set("cursor", input.cursor);
+  return url;
+}
+
+export function buildIntegrationProjectionUrl(
+  apiBaseUrl: string,
+  gatewayId: string,
+  integrationId: string,
+): URL {
+  return new URL(
+    `/api/v1/integrations/${encodeURIComponent(gatewayId)}/${encodeURIComponent(integrationId)}`,
+    apiBaseUrl,
+  );
+}
+
 export function buildFleetListUrl(apiBaseUrl: string, limit: number): URL {
   const url = new URL("/api/v1/fleet/gateways", apiBaseUrl);
   url.searchParams.set("limit", String(limit));
@@ -505,6 +945,41 @@ export class AetherCloudApiClient {
     if (!response.ok)
       throw new Error(`Audit API returned ${String(response.status)}`);
     return decodeAuditSearchResponse(await response.json());
+  }
+
+  async listIntegrationProjections(
+    accessToken: string,
+    input: IntegrationCatalogInput,
+    signal?: AbortSignal,
+  ): Promise<IntegrationCatalogResponse> {
+    const response = await fetch(
+      buildIntegrationCatalogUrl(this.#apiBaseUrl, input),
+      {
+        headers: { authorization: `Bearer ${accessToken}` },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Integration API returned ${String(response.status)}`);
+    return decodeIntegrationCatalogResponse(await response.json());
+  }
+
+  async getIntegrationProjection(
+    accessToken: string,
+    gatewayId: string,
+    integrationId: string,
+    signal?: AbortSignal,
+  ): Promise<IntegrationProjectionView> {
+    const response = await fetch(
+      buildIntegrationProjectionUrl(this.#apiBaseUrl, gatewayId, integrationId),
+      {
+        headers: { authorization: `Bearer ${accessToken}` },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Integration API returned ${String(response.status)}`);
+    return decodeIntegrationProjectionResponse(await response.json());
   }
 
   async health(signal?: AbortSignal): Promise<boolean> {

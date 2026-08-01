@@ -1,18 +1,20 @@
 ---
 title: HTTP API reference
 description: Call the implemented HTTP endpoints and distinguish them from planned versioned APIs
-updated: 2026-07-30
+updated: 2026-08-01
 status: implemented
 ---
 
 # HTTP API reference
 
 The API exposes two public metadata routes, five authenticated Fleet routes,
-one token-authorized AetherEdge Claim route, and two authenticated Audit query
-routes. Telemetry is currently
+one token-authorized AetherEdge Claim route, two authenticated Audit query
+routes, and two authenticated read-only Integration projection routes.
+Telemetry is currently
 visible only as the latest per-Gateway Fleet projection; standalone history,
 provider discovery, deployment, webhook/export, and MCP routes remain
-unexposed. The implemented `DiscoverProviderRegions` application query is
+unexposed. No route creates, changes, or cancels an Integration device command;
+the governed control path has no HTTP surface. The implemented `DiscoverProviderRegions` application query is
 intentionally not an HTTP contract until authentication, tenant context, and
 runtime decoding are composed around it.
 
@@ -166,6 +168,118 @@ This route is a finite resumable snapshot ending with a `snapshot-complete`
 comment. It is not a durable live subscription and does not prove that a
 notification worker or broker exists.
 
+## `GET /api/v1/integrations`
+
+Lists the Integration projections held for the Tenant and Project resolved from
+the authenticated subject. The request cannot supply Tenant scope. It requires
+`integration.projection.read`.
+
+The only accepted query fields are `cursor`, `gatewayId`, and `limit`; any other
+field returns `400 invalid-input` instead of being ignored. `limit` is an integer
+from 1 to 100 and defaults to 50. `gatewayId` restricts the page to one Gateway.
+`cursor` is the opaque `nextCursor` token from the previous page; it encodes the
+Gateway filter it was issued under, so replaying it with a different `gatewayId`
+is rejected rather than silently repaged.
+
+Response status is `200 OK`:
+
+```json
+{
+  "authority": "edge-reported-copy",
+  "liveStateAuthoritative": false,
+  "items": [
+    {
+      "gatewayId": "33333333-3333-4333-8333-333333333333",
+      "integrationId": "example-integration-id",
+      "integrationKind": "home-assistant",
+      "snapshotGeneration": "7",
+      "entityCount": 24,
+      "latestObservationCount": 24,
+      "receivedAt": "2026-07-31T09:15:04.000Z",
+      "revision": 3
+    }
+  ],
+  "nextCursor": "example-opaque-page-token"
+}
+```
+
+`nextCursor` appears only when a further page exists. Unlike the Audit routes it
+is omitted rather than returned as `null`. `snapshotGeneration` is a protocol
+`int64` and stays a canonical decimal string.
+
+Typed failures are `400 invalid-input`, `401 unauthenticated`,
+`403 permission-denied`, and `503 integration-storage-unavailable` or
+`503 invalid-integration-repository-result`.
+
+## `GET /api/v1/integrations/:gatewayId/:integrationId`
+
+Returns one Integration projection under the same permission and Tenant
+boundary. It accepts no query fields. An unknown or out-of-scope identity
+returns the same typed `404 integration-projection-not-found` result, so the
+route does not disclose whether a projection exists in another Tenant.
+
+The success body carries the same two authority constants, the resolved
+`tenantId`, `projectId`, `gatewayId`, and `integrationId`, the reported
+`topology`, its `topologyDigest`, `latestObservations`, `receivedAt`, and
+`revision`. `topology` contains the snapshot `schema`, `integrationKind`,
+`snapshotGeneration`, `observedAtMs`, and the reported `areas`, `devices`, and
+`entities`; each entity carries its `points` with kind, value type, and optional
+unit. Each observation carries `entityId`, `pointKey`, `observedAtMs`,
+`quality`, an optional typed `value`, and an optional bounded `diagnostic`.
+`snapshotGeneration` and `observedAtMs` are protocol `int64` values and remain
+canonical decimal strings.
+
+`topologyDigest` is lowercase hexadecimal SHA-256 of the stored topology. The
+query recomputes it on every read and returns
+`503 invalid-integration-repository-result` when the stored digest and the
+recomputed digest disagree, rather than serving a topology it cannot vouch for.
+
+No response field carries a Home Assistant address, access token, or any other
+provider credential. The application layer does not return them and the
+response schema has no place to put them.
+
+Typed failures are `400 invalid-input`, `401 unauthenticated`,
+`403 permission-denied`, `404 integration-projection-not-found`, and
+`503 integration-storage-unavailable` or
+`503 invalid-integration-repository-result`.
+
+## What an Integration projection is evidence of
+
+Both routes pin `authority` to `"edge-reported-copy"` and
+`liveStateAuthoritative` to `false` as schema constants. They are not
+descriptive prose that a later release may quietly drop, so a client may branch
+on them.
+
+They mean what they say. The payload is what an edge runtime reported to
+AetherCloud, not live device state read at request time. AetherCloud never opens
+an edge connection to answer these routes. `receivedAt` is freshness evidence
+about the report, not proof that the physical device is currently in the
+reported state, and a recent `receivedAt` does not make the data live. Render it
+as a relative age rather than as a bare timestamp; a bare timestamp reads as
+current state. The edge runtime remains authoritative for live point state and
+physical control.
+
+## Reading the Integration projection requires the shared PostgreSQL store
+
+`AETHER_CLOUD_INTEGRATION_PROJECTION_STORE` selects `memory` or `postgres` and
+defaults to `memory` in both the API and the CloudLink ingress.
+
+In `memory` mode the API's projection repository is a separate in-process
+instance from the CloudLink ingress's. The two are different processes, so the
+API cannot observe anything the ingress received and both routes answer as
+though no projection exists: the catalog is empty and every detail request
+returns `404 integration-projection-not-found`. That is configuration, not a
+defect, and it is the first thing to check when the catalog looks broken.
+
+The two processes share data only when both set
+`AETHER_CLOUD_INTEGRATION_PROJECTION_STORE=postgres` against the same database.
+They still never share a role or a connection string: the API reads as
+`aethercloud_app` through `AETHER_CLOUD_POSTGRES_URL`, and the ingress writes as
+the narrower `aethercloud_cloudlink_ingress` through
+`AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL`. See
+[CloudLink ingress deployment](cloudlink-ingress-deployment.md) for the ingress
+side, including the fact that its only authentication is your Broker ACL.
+
 ## Error shape
 
 Versioned application APIs use a stable envelope containing a code,
@@ -181,8 +295,9 @@ human-readable message, and correlation identity:
 }
 ```
 
-Fleet and Audit routes return typed `400 invalid-input`, `401 unauthenticated`,
-`403 permission-denied`, `404 gateway-not-found`, `409` idempotency/conflict,
+Fleet, Audit, and Integration projection routes return typed `400 invalid-input`,
+`401 unauthenticated`, `403 permission-denied`, `404 gateway-not-found` or
+`404 integration-projection-not-found`, `409` idempotency/conflict,
 `429 rate-limited`, or `503` storage failures as applicable and also emit `x-correlation-id`.
 PostgreSQL transport and row-decoding failures are sanitized into typed `503`
 outcomes.
@@ -190,8 +305,9 @@ outcomes.
 ## Authentication
 
 `/health` and `/api/v1/platform` are intentionally public and contain no Tenant
-or infrastructure instances. Audit routes require `Authorization: Bearer
-<token>`. Railway production sets `AETHER_CLOUD_AUTH_MODE=supabase-jwt` and
+or infrastructure instances. Fleet, Audit, and Integration projection routes
+require `Authorization: Bearer <token>`; the AetherEdge Claim route uses the
+short-lived Enrollment Token instead of a user JWT. Railway production sets `AETHER_CLOUD_AUTH_MODE=supabase-jwt` and
 accepts only ES256 Supabase Auth access tokens with the configured HTTPS issuer,
 `authenticated` audience and role, valid lifetime, and a signature resolved
 through that issuer's JWKS. The API carries no Supabase secret or JWT signing

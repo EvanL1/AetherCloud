@@ -125,7 +125,7 @@
       "path": "docs/concepts/current-state-audit.md",
       "canonical_url": "https://github.com/EvanL1/AetherCloud/blob/main/docs/concepts/current-state-audit.md",
       "title": "Current implementation audit",
-      "description": "Distinguish executable AetherCloud layers, Broker evidence, and durable PostgreSQL CloudLink, telemetry, and Integration slices from missing production surfaces",
+      "description": "Distinguish executable AetherCloud layers, Broker evidence, the Broker-ACL-only CloudLink composition, and durable PostgreSQL slices from missing production surfaces",
       "locale": "en",
       "translation_of": null,
       "document_role": "status",
@@ -137,7 +137,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "internal",
-      "updated": "2026-07-30",
+      "updated": "2026-08-01",
       "priority": "core"
     },
     {
@@ -248,7 +248,7 @@
       "path": "docs/concepts/home-assistant-integration.md",
       "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/home-assistant-integration.md",
       "title": "Home Assistant integration",
-      "description": "Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, safety boundary, and remaining release gates",
+      "description": "Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, the Broker-ACL-only cloud ingress, safety boundary, and remaining release gates",
       "locale": "en",
       "translation_of": null,
       "document_role": "operations",
@@ -260,7 +260,7 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-17",
+      "updated": "2026-08-01",
       "priority": "core",
       "capability_refs": [
         "integration.topology.report",
@@ -276,8 +276,9 @@
       ],
       "missing_layers": [
         "published-contract-release",
-        "production-composition",
-        "public-agent-interface"
+        "public-agent-interface",
+        "gateway-authenticated-cloud-ingress",
+        "postgresql-runtime-manifest-repository"
       ],
       "recovery_route": "docs/recovery/integration-safe-degradation.md",
       "human_escalation": "required for identity conflicts, non-converging topology, or unsafe stale state"
@@ -287,7 +288,7 @@
       "path": "docs/zh-CN/concepts/home-assistant-integration.md",
       "canonical_url": "https://github.com/EvanL1/AetherCloud/blob/main/docs/zh-CN/concepts/home-assistant-integration.md",
       "title": "Home Assistant 集成",
-      "description": "了解由边缘端负责的 Home Assistant 数据链路、云端持久投影、安全边界和剩余发布门槛",
+      "description": "了解由边缘端负责的 Home Assistant 数据链路、云端持久投影、仅依赖消息代理访问控制的云端入口、安全边界和剩余发布门槛",
       "locale": "zh-CN",
       "translation_of": "home-assistant-integration",
       "document_role": "operations",
@@ -299,7 +300,7 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-17",
+      "updated": "2026-08-01",
       "priority": "optional",
       "capability_refs": [
         "integration.topology.report",
@@ -315,8 +316,9 @@
       ],
       "missing_layers": [
         "published-contract-release",
-        "production-composition",
-        "public-agent-interface"
+        "public-agent-interface",
+        "gateway-authenticated-cloud-ingress",
+        "postgresql-runtime-manifest-repository"
       ],
       "recovery_route": "docs/recovery/integration-safe-degradation.md",
       "human_escalation": "required for identity conflicts, non-converging topology, or unsafe stale state"
@@ -488,7 +490,7 @@
       "path": "docs/concepts/cloudlink-and-core-state-machines.md",
       "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/cloudlink-and-core-state-machines.md",
       "title": "CloudLink reliability and lifecycle",
-      "description": "Understand delivery, retries, acknowledgements, offline recovery, and current production limits",
+      "description": "Understand delivery, retries, acknowledgements, offline recovery, the restricted trusted-connector origin model, and current production limits",
       "locale": "en",
       "translation_of": null,
       "document_role": "operations",
@@ -496,12 +498,13 @@
       "intents": [
         "open-cloudlink-session",
         "resume-cloudlink-delivery",
-        "reconcile-cloudlink-state"
+        "reconcile-cloudlink-state",
+        "assess-cloudlink-authentication"
       ],
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "public",
-      "updated": "2026-07-30",
+      "updated": "2026-08-01",
       "priority": "core",
       "capability_refs": [
         "cloudlink.session.open",
@@ -516,12 +519,15 @@
         "postgresql-session-challenge-cursor",
         "postgresql-health-leases",
         "durable-health-audit-outbox",
-        "isolated-platform-worker-scheduler"
+        "isolated-platform-worker-scheduler",
+        "read-only-integration-composition-root"
       ],
       "missing_layers": [
         "active-credential-lifecycle",
-        "production-mqtt-composition",
-        "current-joint-aetheredge-conformance"
+        "current-joint-aetheredge-conformance",
+        "gateway-signed-mqtt-authentication",
+        "per-gateway-publisher-attestation",
+        "postgresql-runtime-manifest-repository"
       ],
       "recovery_route": "docs/recovery/cloudlink-offline-and-reconnect.md",
       "human_escalation": "required for identity conflicts, persistent gaps, or data-loss evidence"
@@ -748,17 +754,19 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-30",
+      "updated": "2026-08-01",
       "priority": "optional",
       "implemented_layers": [
         "fastify-http",
         "supabase-es256-jwks-authentication",
         "postgresql-audit-query",
         "postgresql-fleet-enrollment",
-        "aetheredge-claim-contract"
+        "aetheredge-claim-contract",
+        "read-only-integration-projection-routes"
       ],
       "missing_layers": [
         "tenant-membership-administration",
+        "integration-write-and-control-http",
         "remaining-http-capabilities"
       ]
     },
@@ -781,6 +789,49 @@
       "context_sensitivity": "public",
       "updated": "2026-07-30",
       "priority": "core"
+    },
+    {
+      "id": "cloudlink-ingress-deployment",
+      "path": "docs/reference/cloudlink-ingress-deployment.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/cloudlink-ingress-deployment.md",
+      "title": "CloudLink ingress deployment",
+      "description": "Deploy the read-only CloudLink MQTT ingress process, configure its environment, and understand that its authentication is your Broker ACL",
+      "locale": "en",
+      "translation_of": null,
+      "document_role": "operations",
+      "agent_profiles": ["coding-agent", "operator-agent"],
+      "intents": ["deploy-cloudlink-ingress", "configure-cloudlink-ingress"],
+      "implementation_status": "partial",
+      "production_readiness": "experimental",
+      "context_sensitivity": "redacted-only",
+      "updated": "2026-08-01",
+      "priority": "core",
+      "capability_refs": [
+        "cloudlink.session.open",
+        "cloudlink.session.heartbeat",
+        "fleet.runtime-manifest.report",
+        "integration.topology.report",
+        "integration.observations.report"
+      ],
+      "implemented_layers": [
+        "mqtt-uplink-ingress-composition",
+        "operator-configured-trusted-connector-credentials",
+        "operator-configured-broker-tls-trust",
+        "postgresql-integration-projection-store",
+        "railway-service-configuration"
+      ],
+      "missing_layers": [
+        "gateway-signed-session-authentication",
+        "broker-publisher-attestation",
+        "postgresql-runtime-manifest-repository",
+        "multi-instance-ingress-ownership"
+      ],
+      "preconditions": [
+        "per-Gateway Broker ACLs restrict each publisher to its own uplink topics",
+        "aethercloud_cloudlink_ingress has been granted LOGIN and a password out of band"
+      ],
+      "recovery_route": "docs/recovery/cloudlink-offline-and-reconnect.md",
+      "human_escalation": "required before exposing the ingress to a Broker whose publisher ACLs are unverified"
     },
     {
       "id": "cloudlink-mqtt-v1",
@@ -818,7 +869,7 @@
       "implementation_status": "implemented",
       "production_readiness": "not-applicable",
       "context_sensitivity": "internal",
-      "updated": "2026-07-29",
+      "updated": "2026-08-01",
       "priority": "optional"
     },
     {

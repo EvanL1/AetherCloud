@@ -25,7 +25,7 @@ const canonicalGatewaySignature = Buffer.alloc(64, 0xa5).toString("base64url");
 function fixture(name: string): Uint8Array {
   return readFileSync(
     new URL(
-      `../../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/integration-control/v1alpha1/${name}`,
+      `../../../../contracts/aether-contracts/v0.1.0-alpha.4/fixtures/integration-control/v1alpha1/${name}`,
       import.meta.url,
     ),
   );
