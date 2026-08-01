@@ -62,12 +62,33 @@ spec 正文。
    一个角色一个变量，与 health worker 的先例一致；共用变量名会让 Railway 的
    项目级共享变量静默打断其中一个 service。
 
-**教训（对 Task 3-8 有效）：** `tests/supabase-config.test.mjs` 只做迁移文本的
+**教训一（对 Task 3-8 有效）：** `tests/supabase-config.test.mjs` 只做迁移文本的
 模式匹配，从不执行 SQL；`pnpm test:postgres-integration` 默认跳过。因此
 **授权范围的错误不会被 `pnpm check` 发现**。凡是新增或修改 `GRANT` 的改动，
 必须另起一个真实 PostgreSQL 实例，把仓储实际发出的每一条 SQL 都以该角色跑一遍。
 `42501 permission denied` 表示授权仍缺；外键或检查约束错误（23503 等）表示权限
 检查已通过。只测"有代表性的一张表"不够——本次缺陷恰好落在唯一两张被收紧的表上。
+
+**教训二：源码正确不等于数据库正确。** Supabase 按版本号前缀在
+`supabase_migrations.schema_migrations` 里记录已应用的迁移，所以**原地编辑一个
+已经跑过的迁移文件，对该库是空操作**。修既有迁移必须同时补一条前向迁移
+（`GRANT` 幂等，对没跑过旧版本的库也安全）。本次 health worker 的
+`GRANT SELECT` 修复就踩了这个坑：所有测试和审查都显示"已修复"，
+但已部署的库不受影响。
+
+## Task 3 开始前要重新审视的事
+
+Task 2 的角色授权是按**当时** `apps/cloudlink` 的依赖范围定的，而当时
+`@aether-cloud/cloudlink-postgres-adapter` 还不是它的依赖——那五条
+`cloudlink_session*` 授权属于预置，仓库里没有任何东西真正跑到它们。
+
+Task 3 会把会话仓储接成 postgres 可选，届时这些授权才第一次被实际执行。
+另外 harness 用内存适配器承载 Runtime Manifest、用加密校验器（而非仓储）承载
+Gateway 凭据，这正是 `gateway_identities` 可以完全不授的原因；一旦 Task 3
+让其中任何一个变成持久化的，授权集合必须重新推导并重新用真库验证。
+
+新环境变量 `AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL` 目前只记录在本计划里。
+Task 4 建 `railway.cloudlink.json` 时要给它在 `docs/reference/` 下安个正式的家。
 
 ## File Structure
 
