@@ -77,7 +77,30 @@ describe("API runtime composition", () => {
         ...authenticatedEnvironment,
         AETHER_CLOUD_AUDIT_STORE: "postgres",
       }),
-    ).toThrow(/AETHER_CLOUD_POSTGRES_URL/);
+    ).toThrow(
+      "AETHER_CLOUD_POSTGRES_URL is required when AETHER_CLOUD_AUDIT_STORE=postgres",
+    );
+
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "postgres",
+        AETHER_CLOUD_POSTGRES_URL: "not a url",
+      }),
+    ).toThrow(
+      "AETHER_CLOUD_POSTGRES_URL must be a parseable PostgreSQL connection URL",
+    );
+
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "postgres",
+        AETHER_CLOUD_POSTGRES_URL:
+          "mysql://aethercloud_app:secret@database.example:5432/postgres?sslmode=verify-full",
+      }),
+    ).toThrow(
+      "AETHER_CLOUD_POSTGRES_URL must use the postgres: or postgresql: protocol",
+    );
 
     expect(() =>
       composeApiRuntime({
@@ -86,7 +109,9 @@ describe("API runtime composition", () => {
         AETHER_CLOUD_POSTGRES_URL:
           "postgresql://postgres:secret@database.example:5432/postgres?sslmode=verify-full",
       }),
-    ).toThrow(/dedicated non-owner application role/);
+    ).toThrow(
+      "AETHER_CLOUD_POSTGRES_URL must authenticate as the aethercloud_app role",
+    );
 
     expect(() =>
       composeApiRuntime({
@@ -95,7 +120,18 @@ describe("API runtime composition", () => {
         AETHER_CLOUD_POSTGRES_URL:
           "postgresql://aethercloud_app_owner:secret@database.example:5432/postgres?sslmode=verify-full",
       }),
-    ).toThrow(/dedicated non-owner application role/);
+    ).toThrow(
+      "AETHER_CLOUD_POSTGRES_URL must authenticate as the aethercloud_app role",
+    );
+
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "postgres",
+        AETHER_CLOUD_POSTGRES_URL:
+          "postgresql://aethercloud_app@database.example:5432/postgres?sslmode=verify-full",
+      }),
+    ).toThrow("AETHER_CLOUD_POSTGRES_URL must include a password");
 
     expect(() =>
       composeApiRuntime({
@@ -104,7 +140,7 @@ describe("API runtime composition", () => {
         AETHER_CLOUD_POSTGRES_URL:
           "postgresql://aethercloud_app:secret@database.example:5432/postgres?sslmode=require",
       }),
-    ).toThrow(/verify-full TLS/);
+    ).toThrow("AETHER_CLOUD_POSTGRES_URL must use verify-full TLS");
   });
 
   it("runs CloudLink health through an isolated worker role and closes its pool", async () => {
@@ -165,7 +201,9 @@ describe("API runtime composition", () => {
         AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL:
           "postgresql://aethercloud_app:secret@database.example:5432/postgres?sslmode=verify-full",
       }),
-    ).toThrow(/isolated non-owner worker role/);
+    ).toThrow(
+      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must authenticate as the aethercloud_cloudlink_health_worker role",
+    );
   });
 
   it("selects Supabase JWT authentication explicitly", async () => {

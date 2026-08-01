@@ -1,10 +1,12 @@
-import { NodePostgresPool } from "@aether-cloud/fleet-postgres-adapter";
+import {
+  assertPostgresConnectionString,
+  NodePostgresPool,
+} from "@aether-cloud/fleet-postgres-adapter";
 import { InMemoryIntegrationProjectionRepository } from "@aether-cloud/integration-projection-memory-adapter";
 import {
   PostgresIntegrationProjectionRepository,
   type PostgresIntegrationProjectionPool,
 } from "@aether-cloud/integration-projection-postgres-adapter";
-import { URL } from "node:url";
 
 import type {
   IntegrationProjectionCatalog,
@@ -19,7 +21,7 @@ export interface IntegrationProjectionPoolConfiguration {
   readonly statement_timeout: number;
 }
 
-interface ClosableProjectionPool extends PostgresIntegrationProjectionPool {
+export interface ClosableProjectionPool extends PostgresIntegrationProjectionPool {
   end(): Promise<void>;
 }
 
@@ -36,28 +38,11 @@ export interface IntegrationProjectionStore {
 }
 
 function connectionString(environment: NodeJS.ProcessEnv): string {
-  const input = environment.AETHER_CLOUD_POSTGRES_URL;
-  if (input === undefined || input.length === 0) {
-    throw new Error(
-      "AETHER_CLOUD_POSTGRES_URL is required when the projection store is postgres",
-    );
-  }
-  let parsed: URL;
-  try {
-    parsed = new URL(input);
-  } catch {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must be a PostgreSQL URL");
-  }
-  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must be a PostgreSQL URL");
-  }
-  if (parsed.password.length === 0) {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must include a password");
-  }
-  if (parsed.searchParams.get("sslmode") !== "verify-full") {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must use verify-full TLS");
-  }
-  return input;
+  return assertPostgresConnectionString(environment.AETHER_CLOUD_POSTGRES_URL, {
+    variable: "AETHER_CLOUD_POSTGRES_URL",
+    roleName: "aethercloud_cloudlink_ingress",
+    requiredWhen: "the projection store is postgres",
+  });
 }
 
 export function composeIntegrationProjectionStore(
@@ -83,7 +68,7 @@ export function composeIntegrationProjectionStore(
   };
   const pool =
     factories.postgresPoolFactory?.(configuration) ??
-    (NodePostgresPool.fromConfig(configuration) as ClosableProjectionPool);
+    NodePostgresPool.fromConfig(configuration);
   return {
     repository: new PostgresIntegrationProjectionRepository(pool),
     pool,

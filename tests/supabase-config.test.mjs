@@ -116,6 +116,31 @@ test("Supabase provisions an isolated CloudLink health worker role", async () =>
   assert.doesNotMatch(migration, /\bPASSWORD\b/);
 });
 
+test("Supabase provisions an isolated CloudLink ingress role", async () => {
+  const migration = await readFile(
+    new URL(
+      "supabase/migrations/20260728000900_cloudlink_ingress_role.sql",
+      root,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /CREATE ROLE aethercloud_cloudlink_ingress/);
+  assert.match(migration, /NOLOGIN/);
+  assert.match(migration, /NOBYPASSRLS/);
+  assert.match(
+    migration,
+    /GRANT SELECT, INSERT, UPDATE ON aethercloud\.cloudlink_sessions/,
+  );
+  assert.match(
+    migration,
+    /GRANT SELECT, INSERT, UPDATE ON aethercloud\.integration_projections/,
+  );
+  assert.doesNotMatch(migration, /aethercloud\.gateway_identities/);
+  assert.doesNotMatch(migration, /GRANT[^;]*DELETE/);
+  assert.doesNotMatch(migration, /\bPASSWORD\b/);
+});
+
 test("Supabase migration history follows the adapter-owned SQL in order", async () => {
   for (const [bindingPath, sourcePath] of migrationBindings) {
     const bindingUrl = new URL(bindingPath, root);

@@ -16,6 +16,7 @@ import {
   type PostgresAuditPool,
 } from "@aether-cloud/audit-postgres-adapter";
 import {
+  assertPostgresConnectionString,
   NodePostgresPool,
   PostgresGatewayIdentityRepository,
 } from "@aether-cloud/fleet-postgres-adapter";
@@ -153,79 +154,24 @@ function allowedOrigins(
 }
 
 function postgresConnectionString(environment: NodeJS.ProcessEnv): string {
-  const input = environment.AETHER_CLOUD_POSTGRES_URL;
-  if (input === undefined || input.length === 0) {
-    throw new Error(
-      "AETHER_CLOUD_POSTGRES_URL is required when AETHER_CLOUD_AUDIT_STORE=postgres",
-    );
-  }
-  let parsed: URL;
-  try {
-    parsed = new URL(input);
-  } catch {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must be a PostgreSQL URL");
-  }
-  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must be a PostgreSQL URL");
-  }
-  const username = decodeURIComponent(parsed.username);
-  if (
-    username !== "aethercloud_app" &&
-    !username.startsWith("aethercloud_app.")
-  ) {
-    throw new Error(
-      "AETHER_CLOUD_POSTGRES_URL must use the dedicated non-owner application role",
-    );
-  }
-  if (parsed.password.length === 0) {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must include a password");
-  }
-  if (parsed.searchParams.get("sslmode") !== "verify-full") {
-    throw new Error("AETHER_CLOUD_POSTGRES_URL must use verify-full TLS");
-  }
-  return input;
+  return assertPostgresConnectionString(environment.AETHER_CLOUD_POSTGRES_URL, {
+    variable: "AETHER_CLOUD_POSTGRES_URL",
+    roleName: "aethercloud_app",
+    requiredWhen: "AETHER_CLOUD_AUDIT_STORE=postgres",
+  });
 }
 
 function cloudLinkHealthConnectionString(
   environment: NodeJS.ProcessEnv,
 ): string {
-  const input = environment.AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL;
-  if (input === undefined || input.length === 0) {
-    throw new Error(
-      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL is required when the CloudLink health worker is enabled",
-    );
-  }
-  let parsed: URL;
-  try {
-    parsed = new URL(input);
-  } catch {
-    throw new Error(
-      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must be a PostgreSQL URL",
-    );
-  }
-  if (parsed.protocol !== "postgres:" && parsed.protocol !== "postgresql:") {
-    throw new Error(
-      "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL must be a PostgreSQL URL",
-    );
-  }
-  const username = decodeURIComponent(parsed.username);
-  if (
-    username !== "aethercloud_cloudlink_health_worker" &&
-    !username.startsWith("aethercloud_cloudlink_health_worker.")
-  ) {
-    throw new Error(
-      "CloudLink health must use its isolated non-owner worker role",
-    );
-  }
-  if (
-    parsed.password.length === 0 ||
-    parsed.searchParams.get("sslmode") !== "verify-full"
-  ) {
-    throw new Error(
-      "CloudLink health PostgreSQL must include a password and use verify-full TLS",
-    );
-  }
-  return input;
+  return assertPostgresConnectionString(
+    environment.AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL,
+    {
+      variable: "AETHER_CLOUD_CLOUDLINK_HEALTH_POSTGRES_URL",
+      roleName: "aethercloud_cloudlink_health_worker",
+      requiredWhen: "the CloudLink health worker is enabled",
+    },
+  );
 }
 
 function positiveInteger(
