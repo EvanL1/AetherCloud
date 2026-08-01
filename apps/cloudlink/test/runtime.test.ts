@@ -17,6 +17,7 @@ import type {
 } from "../src/index.js";
 import {
   composeCloudLinkRuntime,
+  rejectedTelemetryCommand,
   type CloudLinkRuntimeFactories,
 } from "../src/runtime.js";
 
@@ -69,6 +70,8 @@ class FakeTransport implements CloudLinkMqttDuplexTransport {
   handler: ((event: MqttInboundEvent) => void) | undefined;
   readonly publications: Array<{ topic: string; payload: Uint8Array }> = [];
   closed = false;
+  /** Set to hold `close()` open so a test can observe the draining window. */
+  closeGate: Promise<void> | undefined;
 
   subscribe(
     topics: readonly string[],
@@ -84,9 +87,9 @@ class FakeTransport implements CloudLinkMqttDuplexTransport {
     return Promise.resolve();
   }
 
-  close(): Promise<void> {
+  async close(): Promise<void> {
+    await this.closeGate;
     this.closed = true;
-    return Promise.resolve();
   }
 
   deliver(topic: string, payload: Uint8Array): void {
@@ -114,9 +117,11 @@ class FakeTransport implements CloudLinkMqttDuplexTransport {
 class FakeConnector implements CloudLinkMqttTransportConnector {
   readonly transport = new FakeTransport();
   input: unknown;
+  connections = 0;
 
   connect(input: unknown): Promise<CloudLinkMqttDuplexTransport> {
     this.input = input;
+    this.connections += 1;
     return Promise.resolve(this.transport);
   }
 }
@@ -361,7 +366,43 @@ describe("composeCloudLinkRuntime", () => {
     await expect(runtime.start()).rejects.toThrow(
       "CloudLink ingress is already running",
     );
+    expect(connector.connections).toBe(1);
     await runtime.close();
+  });
+
+  it("refuses to start again after close because the pool cannot reopen", async () => {
+    const connector = new FakeConnector();
+    const runtime = composeCloudLinkRuntime(environment(), { connector });
+
+    await runtime.start();
+    await runtime.close();
+    await expect(runtime.start()).rejects.toThrow(
+      "CloudLink ingress is closed",
+    );
+    expect(connector.connections).toBe(1);
+    expect(runtime.running).toBe(false);
+  });
+
+  it("keeps reporting running until the ingress has finished draining", async () => {
+    const connector = new FakeConnector();
+    let releaseClose = (): void => undefined;
+    connector.transport.closeGate = new Promise<void>((resolve) => {
+      releaseClose = (): void => {
+        resolve();
+      };
+    });
+    const runtime = composeCloudLinkRuntime(environment(), { connector });
+
+    await runtime.start();
+    const closing = runtime.close();
+    await Promise.resolve();
+    expect(runtime.running).toBe(true);
+    expect(connector.transport.closed).toBe(false);
+
+    releaseClose();
+    await closing;
+    expect(runtime.running).toBe(false);
+    expect(connector.transport.closed).toBe(true);
   });
 
   it("forwards optional Broker credentials without embedding them in the URL", async () => {
@@ -400,6 +441,7 @@ describe("composeCloudLinkRuntime", () => {
     });
 
     expect(runtime.projectionStoreMode).toBe("postgres");
+    await runtime.close();
     await runtime.close();
     expect(ended).toBe(1);
   });
@@ -626,15 +668,22 @@ describe("composeCloudLinkRuntime", () => {
       expect(transport.publications).toEqual([]);
     });
 
-    it("rejects telemetry instead of silently accepting it", async () => {
-      const source = await readFile(
-        new URL("../src/runtime.ts", import.meta.url),
-        "utf8",
-      );
-      expect(source).toContain(
-        "telemetry ingestion is not part of the read-only A0 composition",
-      );
+    // The MQTT bridge maps an explicit failure and a malformed success to the
+    // same `rejected` outcome, so the failure payload has to be pinned here.
+    // Asserting only that no acknowledgement was published would still pass if
+    // the command were flipped to return `{ ok: true, value: {} }`.
+    it("returns an explicit telemetry failure rather than an empty success", async () => {
+      await expect(rejectedTelemetryCommand.execute()).resolves.toEqual({
+        ok: false,
+        failure: {
+          code: "invalid-input",
+          message:
+            "telemetry ingestion is not part of the read-only A0 composition",
+        },
+      });
+    });
 
+    it("never acknowledges telemetry delivered on a live session", async () => {
       const { runtime, transport } = await startedRuntime();
       const session = await openSession(transport);
 

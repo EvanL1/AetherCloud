@@ -54,8 +54,12 @@ const canonicalUint64Pattern = /^(?:0|[1-9][0-9]*)$/;
 /**
  * A0 does not consume telemetry. A silent no-op would let a Gateway believe its
  * telemetry was accepted, so the composition rejects it explicitly instead.
+ *
+ * Exported so a test can pin the failure payload itself. The MQTT bridge maps
+ * both an explicit failure and a malformed success to `rejected`, so observing
+ * the outcome alone cannot tell an honest rejection from a silent acceptance.
  */
-const rejectedTelemetryCommand = {
+export const rejectedTelemetryCommand = {
   execute: () =>
     Promise.resolve({
       ok: false as const,
@@ -317,6 +321,12 @@ export function composeCloudLinkRuntime(
       return ingress !== undefined;
     },
     async start(): Promise<void> {
+      // A closed runtime has already ended its projection pool, which cannot be
+      // reopened. Refusing to restart states that plainly instead of silently
+      // opening a second Broker connection onto dead storage.
+      if (closePromise !== undefined) {
+        throw new Error("CloudLink ingress is closed");
+      }
       if (ingress !== undefined) {
         throw new Error("CloudLink ingress is already running");
       }
@@ -378,10 +388,11 @@ export function composeCloudLinkRuntime(
       });
     },
     close(): Promise<void> {
+      // `running` stays true until the ingress has actually drained, so the
+      // lifecycle never reports a stopped process while messages are in flight.
       closePromise ??= (async () => {
-        const running = ingress;
+        await ingress?.close();
         ingress = undefined;
-        await running?.close();
         await store.pool?.end();
       })();
       return closePromise;

@@ -125,7 +125,7 @@
       "path": "docs/concepts/current-state-audit.md",
       "canonical_url": "https://github.com/EvanL1/AetherCloud/blob/main/docs/concepts/current-state-audit.md",
       "title": "Current implementation audit",
-      "description": "Distinguish executable AetherCloud layers, Broker evidence, and durable PostgreSQL CloudLink, telemetry, and Integration slices from missing production surfaces",
+      "description": "Distinguish executable AetherCloud layers, Broker evidence, the Broker-ACL-only CloudLink composition, and durable PostgreSQL slices from missing production surfaces",
       "locale": "en",
       "translation_of": null,
       "document_role": "status",
@@ -137,7 +137,7 @@
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "internal",
-      "updated": "2026-07-30",
+      "updated": "2026-08-01",
       "priority": "core"
     },
     {
@@ -488,7 +488,7 @@
       "path": "docs/concepts/cloudlink-and-core-state-machines.md",
       "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/cloudlink-and-core-state-machines.md",
       "title": "CloudLink reliability and lifecycle",
-      "description": "Understand delivery, retries, acknowledgements, offline recovery, and current production limits",
+      "description": "Understand delivery, retries, acknowledgements, offline recovery, the restricted trusted-connector origin model, and current production limits",
       "locale": "en",
       "translation_of": null,
       "document_role": "operations",
@@ -496,12 +496,13 @@
       "intents": [
         "open-cloudlink-session",
         "resume-cloudlink-delivery",
-        "reconcile-cloudlink-state"
+        "reconcile-cloudlink-state",
+        "assess-cloudlink-authentication"
       ],
       "implementation_status": "partial",
       "production_readiness": "not-production-ready",
       "context_sensitivity": "public",
-      "updated": "2026-07-30",
+      "updated": "2026-08-01",
       "priority": "core",
       "capability_refs": [
         "cloudlink.session.open",
@@ -516,12 +517,15 @@
         "postgresql-session-challenge-cursor",
         "postgresql-health-leases",
         "durable-health-audit-outbox",
-        "isolated-platform-worker-scheduler"
+        "isolated-platform-worker-scheduler",
+        "read-only-integration-composition-root"
       ],
       "missing_layers": [
         "active-credential-lifecycle",
-        "production-mqtt-composition",
-        "current-joint-aetheredge-conformance"
+        "current-joint-aetheredge-conformance",
+        "gateway-signed-mqtt-authentication",
+        "per-gateway-publisher-attestation",
+        "postgresql-runtime-manifest-repository"
       ],
       "recovery_route": "docs/recovery/cloudlink-offline-and-reconnect.md",
       "human_escalation": "required for identity conflicts, persistent gaps, or data-loss evidence"

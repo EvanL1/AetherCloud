@@ -1,7 +1,7 @@
 ---
 title: CloudLink reliability and lifecycle
-description: Understand delivery, retries, acknowledgements, offline recovery, and current production limits
-updated: 2026-07-30
+description: Understand delivery, retries, acknowledgements, offline recovery, the restricted trusted-connector origin model, and current production limits
+updated: 2026-08-01
 status: mixed
 ---
 
@@ -20,6 +20,11 @@ real-Broker harness, fault injection, crash-durable persistence, and an
 explicit legacy cutover in that order. Transactional PostgreSQL Session,
 challenge, cursor, and heartbeat-health persistence now exists, but does not by
 itself prove end-to-end production authentication.
+
+A deployable read-only Integration composition root now exists, but it runs a
+restricted trusted-connector mode whose only authenticator is the Broker ACL.
+Read [Trusted connector origin model](#trusted-connector-origin-model-a0-read-only-composition)
+before deploying it; it is not Gateway authentication.
 
 ## CloudLink responsibility
 
@@ -76,8 +81,9 @@ fencing, lossless per-stream resume cursors, authenticated heartbeat, and a
 Tenant-scoped current-session query. The experimental MQTT layer adds strict
 wire decoding, topic/session binding, non-retained QoS-1 enforcement, an
 application bridge, and lifecycle composition. Multi-instance socket ownership,
-credit flow control, the complete durable inbox/outbox path, and production MQTT
-configuration remain planned.
+credit flow control, the complete durable inbox/outbox path, and production
+Gateway-signed MQTT authentication remain planned. The one composition root that
+exists today is the restricted read-only mode described below.
 
 The PostgreSQL adapter persists Session/challenge state, durable cursors and
 Gateway-signed heartbeat observations. A platform-authorized health reconciler
@@ -117,6 +123,59 @@ authenticating -> negotiating -> resuming -> active -> draining -> closed
 - Explicit credit/window flow control and bounded queues prevent a fast sender
   from exhausting process or Tenant resources.
 
+## Trusted connector origin model (A0 read-only composition)
+
+`apps/cloudlink/src/runtime.ts` is an executable composition root, but it runs a
+deliberately restricted mode. It enables only
+`aether.cloudlink.integration.v1alpha1`, never wires the governed control path,
+and never wires Gateway-signed challenge issue, Gateway-signed hello acceptance,
+or per-uplink Gateway signature verification. Those three dependencies stay
+absent because this repository has no production message-origin key source:
+every `resolvePublicKey` implementation lives in a test or a harness script, the
+only `GatewayCredentialVerifier` is the in-memory one, and
+`PostgresGatewayIdentityRepository` stores an enrollment claim fingerprint
+rather than an active signing credential.
+
+Sessions therefore open through the trusted connector branch. A `session-hello`
+whose `credential_binding.origin_model` is not `gateway-signed` is resolved
+against operator configuration: the composition looks up the wire-supplied
+Gateway ID, credential ID, and credential generation and returns the credential
+the operator bound to that Gateway out of band. The credential proof is a
+secret held only in cloud process configuration; it never crosses the wire, is
+never persisted by AetherCloud, and never enters a log line, an error message,
+or an audit payload.
+
+Read the following as written. It is not a caveat on an otherwise authenticated
+path; it describes the whole of the authentication in this mode.
+
+- **Authentication depends entirely on Broker-side per-Gateway ACLs.** If those
+  ACLs are not configured, there is effectively no authentication. The three
+  values that select a credential are non-secret identifiers taken from the
+  message itself, so any publisher that can reach
+  `{prefix}/v1/gateways/{gatewayId}/up/...` and knows them obtains a session.
+- **The ingress Broker login is not a per-Gateway ACL.** The optional ingress
+  Broker username and password authenticate _AetherCloud's own subscriber
+  connection_ to the Broker. They say nothing about which publishers may write a
+  Gateway's uplink topics. Nothing in this repository configures, enforces, or
+  verifies per-Gateway publisher ACLs, and the ingress starts successfully
+  whether or not the operator created them.
+- **No publisher attestation is consumed.** ADR-0014 decision 5 permits a
+  reviewed trusted connector or Broker-specific adapter to supply verified
+  publisher attestation out of band _for every publish_. This composition
+  consumes no attestation of any kind. It assumes the Broker ACL is correct and
+  has no way to detect that it is not. That gap is the difference between this
+  mode and the alternative ADR-0014 decision 5 describes.
+- **Scope.** This mode suits a small deployment where the operator owns the
+  Broker and can confirm publisher identity out of band, such as a single-home
+  Home Assistant installation. It is not Gateway authentication and must not be
+  described as such. It does not support multi-tenant or multi-Gateway scale,
+  and no claim of such support is warranted by this composition.
+
+Generic shared-Broker deployments still require the ordered Gateway-signed path:
+a Cloud-signed challenge, a Gateway establishment signature, and session-bound
+Gateway signatures on later uplinks. That path remains planned, and business
+uplinks presented as `gateway-signed` continue to fail closed here.
+
 ## Runtime Manifest report
 
 The implemented transport-neutral report command accepts the closed AetherEdge
@@ -138,6 +197,24 @@ capability projection backward. A capability report is compatibility evidence,
 not authorization to invoke an edge method. The experimental CloudLink MQTT
 report envelope is implemented. PostgreSQL projection, public query transport,
 durable audit, and outbox remain planned.
+
+`adapters/runtime` provides a memory repository only; no PostgreSQL Runtime
+Manifest adapter exists. The A0 CloudLink composition therefore holds accepted
+manifests in process memory, with a direct consequence for session restore:
+
+```text
+process restart -> manifest repository empty
+  -> RestoreGatewayRuntimeProtocols returns status "absent"
+  -> declared protocols empty
+  -> Integration topology and observation uplinks fail closed
+  -> Gateway re-reports its manifest -> uplinks resume
+```
+
+Failing closed is the correct direction; an undeclared Integration extension
+must not project data. Operators should expect that window after every restart
+or redeploy, and it is why the projection store selection also drives the
+session repository — durable projections must never be paired with sessions and
+manifests that vanish on restart.
 
 ## Artifact publication
 
