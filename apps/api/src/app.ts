@@ -133,7 +133,14 @@ const platformResponseSchema = {
 } as const;
 
 export function buildApp(options: BuildAppOptions): FastifyInstance {
-  const app = Fastify({ logger: false });
+  // `:integrationId` is the only non-UUID path parameter in this API, and the
+  // domain allows 128 characters. Fastify's default cap of 100 rejects longer
+  // ones in the router, before any route schema or error convention applies:
+  // the reply is a 414 whose `error` is a string rather than the documented
+  // `{code, message, correlationId}` object, and it carries no correlation
+  // header. That would let the catalog list a projection the detail route can
+  // never return.
+  const app = Fastify({ logger: false, maxParamLength: 128 });
 
   if (
     options.allowedOrigins !== undefined &&
