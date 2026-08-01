@@ -8,7 +8,6 @@ import {
 import { InMemoryIntegrationProjectionRepository } from "@aether-cloud/integration-projection-memory-adapter";
 import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -17,7 +16,7 @@ import type {
 } from "../src/index.js";
 import {
   composeCloudLinkRuntime,
-  rejectedTelemetryCommand,
+  unsupportedTelemetryCommand,
   type CloudLinkRuntimeFactories,
 } from "../src/runtime.js";
 
@@ -115,15 +114,40 @@ class FakeTransport implements CloudLinkMqttDuplexTransport {
 }
 
 class FakeConnector implements CloudLinkMqttTransportConnector {
-  readonly transport = new FakeTransport();
+  readonly transports: FakeTransport[] = [];
   input: unknown;
-  connections = 0;
+  /** Set to hold `connect()` open so a test can interleave `close()`. */
+  connectGate: Promise<void> | undefined;
 
-  connect(input: unknown): Promise<CloudLinkMqttDuplexTransport> {
-    this.input = input;
-    this.connections += 1;
-    return Promise.resolve(this.transport);
+  get transport(): FakeTransport {
+    const first = this.transports[0];
+    if (first === undefined) throw new Error("no transport was connected");
+    return first;
   }
+
+  get connections(): number {
+    return this.transports.length;
+  }
+
+  async connect(input: unknown): Promise<CloudLinkMqttDuplexTransport> {
+    this.input = input;
+    // Each connect returns its own transport so an orphaned second connection
+    // is visible instead of being masked by a shared instance.
+    const transport = new FakeTransport();
+    this.transports.push(transport);
+    await this.connectGate;
+    return transport;
+  }
+}
+
+function deferred(): Readonly<{ promise: Promise<void>; release: () => void }> {
+  let release = (): void => undefined;
+  const promise = new Promise<void>((resolve) => {
+    release = (): void => {
+      resolve();
+    };
+  });
+  return { promise, release };
 }
 
 function record(input: unknown, field: string): JsonRecord {
@@ -262,18 +286,39 @@ function startedRuntime(overrides: NodeJS.ProcessEnv = {}): Promise<{
   runtime: ReturnType<typeof composeCloudLinkRuntime>;
   transport: FakeTransport;
   projections: InMemoryIntegrationProjectionRepository;
+  outcomes: string[];
+  diagnostics: string[];
 }> {
   const connector = new FakeConnector();
   const projections = new InMemoryIntegrationProjectionRepository();
+  const outcomes: string[] = [];
+  const diagnostics: string[] = [];
   const factories: CloudLinkRuntimeFactories = {
     connector,
     projectionStore: { repository: projections },
+    observer: {
+      messageHandled(result) {
+        outcomes.push(
+          result.outcome === "discarded"
+            ? `${result.outcome}:${result.failure.code}`
+            : result.outcome,
+        );
+      },
+      internalFailure() {
+        outcomes.push("internal-failure");
+      },
+    },
+    diagnostic(message) {
+      diagnostics.push(message);
+    },
   };
   const runtime = composeCloudLinkRuntime(environment(overrides), factories);
   return runtime.start().then(() => ({
     runtime,
     transport: connector.transport,
     projections,
+    outcomes,
+    diagnostics,
   }));
 }
 
@@ -294,26 +339,37 @@ async function openSession(transport: FakeTransport): Promise<{
 }
 
 describe("composeCloudLinkRuntime", () => {
-  it("never wires the governed control path", async () => {
-    const source = await readFile(
-      new URL("../src/runtime.ts", import.meta.url),
-      "utf8",
-    );
+  // These replace earlier assertions over the runtime source text, which
+  // forbade even naming the control path in a comment and would have kept
+  // passing had the wiring moved to another module.
+  it("never subscribes to, nor acts on, the governed control path", async () => {
+    const { runtime, transport, outcomes } = await startedRuntime();
 
-    expect(source).not.toContain("integrationControlFactory");
-    expect(source).not.toContain("integration-control");
-    expect(source).not.toContain("INTEGRATION_CONTROL_PROTOCOL");
+    expect(transport.subscriptions).not.toContain(
+      `${topicPrefix}/v1/gateways/+/up/integration-control/receipts`,
+    );
+    transport.deliver(
+      `${topicPrefix}/v1/gateways/${gatewayId}/up/integration-control/receipts`,
+      encode({ schema: "aether.integration.control-receipt.v1alpha1" }),
+    );
+    await runtime.close();
+
+    expect(transport.publications).toEqual([]);
+    expect(outcomes).toEqual(["discarded:integration-control-disabled"]);
   });
 
-  it("never wires the gateway-signed path that has no production key source", async () => {
-    const source = await readFile(
-      new URL("../src/runtime.ts", import.meta.url),
-      "utf8",
-    );
+  it("never accepts a gateway-signed session hello", async () => {
+    const { runtime, transport, outcomes } = await startedRuntime();
 
-    expect(source).not.toContain("acceptGatewaySignedSession");
-    expect(source).not.toContain("authenticateGatewaySignedUplink");
-    expect(source).not.toContain("requestSessionChallenge");
+    // The unmodified fixture declares origin_model "gateway-signed".
+    transport.deliver(sessionTopic, sharedFixture("session-hello.valid.json"));
+    await runtime.close();
+
+    expect(transport.publications).toEqual([]);
+    // The bridge emits this precisely because acceptGatewaySignedSession
+    // is unwired: "Gateway-signed CloudLink session authentication is
+    // unavailable".
+    expect(outcomes).toEqual(["discarded:authentication-evidence-missing"]);
   });
 
   it("enables only the read-only Integration extension", () => {
@@ -336,7 +392,7 @@ describe("composeCloudLinkRuntime", () => {
 
     expect(runtime.running).toBe(false);
     expect(connector.input).toBeUndefined();
-    expect(connector.transport.subscriptions).toEqual([]);
+    expect(connector.connections).toBe(0);
   });
 
   it("connects on start and closes the transport on close", async () => {
@@ -385,24 +441,97 @@ describe("composeCloudLinkRuntime", () => {
 
   it("keeps reporting running until the ingress has finished draining", async () => {
     const connector = new FakeConnector();
-    let releaseClose = (): void => undefined;
-    connector.transport.closeGate = new Promise<void>((resolve) => {
-      releaseClose = (): void => {
-        resolve();
-      };
-    });
     const runtime = composeCloudLinkRuntime(environment(), { connector });
 
     await runtime.start();
+    const closeGate = deferred();
+    connector.transport.closeGate = closeGate.promise;
     const closing = runtime.close();
     await Promise.resolve();
     expect(runtime.running).toBe(true);
     expect(connector.transport.closed).toBe(false);
 
-    releaseClose();
+    closeGate.release();
     await closing;
     expect(runtime.running).toBe(false);
     expect(connector.transport.closed).toBe(true);
+  });
+
+  // A SIGTERM that arrives while start() is still inside the Broker connect
+  // timeout is the ordinary shutdown path, not an edge case.
+  it("closes a transport that finishes connecting after close has begun", async () => {
+    const connector = new FakeConnector();
+    const connectGate = deferred();
+    connector.connectGate = connectGate.promise;
+    const runtime = composeCloudLinkRuntime(environment(), { connector });
+
+    const settled: string[] = [];
+    const starting = runtime.start().catch((error: unknown) => {
+      settled.push("start");
+      throw error;
+    });
+    const closing = runtime.close().then(() => {
+      settled.push("close");
+    });
+    connectGate.release();
+
+    await expect(starting).rejects.toThrow("CloudLink ingress is closed");
+    await closing;
+    expect(connector.connections).toBe(1);
+    expect(connector.transports.every((transport) => transport.closed)).toBe(
+      true,
+    );
+    expect(runtime.running).toBe(false);
+    // close() must not resolve while a start is still in flight, or a caller
+    // exits the process with a Broker connect still outstanding.
+    expect(settled).toEqual(["start", "close"]);
+  });
+
+  it("opens one Broker connection for concurrent starts", async () => {
+    const connector = new FakeConnector();
+    const connectGate = deferred();
+    connector.connectGate = connectGate.promise;
+    const runtime = composeCloudLinkRuntime(environment(), { connector });
+
+    const first = runtime.start();
+    const second = runtime.start();
+    connectGate.release();
+    await Promise.all([first, second]);
+
+    expect(connector.connections).toBe(1);
+    expect(runtime.running).toBe(true);
+
+    await runtime.close();
+    expect(connector.transports.every((transport) => transport.closed)).toBe(
+      true,
+    );
+  });
+
+  it("still ends the projection pool when the ingress close fails", async () => {
+    let ended = 0;
+    const connector = new FakeConnector();
+    const runtime = composeCloudLinkRuntime(environment(), {
+      connector,
+      projectionStore: {
+        repository: new InMemoryIntegrationProjectionRepository(),
+        pool: {
+          connect: () => Promise.reject(new Error("unused")),
+          end: () => {
+            ended += 1;
+            return Promise.resolve();
+          },
+        },
+      },
+    });
+
+    await runtime.start();
+    connector.transport.closeGate = Promise.reject(
+      new Error("broker close failed"),
+    );
+
+    await expect(runtime.close()).rejects.toThrow("broker close failed");
+    expect(ended).toBe(1);
+    expect(runtime.running).toBe(false);
   });
 
   it("forwards optional Broker credentials without embedding them in the URL", async () => {
@@ -422,6 +551,68 @@ describe("composeCloudLinkRuntime", () => {
       password: "broker-password",
     });
     await runtime.close();
+  });
+
+  // The transport hardcodes `clean: false`, so a per-process random client id
+  // would abandon a Broker-side session holding the wildcard subscription and
+  // queueing QoS-1 uplinks on every restart.
+  it("reuses one stable Broker client id across restarts", async () => {
+    const first = new FakeConnector();
+    const original = composeCloudLinkRuntime(environment(), {
+      connector: first,
+    });
+    await original.start();
+    await original.close();
+
+    const second = new FakeConnector();
+    const restarted = composeCloudLinkRuntime(environment(), {
+      connector: second,
+    });
+    await restarted.start();
+    await restarted.close();
+
+    expect(first.input).toMatchObject({
+      clientId: "aether-cloud-cloudlink-ingress",
+    });
+    expect(second.input).toEqual(first.input);
+  });
+
+  it("lets an operator name the Broker client id", async () => {
+    const connector = new FakeConnector();
+    const runtime = composeCloudLinkRuntime(
+      environment({
+        AETHER_CLOUD_CLOUDLINK_MQTT_CLIENT_ID: "aether-cloud-home-1",
+      }),
+      { connector },
+    );
+
+    await runtime.start();
+    expect(connector.input).toMatchObject({ clientId: "aether-cloud-home-1" });
+    await runtime.close();
+  });
+
+  it("writes rejected uplinks to stderr when no observer is injected", async () => {
+    const written: string[] = [];
+    const stderr = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk: unknown) => {
+        written.push(String(chunk));
+        return true;
+      });
+    try {
+      const connector = new FakeConnector();
+      const runtime = composeCloudLinkRuntime(environment(), { connector });
+      await runtime.start();
+      connector.transport.deliver(
+        sessionTopic,
+        new TextEncoder().encode("{not json"),
+      );
+      await runtime.close();
+    } finally {
+      stderr.mockRestore();
+    }
+
+    expect(written).toContain("cloudlink uplink discarded: invalid-json\n");
   });
 
   it("closes the projection pool it opened", async () => {
@@ -479,6 +670,24 @@ describe("composeCloudLinkRuntime", () => {
           environment({ AETHER_CLOUD_TENANT_ID: "tenant-a0" }),
         ),
       ).toThrow("AETHER_CLOUD_TENANT_ID must be a canonical lowercase UUID");
+    });
+
+    it("rejects a topic prefix the MQTT contract would refuse", () => {
+      expect(() =>
+        composeCloudLinkRuntime(
+          environment({ AETHER_CLOUD_CLOUDLINK_TOPIC_PREFIX: "aether cloud" }),
+        ),
+      ).toThrow("AETHER_CLOUD_CLOUDLINK_TOPIC_PREFIX is invalid");
+    });
+
+    it("rejects an over-long Broker client id", () => {
+      expect(() =>
+        composeCloudLinkRuntime(
+          environment({
+            AETHER_CLOUD_CLOUDLINK_MQTT_CLIENT_ID: "c".repeat(129),
+          }),
+        ),
+      ).toThrow("AETHER_CLOUD_CLOUDLINK_MQTT_CLIENT_ID must be 1-128");
     });
 
     it("rejects a project identity that is not a canonical UUID", () => {
@@ -542,6 +751,33 @@ describe("composeCloudLinkRuntime", () => {
       rejects(
         JSON.stringify(credentialEntries({ gatewayId: "gateway-a0" })),
         `${variable} gatewayId must be a canonical lowercase UUID`,
+      );
+    });
+
+    // Length alone is not enough: the envelope schema bounds the charset, so a
+    // credentialId outside it composes and starts cleanly, then loses every
+    // session hello at decode.
+    it("rejects a credentialId outside the CloudLink contract charset", () => {
+      for (const credentialIdValue of [
+        "home gateway #1",
+        "-leading-hyphen",
+        "café-gateway",
+      ]) {
+        rejects(
+          JSON.stringify(
+            credentialEntries({ credentialId: credentialIdValue }),
+          ),
+          `${variable} credentialId must be`,
+        );
+      }
+    });
+
+    it("rejects a credential generation above the uint64 range", () => {
+      rejects(
+        JSON.stringify(
+          credentialEntries({ generation: "18446744073709551616" }),
+        ),
+        `${variable} generation must be a canonical uint64 string`,
       );
     });
 
@@ -655,6 +891,26 @@ describe("composeCloudLinkRuntime", () => {
       expect(transport.publications).toEqual([]);
     });
 
+    it("names the mismatched binding without ever emitting the proof", async () => {
+      const { runtime, transport, outcomes, diagnostics } =
+        await startedRuntime({
+          AETHER_CLOUD_CLOUDLINK_TRUSTED_GATEWAY_CREDENTIALS: JSON.stringify(
+            credentialEntries({ credentialId: "some-other-binding" }),
+          ),
+        });
+
+      transport.deliver(sessionTopic, trustedConnectorHello());
+      await runtime.close();
+
+      expect(outcomes).toEqual(["discarded:authentication-evidence-missing"]);
+      expect(diagnostics).toHaveLength(1);
+      const reported = diagnostics.join("\n");
+      expect(reported).toContain(gatewayId);
+      expect(reported).toContain(credentialId);
+      expect(reported).toContain("generation");
+      expect(reported).not.toContain(proof);
+    });
+
     it("refuses a session whose configured credential generation differs", async () => {
       const { runtime, transport } = await startedRuntime({
         AETHER_CLOUD_CLOUDLINK_TRUSTED_GATEWAY_CREDENTIALS: JSON.stringify(
@@ -673,7 +929,7 @@ describe("composeCloudLinkRuntime", () => {
     // Asserting only that no acknowledgement was published would still pass if
     // the command were flipped to return `{ ok: true, value: {} }`.
     it("returns an explicit telemetry failure rather than an empty success", async () => {
-      await expect(rejectedTelemetryCommand.execute()).resolves.toEqual({
+      await expect(unsupportedTelemetryCommand.execute()).resolves.toEqual({
         ok: false,
         failure: {
           code: "invalid-input",
