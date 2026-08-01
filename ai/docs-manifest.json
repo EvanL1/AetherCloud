@@ -248,7 +248,7 @@
       "path": "docs/concepts/home-assistant-integration.md",
       "canonical_url": "https://docs.aetheriot.dev/aethercloud/concepts/home-assistant-integration.md",
       "title": "Home Assistant integration",
-      "description": "Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, safety boundary, and remaining release gates",
+      "description": "Understand the experimental Edge-owned Home Assistant data path, durable Cloud projection, the Broker-ACL-only cloud ingress, safety boundary, and remaining release gates",
       "locale": "en",
       "translation_of": null,
       "document_role": "operations",
@@ -260,7 +260,7 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-17",
+      "updated": "2026-08-01",
       "priority": "core",
       "capability_refs": [
         "integration.topology.report",
@@ -276,8 +276,9 @@
       ],
       "missing_layers": [
         "published-contract-release",
-        "production-composition",
-        "public-agent-interface"
+        "public-agent-interface",
+        "gateway-authenticated-cloud-ingress",
+        "postgresql-runtime-manifest-repository"
       ],
       "recovery_route": "docs/recovery/integration-safe-degradation.md",
       "human_escalation": "required for identity conflicts, non-converging topology, or unsafe stale state"
@@ -287,7 +288,7 @@
       "path": "docs/zh-CN/concepts/home-assistant-integration.md",
       "canonical_url": "https://github.com/EvanL1/AetherCloud/blob/main/docs/zh-CN/concepts/home-assistant-integration.md",
       "title": "Home Assistant 集成",
-      "description": "了解由边缘端负责的 Home Assistant 数据链路、云端持久投影、安全边界和剩余发布门槛",
+      "description": "了解由边缘端负责的 Home Assistant 数据链路、云端持久投影、仅依赖消息代理访问控制的云端入口、安全边界和剩余发布门槛",
       "locale": "zh-CN",
       "translation_of": "home-assistant-integration",
       "document_role": "operations",
@@ -299,7 +300,7 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-17",
+      "updated": "2026-08-01",
       "priority": "optional",
       "capability_refs": [
         "integration.topology.report",
@@ -315,8 +316,9 @@
       ],
       "missing_layers": [
         "published-contract-release",
-        "production-composition",
-        "public-agent-interface"
+        "public-agent-interface",
+        "gateway-authenticated-cloud-ingress",
+        "postgresql-runtime-manifest-repository"
       ],
       "recovery_route": "docs/recovery/integration-safe-degradation.md",
       "human_escalation": "required for identity conflicts, non-converging topology, or unsafe stale state"
