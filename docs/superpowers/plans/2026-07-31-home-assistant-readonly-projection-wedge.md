@@ -1026,10 +1026,24 @@ TLS 信任与 URL、主题前缀并列为运营方配置。Task 3 未暴露这�
 标注为本 Task 的工作。**决定要不要在 A0 暴露它**：暴露则加环境变量并记录；
 不暴露则在文档里明说 A0 只支持 broker 提供的默认信任，并说明后果。
 
-**可观测性：** Task 3 接了一个 stderr observer（只输出错误码，不含消息与负载）。
-它在 `deferred` 结果上也会输出，而 `deferred` 是正常背压，因此一个存在持续
-数据缺口的 Gateway 会产生稳定的 stderr 输出。部署后若过噪，这是第一个要调的
-地方——但不要为了安静而默认关掉它，A0 目前没有别的可观测手段。
+**可观测性：** Task 3 接了一个 stderr observer（只输出错误码，不含消息与负载），
+外加一个凭据不匹配的 diagnostic sink。
+
+关于 `deferred` 结果要不要输出，审查已给出结论：**输出，且不要调低。**
+`{ outcome: "deferred" }` 在 bridge 的 1087/1233/1385 三处只从
+`publisher.publish()` 的 catch 中产生——它不表示背压，而是"上行已处理但持久化
+确认发不出去，Gateway 将重传"。这正是运营者需要看到的。
+
+真正要留意的是**量**：diagnostics 无上限且由报文驱动。审查实测 200 次不匹配的
+hello 产生 200 行 diagnostic 加 200 行 observer 输出，因此一个卡在过期
+generation 上的 Gateway 会以 broker 消息速率持续刷 stderr。若本 Task 接入日志
+收集，考虑加去重或采样键。这不是安全问题（发布者已通过 broker ACL 授权，
+内容有界且已转义）。
+
+**`close()` 现在是无界的。** 它会 await `starting`，这是正确的——但意味着关闭
+只能在 Broker 连接与订阅都settle之后完成。连接有 `connectTimeoutMs: 5_000` 兜底，
+**订阅没有明显的上界**。因此 `server.ts` 的信号处理器必须让 `close()` 与一个
+关闭截止时间竞速，而不是假定它一定返回。这是本 Task 写进程入口时的硬要求。
 
 **Files:**
 
