@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "start": "node --import tsx src/server.ts"
+    "start": "tsx src/server.ts"
   },
   "dependencies": {
     "@aether-cloud/application": "workspace:*",

@@ -253,9 +253,10 @@ session attached; the next instance reclaims the client id when it connects.
 
 The deadline is deliberately below `drainingSeconds`, so the process reports the
 overrun itself instead of being replaced by an unexplained `SIGKILL`. Repeated
-signals are safe: the handler stays registered and the close runs once, which
-matters because `pnpm run` forwards `SIGTERM` to the script and then raises its
-own on the way out.
+signals are safe: the handler stays registered and the close runs once. That
+matters because a stop reaches this process more than once - a container runtime
+signals the whole process group, and `pnpm run` forwards a signal to the script
+as well.
 
 ## Verify locally
 

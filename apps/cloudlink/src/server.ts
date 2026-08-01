@@ -72,10 +72,11 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
 }
 
 /**
- * `on`, not `once`. A wrapper such as `pnpm run` forwards the signal to its
- * child and then sends its own on the way out; with a one-shot listener the
- * second delivery finds the default disposition restored and kills the process
- * mid-shutdown, which is the exact failure the deadline exists to make visible.
+ * `on`, not `once`. A stop reaches this process more than once: a container
+ * runtime signals the whole process group, and `pnpm run` forwards a signal to
+ * the script as well. A one-shot listener removes itself on the first delivery,
+ * which restores the default disposition, so the second delivery kills the
+ * process mid-shutdown and the deadline below never gets to report anything.
  * Every path below is idempotent, so repeated signals are harmless.
  */
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
