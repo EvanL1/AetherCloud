@@ -37,6 +37,38 @@ Runtime Manifest 只存在于进程内存中：CloudLink 进程重启后，
 实现 PostgreSQL Runtime Manifest 仓储是独立的一块工作，不属于本计划。
 交付 A0 时要把这条限制写进 `docs/concepts/current-state-audit.md`。
 
+## 实施偏差记录（Task 2 已执行，本节为事后修正）
+
+**本计划最初写的 Task 2 spec 有一处安全缺陷，执行后由代码审查发现。**
+后续任务如果要照 Task 2 的写法扩展，请以本节为准，不要照抄下方 Task 2 的原始
+spec 正文。
+
+1. **原 spec 漏掉了 PostgreSQL 角色检查。** `apps/api/src/runtime.ts` 的两个同类
+   校验器都强制连接串使用专用非所有者角色（`aethercloud_app`、
+   `aethercloud_cloudlink_health_worker`），而原 spec 只抄了格式校验部分。
+   投影表虽有 `FORCE ROW LEVEL SECURITY`，但它挡不住 `BYPASSRLS`/superuser 角色
+   ——角色名检查正是挡这个的。两道防线是串联而非冗余。
+2. **三份重复的连接串校验器已合并**到
+   `adapters/fleet/postgres/src/postgres-connection-string.ts`，
+   导出 `assertPostgresConnectionString(input, { variable, roleName, requiredWhen })`。
+   env 读取仍留在各自组合根，只有字符串校验被共享。
+   `apps/api/src/runtime.ts` 的两个校验器与 CloudLink 的一起改写为委托调用。
+3. **CloudLink ingress 使用独立角色 `aethercloud_cloudlink_ingress`**（非
+   `aethercloud_app`），迁移在
+   `supabase/migrations/20260728000900_cloudlink_ingress_role.sql`。
+   理由：ingress 是消费不受信外部输入的写入路径，授权应比只读的 API 进程更窄。
+4. **环境变量是 `AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL`**，不是
+   `AETHER_CLOUD_POSTGRES_URL`。后者继续专指 `aethercloud_app`。
+   一个角色一个变量，与 health worker 的先例一致；共用变量名会让 Railway 的
+   项目级共享变量静默打断其中一个 service。
+
+**教训（对 Task 3-8 有效）：** `tests/supabase-config.test.mjs` 只做迁移文本的
+模式匹配，从不执行 SQL；`pnpm test:postgres-integration` 默认跳过。因此
+**授权范围的错误不会被 `pnpm check` 发现**。凡是新增或修改 `GRANT` 的改动，
+必须另起一个真实 PostgreSQL 实例，把仓储实际发出的每一条 SQL 都以该角色跑一遍。
+`42501 permission denied` 表示授权仍缺；外键或检查约束错误（23503 等）表示权限
+检查已通过。只测"有代表性的一张表"不够——本次缺陷恰好落在唯一两张被收紧的表上。
+
 ## File Structure
 
 | 文件                                                                                | 动作 | 职责                                                              |
@@ -876,6 +908,17 @@ git commit -m "feat: compose a read-only CloudLink runtime without the control p
 ---
 
 ## Task 4: 进程入口与部署配置
+
+**部署前置（仓库外，必须先完成）：** Task 2 创建的
+`aethercloud_cloudlink_ingress` 角色是 `NOLOGIN` 的，迁移里不含密码。
+部署前需要在目标数据库上执行 `ALTER ROLE ... LOGIN PASSWORD ...` 完成置备，
+与 `aethercloud_cloudlink_health_worker` 的做法一致
+（仓库内只有 `aethercloud_app` 有 `apps/api/src/postgres-role-activation.ts`
+这条自动激活路径，其余角色靠运维流程）。置备完成后把连接串放进
+`AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL`。
+
+注意：角色迁移里的 `rolcanlogin` 守卫意味着**对已正确置备的数据库重跑该迁移会
+报错**。这对三个角色迁移都成立，是预期行为，不是缺陷。
 
 **Files:**
 
