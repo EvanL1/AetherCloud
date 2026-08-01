@@ -141,6 +141,35 @@ test("Supabase provisions an isolated CloudLink ingress role", async () => {
   assert.doesNotMatch(migration, /\bPASSWORD\b/);
 });
 
+test("every role migration grants SELECT wherever it grants UPDATE", async () => {
+  // PostgreSQL requires SELECT privilege on any existing-row column read by
+  // an INSERT ... ON CONFLICT DO UPDATE's SET/WHERE clause or named in a
+  // RETURNING list, on top of the SELECT ... FOR UPDATE locking clauses
+  // repositories use. A table granted UPDATE without SELECT silently breaks
+  // at runtime instead of at review or `pnpm check` time.
+  const roleMigrations = [
+    "supabase/migrations/20260728000600_application_role.sql",
+    "supabase/migrations/20260728000800_cloudlink_health_worker_role.sql",
+    "supabase/migrations/20260728000900_cloudlink_ingress_role.sql",
+  ];
+  const grantPattern =
+    /GRANT\s+([A-Z]+(?:\s*,\s*[A-Z]+)*)\s+ON\s+((?:aethercloud\.[a-z_]+(?:\s*,\s*aethercloud\.[a-z_]+)*)|ALL TABLES IN SCHEMA aethercloud)\s+TO\s+\w+;/g;
+
+  for (const path of roleMigrations) {
+    const migration = await readFile(new URL(path, root), "utf8");
+    const grants = [...migration.matchAll(grantPattern)];
+    assert.ok(grants.length > 0, `${path}: found no per-table GRANT to check`);
+    for (const [, privilegeList, tableList] of grants) {
+      const privileges = privilegeList.split(",").map((value) => value.trim());
+      if (!privileges.includes("UPDATE")) continue;
+      assert.ok(
+        privileges.includes("SELECT"),
+        `${path}: "${tableList}" is granted UPDATE without SELECT`,
+      );
+    }
+  }
+});
+
 test("Supabase migration history follows the adapter-owned SQL in order", async () => {
   for (const [bindingPath, sourcePath] of migrationBindings) {
     const bindingUrl = new URL(bindingPath, root);

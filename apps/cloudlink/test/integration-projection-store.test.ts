@@ -45,7 +45,7 @@ describe("composeIntegrationProjectionStore", () => {
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
       }),
     ).toThrow(
-      "AETHER_CLOUD_POSTGRES_URL is required when the projection store is postgres",
+      "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL is required when the projection store is postgres",
     );
   });
 
@@ -53,10 +53,10 @@ describe("composeIntegrationProjectionStore", () => {
     expect(() =>
       composeIntegrationProjectionStore({
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
-        AETHER_CLOUD_POSTGRES_URL: "not a url",
+        AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL: "not a url",
       }),
     ).toThrow(
-      "AETHER_CLOUD_POSTGRES_URL must be a parseable PostgreSQL connection URL",
+      "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL must be a parseable PostgreSQL connection URL",
     );
   });
 
@@ -64,11 +64,11 @@ describe("composeIntegrationProjectionStore", () => {
     expect(() =>
       composeIntegrationProjectionStore({
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
-        AETHER_CLOUD_POSTGRES_URL:
+        AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL:
           "mysql://aethercloud_cloudlink_ingress:secret@db.example:5432/aether?sslmode=verify-full",
       }),
     ).toThrow(
-      "AETHER_CLOUD_POSTGRES_URL must use the postgres: or postgresql: protocol",
+      "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL must use the postgres: or postgresql: protocol",
     );
   });
 
@@ -76,11 +76,11 @@ describe("composeIntegrationProjectionStore", () => {
     expect(() =>
       composeIntegrationProjectionStore({
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
-        AETHER_CLOUD_POSTGRES_URL:
+        AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL:
           "postgresql://aethercloud_app:secret@db.example:5432/aether?sslmode=verify-full",
       }),
     ).toThrow(
-      "AETHER_CLOUD_POSTGRES_URL must authenticate as the aethercloud_cloudlink_ingress role",
+      "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL must authenticate as the aethercloud_cloudlink_ingress role",
     );
   });
 
@@ -88,20 +88,24 @@ describe("composeIntegrationProjectionStore", () => {
     expect(() =>
       composeIntegrationProjectionStore({
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
-        AETHER_CLOUD_POSTGRES_URL:
+        AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL:
           "postgresql://aethercloud_cloudlink_ingress@db.example:5432/aether?sslmode=verify-full",
       }),
-    ).toThrow("AETHER_CLOUD_POSTGRES_URL must include a password");
+    ).toThrow(
+      "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL must include a password",
+    );
   });
 
   it("requires a verify-full TLS PostgreSQL URL when postgres is selected", () => {
     expect(() =>
       composeIntegrationProjectionStore({
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
-        AETHER_CLOUD_POSTGRES_URL:
+        AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL:
           "postgresql://aethercloud_cloudlink_ingress:secret@db.example:5432/aether",
       }),
-    ).toThrow("AETHER_CLOUD_POSTGRES_URL must use verify-full TLS");
+    ).toThrow(
+      "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL must use verify-full TLS",
+    );
   });
 
   it("builds a PostgreSQL repository through the injected pool factory", () => {
@@ -110,7 +114,7 @@ describe("composeIntegrationProjectionStore", () => {
     const store = composeIntegrationProjectionStore(
       {
         AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
-        AETHER_CLOUD_POSTGRES_URL: validPostgresUrl,
+        AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL: validPostgresUrl,
       },
       {
         postgresPoolFactory(configuration) {

@@ -8,6 +8,15 @@ const options = {
   requiredWhen: "postgres mode is selected",
 } as const;
 
+function thrownMessage(input: string): string {
+  try {
+    assertPostgresConnectionString(input, options);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  throw new Error("expected assertPostgresConnectionString to throw");
+}
+
 describe("assertPostgresConnectionString", () => {
   it("returns the input unchanged when every rule is satisfied", () => {
     const input =
@@ -92,18 +101,38 @@ describe("assertPostgresConnectionString", () => {
     ).toThrow("AETHER_CLOUD_POSTGRES_URL must use verify-full TLS");
   });
 
-  it("never includes the connection string, host, username, or password in a thrown message", () => {
-    const input =
-      "postgresql://aethercloud_app:super-secret-password@database.example:5432/postgres?sslmode=require";
+  const leakInputs = [
+    ["an unparseable URL", "not a url"],
+    [
+      "a non-PostgreSQL protocol",
+      "mysql://aethercloud_app:super-secret-password@database.example:5432/postgres?sslmode=verify-full",
+    ],
+    [
+      "a username that is not the dedicated role",
+      "postgresql://postgres:super-secret-password@database.example:5432/postgres?sslmode=verify-full",
+    ],
+    [
+      "a role-prefixed username without the pooler separator",
+      "postgresql://aethercloud_app_owner:super-secret-password@database.example:5432/postgres?sslmode=verify-full",
+    ],
+    [
+      "an empty password",
+      "postgresql://aethercloud_app@database.example:5432/postgres?sslmode=verify-full",
+    ],
+    [
+      "a non-verify-full sslmode",
+      "postgresql://aethercloud_app:super-secret-password@database.example:5432/postgres?sslmode=require",
+    ],
+  ] as const;
 
-    try {
-      assertPostgresConnectionString(input, options);
-      throw new Error("expected assertPostgresConnectionString to throw");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+  it.each(leakInputs)(
+    "never includes the connection string, host, username, or password in the message for %s",
+    (_label, input) => {
+      const message = thrownMessage(input);
+
       expect(message).not.toContain("super-secret-password");
       expect(message).not.toContain("database.example");
       expect(message).not.toContain(input);
-    }
-  });
+    },
+  );
 });

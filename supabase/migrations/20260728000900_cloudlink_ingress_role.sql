@@ -75,10 +75,14 @@ GRANT SELECT, INSERT, UPDATE
 GRANT SELECT, INSERT
   ON aethercloud.integration_projection_cloudlink_deliveries
   TO aethercloud_cloudlink_ingress;
-GRANT INSERT, UPDATE
+-- SELECT is required in addition to INSERT/UPDATE: both statements are
+-- INSERT ... ON CONFLICT DO UPDATE, and PostgreSQL requires SELECT on any
+-- existing-row column read by the DO UPDATE SET/WHERE clause or named in a
+-- RETURNING list.
+GRANT SELECT, INSERT, UPDATE
   ON aethercloud.integration_projection_cloudlink_delivery_attempts
   TO aethercloud_cloudlink_ingress;
-GRANT INSERT, UPDATE
+GRANT SELECT, INSERT, UPDATE
   ON aethercloud.integration_projection_cloudlink_ack_outbox
   TO aethercloud_cloudlink_ingress;
 

@@ -38,11 +38,14 @@ export interface IntegrationProjectionStore {
 }
 
 function connectionString(environment: NodeJS.ProcessEnv): string {
-  return assertPostgresConnectionString(environment.AETHER_CLOUD_POSTGRES_URL, {
-    variable: "AETHER_CLOUD_POSTGRES_URL",
-    roleName: "aethercloud_cloudlink_ingress",
-    requiredWhen: "the projection store is postgres",
-  });
+  return assertPostgresConnectionString(
+    environment.AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL,
+    {
+      variable: "AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL",
+      roleName: "aethercloud_cloudlink_ingress",
+      requiredWhen: "the projection store is postgres",
+    },
+  );
 }
 
 export function composeIntegrationProjectionStore(
