@@ -989,11 +989,55 @@ git commit -m "feat: compose a read-only CloudLink runtime without the control p
 注意：角色迁移里的 `rolcanlogin` 守卫意味着**对已正确置备的数据库重跑该迁移会
 报错**。这对三个角色迁移都成立，是预期行为，不是缺陷。
 
+### Task 3 交接给本 Task 的部署面（写 `server.ts` 前先读完）
+
+**必须落到 `docs/reference/` 的环境变量**（Task 3 刻意把它们排除在概念文档之外，
+留给本 Task 建立正式条目）。以 `apps/cloudlink/src/runtime.ts` 与
+`apps/cloudlink/src/trusted-connector-credentials.ts` 的实际实现为准，
+不要照抄本节——本计划已经出过两次"照抄未验证内容"的错。
+
+| 变量                                                 | 必填              | 说明                                                                                         |
+| ---------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------- |
+| `AETHER_CLOUD_CLOUDLINK_MQTT_URL`                    | 是                | Broker 地址                                                                                  |
+| `AETHER_CLOUD_CLOUDLINK_TOPIC_PREFIX`                | 是                | 主题前缀                                                                                     |
+| `AETHER_CLOUD_TENANT_ID` / `AETHER_CLOUD_PROJECT_ID` | 是                | 规范小写 UUID                                                                                |
+| `AETHER_CLOUD_CLOUDLINK_TRUSTED_GATEWAY_CREDENTIALS` | 是                | JSON 数组，1–64 项，每项 `gatewayId`/`credentialId`/`generation`/`proof`。**`proof` 是机密** |
+| `AETHER_CLOUD_INTEGRATION_PROJECTION_STORE`          | 否                | `memory`（默认）或 `postgres`                                                                |
+| `AETHER_CLOUD_CLOUDLINK_INGRESS_POSTGRES_URL`        | postgres 模式必填 | 必须使用 `aethercloud_cloudlink_ingress` 角色与 `verify-full` TLS                            |
+| `AETHER_CLOUD_CLOUDLINK_MQTT_USERNAME` / `_PASSWORD` | 否                | **ingress 自己**登录 broker 的凭据，不是 per-Gateway ACL                                     |
+| MQTT client ID 覆盖变量                              | 否                | 默认 `aether-cloud-cloudlink-ingress`；**以实现为准取变量名**                                |
+
+**单实例约束（必须写进文档）：** clientId 是稳定的，这是让传输层的
+`clean: false` 持久会话真正生效所必需的。代价是**两个使用相同 clientId 的
+ingress 实例会互相把对方踢下线**，因此 A0 只支持一个 ingress 实例。这与仓库
+既有立场一致（multi-instance ownership 列为 planned），但它现在是一条部署约束。
+
+**安全姿态（必须写进文档，不得软化）：** 本模式的认证**完全依赖 broker 端的
+per-Gateway ACL**，未配置则等同于无认证。凭据校验在构造上是同义反复的——
+以报文自称的身份去查一张由自称索引的配置表。`proof` 从不上线（云端不接收机密），
+但任何人只要能向 `<prefix>/v1/gateways/<uuid>/up/...` 发布、并知道三个非机密
+字符串，就能开启会话。ADR-0014 第 5 条要求 trusted connector 为**每次发布**提供
+带外验证的发布者证明，本组合根不消费任何此类证明，也无法检测其缺失。
+概念文档已写明这一点，`docs/reference/` 的部署页必须同样写明。
+
+**TLS 信任面：** `adapters/cloudlink/mqtt/src/node-mqtt-transport.ts` 已支持
+`caPath`/`clientCertificatePath`/`clientPrivateKeyPath`，而 ADR-0014 第 2 条把
+TLS 信任与 URL、主题前缀并列为运营方配置。Task 3 未暴露这个面并在代码注释里
+标注为本 Task 的工作。**决定要不要在 A0 暴露它**：暴露则加环境变量并记录；
+不暴露则在文档里明说 A0 只支持 broker 提供的默认信任，并说明后果。
+
+**可观测性：** Task 3 接了一个 stderr observer（只输出错误码，不含消息与负载）。
+它在 `deferred` 结果上也会输出，而 `deferred` 是正常背压，因此一个存在持续
+数据缺口的 Gateway 会产生稳定的 stderr 输出。部署后若过噪，这是第一个要调的
+地方——但不要为了安静而默认关掉它，A0 目前没有别的可观测手段。
+
 **Files:**
 
 - Create: `apps/cloudlink/src/server.ts`
 - Create: `railway.cloudlink.json`
 - Modify: `apps/cloudlink/package.json`
+- Create/Modify: `docs/reference/` 下的部署与环境变量条目（连同 frontmatter、
+  `ai/docs-manifest.json`、`llms.txt` 一并更新）
 
 - [ ] **Step 1: 写进程入口**
 
