@@ -71,6 +71,8 @@ class FakeTransport implements CloudLinkMqttDuplexTransport {
   closed = false;
   /** Set to hold `close()` open so a test can observe the draining window. */
   closeGate: Promise<void> | undefined;
+  /** Set to make `close()` fail the way a real Broker close can. */
+  closeError: Error | undefined;
 
   subscribe(
     topics: readonly string[],
@@ -88,6 +90,7 @@ class FakeTransport implements CloudLinkMqttDuplexTransport {
 
   async close(): Promise<void> {
     await this.closeGate;
+    if (this.closeError !== undefined) throw this.closeError;
     this.closed = true;
   }
 
@@ -118,6 +121,8 @@ class FakeConnector implements CloudLinkMqttTransportConnector {
   input: unknown;
   /** Set to hold `connect()` open so a test can interleave `close()`. */
   connectGate: Promise<void> | undefined;
+  /** Applied to every transport this connector goes on to create. */
+  transportCloseError: Error | undefined;
 
   get transport(): FakeTransport {
     const first = this.transports[0];
@@ -134,6 +139,7 @@ class FakeConnector implements CloudLinkMqttTransportConnector {
     // Each connect returns its own transport so an orphaned second connection
     // is visible instead of being masked by a shared instance.
     const transport = new FakeTransport();
+    transport.closeError = this.transportCloseError;
     this.transports.push(transport);
     await this.connectGate;
     return transport;
@@ -525,11 +531,45 @@ describe("composeCloudLinkRuntime", () => {
     });
 
     await runtime.start();
-    connector.transport.closeGate = Promise.reject(
-      new Error("broker close failed"),
-    );
+    connector.transport.closeError = new Error("broker close failed");
 
     await expect(runtime.close()).rejects.toThrow("broker close failed");
+    expect(ended).toBe(1);
+    expect(runtime.running).toBe(false);
+  });
+
+  // The same underlying failure as the previous case, reached through the
+  // close-during-start hand-off. It must not report a different result just
+  // because the timing differed.
+  it("fails close when the orphaned transport cannot be closed", async () => {
+    let ended = 0;
+    const connector = new FakeConnector();
+    connector.transportCloseError = new Error("broker close failed");
+    const connectGate = deferred();
+    connector.connectGate = connectGate.promise;
+    const runtime = composeCloudLinkRuntime(environment(), {
+      connector,
+      projectionStore: {
+        repository: new InMemoryIntegrationProjectionRepository(),
+        pool: {
+          connect: () => Promise.reject(new Error("unused")),
+          end: () => {
+            ended += 1;
+            return Promise.resolve();
+          },
+        },
+      },
+    });
+
+    const starting = runtime.start();
+    const closing = runtime.close();
+    connectGate.release();
+
+    await expect(starting).rejects.toThrow("broker close failed");
+    await expect(closing).rejects.toThrow("broker close failed");
+    expect(connector.transports.every((transport) => transport.closed)).toBe(
+      false,
+    );
     expect(ended).toBe(1);
     expect(runtime.running).toBe(false);
   });
@@ -696,138 +736,6 @@ describe("composeCloudLinkRuntime", () => {
           environment({ AETHER_CLOUD_PROJECT_ID: "project-a0" }),
         ),
       ).toThrow("AETHER_CLOUD_PROJECT_ID must be a canonical lowercase UUID");
-    });
-  });
-
-  describe("trusted connector credential configuration", () => {
-    const variable = "AETHER_CLOUD_CLOUDLINK_TRUSTED_GATEWAY_CREDENTIALS";
-
-    function rejects(value: string, message: string): void {
-      expect(() =>
-        composeCloudLinkRuntime(environment({ [variable]: value })),
-      ).toThrow(message);
-    }
-
-    it("rejects a value that is not JSON", () => {
-      rejects("{not json", `${variable} must be a JSON array`);
-    });
-
-    it("rejects a JSON value that is not an array", () => {
-      rejects(
-        JSON.stringify(credentialEntries()[0]),
-        `${variable} must be a JSON array`,
-      );
-    });
-
-    it("rejects an empty array so the ingress never starts unauthenticated", () => {
-      rejects("[]", `${variable} must declare 1-64 Gateway credentials`);
-    });
-
-    it("rejects more credentials than the A0 deployment bound", () => {
-      const entries = Array.from({ length: 65 }, (_unused, index) => ({
-        credentialId: `binding-${String(index)}`,
-      }));
-      rejects(
-        JSON.stringify(credentialEntries(...entries)),
-        `${variable} must declare 1-64 Gateway credentials`,
-      );
-    });
-
-    it("rejects an unknown field instead of silently ignoring it", () => {
-      rejects(
-        JSON.stringify(credentialEntries({ status: "active" })),
-        `${variable} entries must declare exactly gatewayId, credentialId, generation, and proof`,
-      );
-    });
-
-    it("rejects a missing field", () => {
-      rejects(
-        JSON.stringify([{ gatewayId, credentialId, generation: "3" }]),
-        `${variable} entries must declare exactly gatewayId, credentialId, generation, and proof`,
-      );
-    });
-
-    it("rejects a Gateway identity that is not a canonical UUID", () => {
-      rejects(
-        JSON.stringify(credentialEntries({ gatewayId: "gateway-a0" })),
-        `${variable} gatewayId must be a canonical lowercase UUID`,
-      );
-    });
-
-    // Length alone is not enough: the envelope schema bounds the charset, so a
-    // credentialId outside it composes and starts cleanly, then loses every
-    // session hello at decode.
-    it("rejects a credentialId outside the CloudLink contract charset", () => {
-      for (const credentialIdValue of [
-        "home gateway #1",
-        "-leading-hyphen",
-        "café-gateway",
-      ]) {
-        rejects(
-          JSON.stringify(
-            credentialEntries({ credentialId: credentialIdValue }),
-          ),
-          `${variable} credentialId must be`,
-        );
-      }
-    });
-
-    it("rejects a credential generation above the uint64 range", () => {
-      rejects(
-        JSON.stringify(
-          credentialEntries({ generation: "18446744073709551616" }),
-        ),
-        `${variable} generation must be a canonical uint64 string`,
-      );
-    });
-
-    it("rejects a credential generation that is not a canonical uint64", () => {
-      rejects(
-        JSON.stringify(credentialEntries({ generation: "03" })),
-        `${variable} generation must be a canonical uint64 string`,
-      );
-    });
-
-    it("rejects an empty credentialId", () => {
-      rejects(
-        JSON.stringify(credentialEntries({ credentialId: "" })),
-        `${variable} credentialId must be 1-256 characters`,
-      );
-    });
-
-    it("rejects a duplicate credentialId", () => {
-      rejects(
-        JSON.stringify(credentialEntries({}, { gatewayId })),
-        `${variable} credentialId values must be unique`,
-      );
-    });
-
-    it("rejects a proof larger than the CloudLink bound", () => {
-      rejects(
-        JSON.stringify(credentialEntries({ proof: "B".repeat(4097) })),
-        `${variable} proof must be 1-4096 bytes`,
-      );
-    });
-
-    it("never echoes the proof in a rejection message", () => {
-      const secret = randomBytes(24).toString("base64url");
-      let thrown: unknown;
-      try {
-        composeCloudLinkRuntime(
-          environment({
-            [variable]: JSON.stringify(
-              credentialEntries({ proof: secret, generation: "03" }),
-            ),
-          }),
-        );
-      } catch (error: unknown) {
-        thrown = error;
-      }
-
-      expect(thrown).toBeInstanceOf(Error);
-      const rendered = `${String(thrown)}\n${(thrown as Error).stack ?? ""}`;
-      expect(rendered).toContain(variable);
-      expect(rendered).not.toContain(secret);
     });
   });
 

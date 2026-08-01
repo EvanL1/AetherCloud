@@ -8,7 +8,7 @@ import {
 import type { GatewayCredentialAssertion } from "@aether-cloud/application";
 import type { InMemoryGatewayCredentialRecord } from "@aether-cloud/cloudlink-memory-adapter";
 
-export const trustedGatewayCredentialsVariable =
+const trustedGatewayCredentialsVariable =
   "AETHER_CLOUD_CLOUDLINK_TRUSTED_GATEWAY_CREDENTIALS";
 
 const credentialFields = [
@@ -66,9 +66,16 @@ function credentialField(
   return value;
 }
 
-/** Bounds and de-escapes a wire identifier before it can reach a log line. */
+/**
+ * Bounds and escapes a wire identifier before it can reach a log line. The
+ * bound matches the longest `credentialId` the envelope schema permits, so a
+ * legitimate identifier is always reproduced whole: a truncated one is exactly
+ * what an operator needs to find the mismatched entry. Envelope decoding
+ * already rejects anything outside the contract charset before this runs, so
+ * the escaping is defence in depth rather than the only guard.
+ */
 function safeIdentifier(value: string): string {
-  return JSON.stringify(value.slice(0, 128));
+  return JSON.stringify(value.slice(0, maximumCredentialIdLength));
 }
 
 /**

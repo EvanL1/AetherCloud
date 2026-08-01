@@ -51,6 +51,17 @@ const defaultClientId = "aether-cloud-cloudlink-ingress";
 const maximumClientIdLength = 128;
 
 /**
+ * Raised when a close lands while a start is still connecting. `close()` treats
+ * only this hand-off as expected; every other start-path failure propagates.
+ */
+class IngressClosedDuringStartError extends Error {
+  constructor() {
+    super("CloudLink ingress is closed");
+    this.name = "IngressClosedDuringStartError";
+  }
+}
+
+/**
  * A0 does not consume telemetry. A silent no-op would let a Gateway believe its
  * telemetry was accepted, so the composition rejects it explicitly instead.
  *
@@ -343,7 +354,7 @@ export function composeCloudLinkRuntime(
           // already run; this ingress would otherwise stay subscribed forever.
           if (lifecycle.closing !== undefined) {
             await started.close();
-            throw new Error("CloudLink ingress is closed");
+            throw new IngressClosedDuringStartError();
           }
           lifecycle.ingress = started;
         } finally {
@@ -358,7 +369,12 @@ export function composeCloudLinkRuntime(
       lifecycle.closing ??= (async () => {
         try {
           // An in-flight start must finish before its transport can be closed.
-          await lifecycle.starting?.catch(() => undefined);
+          // Only the expected hand-off is swallowed: if the orphaned transport
+          // itself failed to close, that error must reach the caller rather
+          // than letting close() report a success the Broker did not perform.
+          await lifecycle.starting?.catch((error: unknown) => {
+            if (!(error instanceof IngressClosedDuringStartError)) throw error;
+          });
           await lifecycle.ingress?.close();
         } finally {
           // The pool must be released even when the Broker close fails, and a
