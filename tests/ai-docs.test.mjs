@@ -613,7 +613,7 @@ test("CloudLink readiness evidence references public gates and fails closed", ()
   );
   const authoritativeGates = JSON.parse(
     read(
-      "contracts/aether-contracts/v0.1.0-alpha.3/compatibility/cloudlink-v1alpha1-gates.json",
+      "contracts/aether-contracts/v0.1.0-alpha.4/compatibility/cloudlink-v1alpha1-gates.json",
     ),
   );
   const authentication = JSON.parse(
@@ -686,12 +686,15 @@ test("CloudLink readiness evidence references public gates and fails closed", ()
   assert.equal("digest" in wireProfile, false);
   assert.equal("ack" in wireProfile, false);
   assert.equal(deliveryEnvelope.$id, "envelope.schema.json");
-  assert.ok(deliveryEnvelope.required.includes("delivery"));
+  // alpha.4 moved the uplink envelope's required list into $defs.uplinkEnvelope
+  // and composes it through allOf. The required set itself is unchanged, so
+  // this follows the restructuring rather than relaxing the assertion.
+  assert.ok(deliveryEnvelope.$defs.uplinkEnvelope.required.includes("delivery"));
   assert.equal(deliveryEnvelope.$defs.digest.pattern, "^sha256:[0-9a-f]{64}$");
   assert.equal(durableAck.$id, "durable-ack.schema.json");
   assert.equal(durableAck.properties.message_kind.const, "durable-ack");
   assert.equal(fixtureManifest.hash_algorithm, "sha256");
-  assert.equal(fixtureManifest.fixtures.length, 25);
+  assert.equal(fixtureManifest.fixtures.length, 27);
   for (const fixture of fixtureManifest.fixtures) {
     assert.equal(
       createHash("sha256")
@@ -719,7 +722,7 @@ test("AetherContracts documentation keeps distribution and behavior conformance 
 
   assert.equal(lock.schema, "aether.contracts.consumer-lock.v1alpha1");
   assert.equal(lock.status, "complete-consumer");
-  assert.equal(lock.release.version, "0.1.0-alpha.3");
+  assert.equal(lock.release.version, "0.1.0-alpha.4");
   assert.equal(lock.pending_imports.length, 0);
   assert.equal(lock.release.commit.length, 40);
   assert.equal(lock.release.bundle.sha256.length, 64);
@@ -727,7 +730,7 @@ test("AetherContracts documentation keeps distribution and behavior conformance 
   assert.equal(lock.policy.production_release, false);
   assert.equal(lock.policy.legacy_default, true);
   assert.equal(lock.policy.physical_control, false);
-  assert.equal(lock.imports.length, 53);
+  assert.equal(lock.imports.length, 101);
   assert.equal(lock.pending_imports.length, 0);
   assert.match(decision, /53 exact alpha\.3 artifacts/i);
   assert.match(decision, /does not pass codec\/TCK/i);
@@ -825,7 +828,7 @@ test("product-family naming distinguishes AetherIoT from AetherEdge without rewr
   const family = read("docs/get-started/aetheriot-product-family.md");
   const decision = read("docs/adr/0017-aetheriot-product-family-naming.md");
   const importedRelease = read(
-    "contracts/aether-contracts/v0.1.0-alpha.3/spec/distribution-v1alpha1.md",
+    "contracts/aether-contracts/v0.1.0-alpha.4/spec/distribution-v1alpha1.md",
   );
 
   assert.match(family, /AetherIoT is the umbrella project/);
@@ -836,7 +839,15 @@ test("product-family naming distinguishes AetherIoT from AetherEdge without rewr
   );
   assert.match(decision, /`aether` CLI/);
   assert.match(decision, /Published releases, evidence, provenance/);
-  assert.match(importedRelease, /AetherIot/);
+  // The alpha.3 spec carried the historical `AetherIot` name and this asserted
+  // that importing did not rewrite it. Upstream renamed to AetherEdge in
+  // alpha.4, so there is no historical name left to preserve here. The
+  // no-rewriting guarantee now rests on the consumer lock's digest
+  // verification, which tests/aether-contracts-consumer.test.mjs exercises
+  // through AetherContracts' own verifier. Assert the imported text still
+  // reflects upstream's naming rather than ours.
+  assert.match(importedRelease, /AetherEdge/);
+  assert.doesNotMatch(importedRelease, /AetherIot\b/);
 });
 
 test("relative Markdown links inside indexed documents resolve", () => {

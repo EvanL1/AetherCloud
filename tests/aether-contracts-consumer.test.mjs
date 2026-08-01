@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { verifyConsumerLock } from "../contracts/aether-contracts/v0.1.0-alpha.3/scripts/verify-consumer-lock.mjs";
+import { verifyConsumerLock } from "../contracts/aether-contracts/v0.1.0-alpha.4/scripts/verify-consumer-lock.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const lockPath = resolve(repositoryRoot, "aether-contracts.lock.json");
@@ -14,11 +14,11 @@ test("AetherCloud consumes the digest-pinned AetherContracts release offline", a
   });
 
   assert.deepEqual(result, {
-    imported: 53,
+    imported: 101,
     pending: 0,
-    releaseCommit: "c5aad674f0844138e778963118e786e430ffb365",
-    releaseVersion: "0.1.0-alpha.3",
-    scope: "cloudlink-alpha3",
+    releaseCommit: "8c858ba978aa183a3c534c34f62596f4902461ae",
+    releaseVersion: "0.1.0-alpha.4",
+    scope: "cloudlink-integration-alpha4",
     status: "complete-consumer",
   });
 });

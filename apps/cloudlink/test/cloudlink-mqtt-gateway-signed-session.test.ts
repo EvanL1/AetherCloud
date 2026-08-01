@@ -527,7 +527,7 @@ describe("CloudLink MQTT Gateway-signed session bridge", () => {
     const topology = JSON.parse(
       readFileSync(
         new URL(
-          "../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/cloudlink-integration/v1alpha1/integration-topology.valid.json",
+          "../../../contracts/aether-contracts/v0.1.0-alpha.4/fixtures/cloudlink-integration/v1alpha1/integration-topology.valid.json",
           import.meta.url,
         ),
         "utf8",
@@ -577,7 +577,7 @@ describe("CloudLink MQTT Gateway-signed session bridge", () => {
     const receipt = JSON.parse(
       readFileSync(
         new URL(
-          "../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/integration-control/v1alpha1/action-receipt-provider-accepted.valid.json",
+          "../../../contracts/aether-contracts/v0.1.0-alpha.4/fixtures/integration-control/v1alpha1/action-receipt-provider-accepted.valid.json",
           import.meta.url,
         ),
         "utf8",

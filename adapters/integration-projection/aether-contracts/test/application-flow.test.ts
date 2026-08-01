@@ -29,7 +29,7 @@ import {
 } from "../src/index.js";
 
 const fixtureRoot = new URL(
-  "../../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/integration/v1alpha1/",
+  "../../../../contracts/aether-contracts/v0.1.0-alpha.4/fixtures/integration/v1alpha1/",
   import.meta.url,
 );
 const credential = {

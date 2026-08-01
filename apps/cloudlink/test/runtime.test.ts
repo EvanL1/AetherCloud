@@ -183,7 +183,7 @@ function sharedFixture(name: string): Uint8Array {
 function integrationFixture(name: string): Uint8Array {
   return readFileSync(
     new URL(
-      `../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/cloudlink-integration/v1alpha1/${name}`,
+      `../../../contracts/aether-contracts/v0.1.0-alpha.4/fixtures/cloudlink-integration/v1alpha1/${name}`,
       import.meta.url,
     ),
   );

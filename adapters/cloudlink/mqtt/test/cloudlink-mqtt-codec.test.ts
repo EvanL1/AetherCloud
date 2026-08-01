@@ -87,13 +87,13 @@ function fixtureObject(name: string): Record<string, unknown> {
 function integrationFixture(name: string): Uint8Array {
   return readFileSync(
     new URL(
-      `../../../../contracts/aether-contracts/v0.1.0-alpha.4-candidate/fixtures/cloudlink-integration/v1alpha1/${name}`,
+      `../../../../contracts/aether-contracts/v0.1.0-alpha.4/fixtures/cloudlink-integration/v1alpha1/${name}`,
       import.meta.url,
     ),
   );
 }
 
-describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
+describe("AetherContracts alpha.4 CloudLink MQTT consumer codec", () => {
   it("pins every shared fixture byte in the freeze manifest", () => {
     const contractRoot = new URL(
       "../../../../contracts/cloudlink/v1/",
@@ -150,7 +150,7 @@ describe("AetherContracts alpha.3 CloudLink MQTT consumer codec", () => {
         failure_code?: string;
       }>;
     };
-    expect(manifest.fixtures).toHaveLength(25);
+    expect(manifest.fixtures).toHaveLength(27);
     for (const entry of manifest.fixtures) {
       const decoded = decodeCloudLinkContractMessage(fixture(entry.file));
       const decoderRejectsContext = [
