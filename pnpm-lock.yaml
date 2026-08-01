@@ -403,9 +403,15 @@ importers:
       '@aether-cloud/application':
         specifier: workspace:*
         version: link:../../packages/application
+      '@aether-cloud/cloudlink-memory-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/cloudlink/memory
       '@aether-cloud/cloudlink-mqtt-adapter':
         specifier: workspace:*
         version: link:../../adapters/cloudlink/mqtt
+      '@aether-cloud/cloudlink-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/cloudlink/postgres
       '@aether-cloud/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -421,19 +427,16 @@ importers:
       '@aether-cloud/integration-projection-postgres-adapter':
         specifier: workspace:*
         version: link:../../adapters/integration-projection/postgres
-    devDependencies:
-      '@aether-cloud/cloudlink-memory-adapter':
+      '@aether-cloud/runtime-memory-adapter':
         specifier: workspace:*
-        version: link:../../adapters/cloudlink/memory
+        version: link:../../adapters/runtime/memory
+    devDependencies:
       '@aether-cloud/integration-control-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/integration-control/memory
       '@aether-cloud/integration-control-node-crypto-adapter':
         specifier: workspace:*
         version: link:../../adapters/integration-control/node-crypto
-      '@aether-cloud/runtime-memory-adapter':
-        specifier: workspace:*
-        version: link:../../adapters/runtime/memory
       '@aether-cloud/telemetry-memory-adapter':
         specifier: workspace:*
         version: link:../../adapters/telemetry/memory

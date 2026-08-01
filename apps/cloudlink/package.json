@@ -8,18 +8,19 @@
   },
   "dependencies": {
     "@aether-cloud/application": "workspace:*",
+    "@aether-cloud/cloudlink-memory-adapter": "workspace:*",
     "@aether-cloud/cloudlink-mqtt-adapter": "workspace:*",
+    "@aether-cloud/cloudlink-postgres-adapter": "workspace:*",
     "@aether-cloud/domain": "workspace:*",
     "@aether-cloud/fleet-postgres-adapter": "workspace:*",
     "@aether-cloud/integration-aether-contracts-adapter": "workspace:*",
     "@aether-cloud/integration-projection-memory-adapter": "workspace:*",
-    "@aether-cloud/integration-projection-postgres-adapter": "workspace:*"
+    "@aether-cloud/integration-projection-postgres-adapter": "workspace:*",
+    "@aether-cloud/runtime-memory-adapter": "workspace:*"
   },
   "devDependencies": {
-    "@aether-cloud/cloudlink-memory-adapter": "workspace:*",
     "@aether-cloud/integration-control-memory-adapter": "workspace:*",
     "@aether-cloud/integration-control-node-crypto-adapter": "workspace:*",
-    "@aether-cloud/runtime-memory-adapter": "workspace:*",
     "@aether-cloud/telemetry-memory-adapter": "workspace:*"
   }
 }
