@@ -754,17 +754,19 @@
       "implementation_status": "partial",
       "production_readiness": "experimental",
       "context_sensitivity": "public",
-      "updated": "2026-07-30",
+      "updated": "2026-08-01",
       "priority": "optional",
       "implemented_layers": [
         "fastify-http",
         "supabase-es256-jwks-authentication",
         "postgresql-audit-query",
         "postgresql-fleet-enrollment",
-        "aetheredge-claim-contract"
+        "aetheredge-claim-contract",
+        "read-only-integration-projection-routes"
       ],
       "missing_layers": [
         "tenant-membership-administration",
+        "integration-write-and-control-http",
         "remaining-http-capabilities"
       ]
     },
