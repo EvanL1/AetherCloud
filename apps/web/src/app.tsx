@@ -20,10 +20,11 @@ import type {
 } from "./api-client.js";
 import { consoleConfig } from "./config.js";
 import { CustomDashboard } from "./custom-dashboard.js";
+import { IntegrationsSection } from "./integrations.js";
 import { decodeSessionScope } from "./session-scope.js";
 import type { SessionScope } from "./session-scope.js";
 
-type ConsoleView = "fleet" | "overview" | "audit" | "account";
+type ConsoleView = "fleet" | "integrations" | "overview" | "audit" | "account";
 type BusyAction = "sign-in" | "recovery" | "update" | "sign-out";
 type ApiState = "checking" | "connected" | "denied" | "unavailable";
 type FormSubmitEvent = SyntheticEvent<HTMLFormElement, SubmitEvent>;
@@ -269,6 +270,7 @@ function Navigation({
   }>[] = [
     { view: "overview", label: "总览" },
     { view: "fleet", label: "Fleet" },
+    { view: "integrations", label: "集成投影" },
   ];
   const managementItems: readonly Readonly<{
     view: ConsoleView;
@@ -1397,11 +1399,13 @@ function Console({
             <span>
               {view === "fleet"
                 ? "Fleet"
-                : view === "audit"
-                  ? "审计"
-                  : view === "account"
-                    ? "账户"
-                    : "总览"}
+                : view === "integrations"
+                  ? "集成投影"
+                  : view === "audit"
+                    ? "审计"
+                    : view === "account"
+                      ? "账户"
+                      : "总览"}
             </span>
           </div>
           <div className="topbar-actions">
@@ -1427,6 +1431,8 @@ function Console({
                 void loadFleet();
               }}
             />
+          ) : view === "integrations" ? (
+            <IntegrationsSection accessToken={session.access_token} api={api} />
           ) : view === "overview" ? (
             <DashboardOverview
               apiState={apiState}
