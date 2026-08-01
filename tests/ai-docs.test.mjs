@@ -689,7 +689,9 @@ test("CloudLink readiness evidence references public gates and fails closed", ()
   // alpha.4 moved the uplink envelope's required list into $defs.uplinkEnvelope
   // and composes it through allOf. The required set itself is unchanged, so
   // this follows the restructuring rather than relaxing the assertion.
-  assert.ok(deliveryEnvelope.$defs.uplinkEnvelope.required.includes("delivery"));
+  assert.ok(
+    deliveryEnvelope.$defs.uplinkEnvelope.required.includes("delivery"),
+  );
   assert.equal(deliveryEnvelope.$defs.digest.pattern, "^sha256:[0-9a-f]{64}$");
   assert.equal(durableAck.$id, "durable-ack.schema.json");
   assert.equal(durableAck.properties.message_kind.const, "durable-ack");

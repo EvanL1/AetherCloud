@@ -31,4 +31,4 @@ jobs:
         run: |
           corepack enable pnpm
           mkdir -p "$(pnpm store path --silent)"
-      - uses: EvanL1/AetherContracts/.github/actions/verify-consumer@c5aad674f0844138e778963118e786e430ffb365
+      - uses: EvanL1/AetherContracts/.github/actions/verify-consumer@8c858ba978aa183a3c534c34f62596f4902461ae

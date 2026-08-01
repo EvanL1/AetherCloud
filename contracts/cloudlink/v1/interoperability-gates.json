@@ -9,10 +9,7 @@
   "gate_evidence": {
     "shared-broker-authentication": {
       "status": "proposal",
-      "evidence": [
-        "session-authentication.schema.json",
-        "ADR-0015"
-      ]
+      "evidence": ["session-authentication.schema.json", "ADR-0015"]
     },
     "signed-correlated-session-accepted": {
       "status": "blocked",
@@ -24,17 +21,11 @@
     },
     "single-wire-contract": {
       "status": "implemented-alpha3",
-      "evidence": [
-        "aether-contracts.lock.json",
-        "wire-profile.json"
-      ]
+      "evidence": ["aether-contracts.lock.json", "wire-profile.json"]
     },
     "cross-language-fixtures": {
       "status": "implemented-alpha3",
-      "evidence": [
-        "fixture-manifest.json",
-        "25 TypeScript fixture outcomes"
-      ]
+      "evidence": ["fixture-manifest.json", "25 TypeScript fixture outcomes"]
     },
     "real-broker-dual-harness": {
       "status": "implemented-alpha3",
@@ -60,9 +51,7 @@
     },
     "legacy-cutover": {
       "status": "blocked",
-      "evidence": [
-        "legacy remains the explicit default"
-      ]
+      "evidence": ["legacy remains the explicit default"]
     }
   }
 }
