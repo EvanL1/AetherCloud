@@ -382,6 +382,12 @@ importers:
       '@aether-cloud/fleet-postgres-adapter':
         specifier: workspace:*
         version: link:../../adapters/fleet/postgres
+      '@aether-cloud/integration-projection-memory-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/memory
+      '@aether-cloud/integration-projection-postgres-adapter':
+        specifier: workspace:*
+        version: link:../../adapters/integration-projection/postgres
       '@aether-cloud/mcp-interface':
         specifier: workspace:*
         version: link:../mcp

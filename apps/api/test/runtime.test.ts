@@ -206,6 +206,77 @@ describe("API runtime composition", () => {
     );
   });
 
+  it("reads Integration projections as the application role and closes its pool", async () => {
+    const statements: string[] = [];
+    let ended = false;
+    let configuredUrl = "";
+    const client: PostgresAuditClient = {
+      query: <Row extends Record<string, unknown>>(
+        text: string,
+      ): Promise<PostgresAuditQueryResult<Row>> => {
+        statements.push(text);
+        return Promise.resolve({ rows: [] as readonly Row[], rowCount: 0 });
+      },
+      release: () => undefined,
+    };
+    const runtime = composeApiRuntime(
+      {
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_API_PERMISSIONS: "integration.projection.read",
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
+        AETHER_CLOUD_POSTGRES_URL:
+          "postgresql://aethercloud_app.pooler-project:secret@database.example:5432/postgres?sslmode=verify-full",
+      },
+      {
+        integrationProjectionPostgresPoolFactory: (configuration) => {
+          configuredUrl = configuration.connectionString;
+          return {
+            connect: () => Promise.resolve(client),
+            end: () => {
+              ended = true;
+              return Promise.resolve();
+            },
+          };
+        },
+      },
+    );
+    runtimes.push(runtime);
+
+    const response = await runtime.app.inject({
+      method: "GET",
+      url: "/api/v1/integrations",
+      headers: { authorization: "Bearer opaque-test-token" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      authority: "edge-reported-copy",
+      liveStateAuthoritative: false,
+      items: [],
+    });
+    expect(configuredUrl).toContain("aethercloud_app.pooler-project");
+    expect(statements).toEqual([
+      "BEGIN",
+      "SELECT set_config('aethercloud.tenant_id', $1, true)",
+      expect.stringContaining("aethercloud.integration_projections"),
+      "COMMIT",
+    ]);
+    await runtime.close();
+    expect(ended).toBe(true);
+  });
+
+  it("rejects a projection store that is neither memory nor postgres", () => {
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "sqlite",
+      }),
+    ).toThrow(
+      "AETHER_CLOUD_INTEGRATION_PROJECTION_STORE must be memory or postgres",
+    );
+  });
+
   it("selects Supabase JWT authentication explicitly", async () => {
     const runtime = composeApiRuntime({
       ...authenticatedEnvironment,

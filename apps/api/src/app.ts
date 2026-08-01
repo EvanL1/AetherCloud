@@ -14,6 +14,8 @@ import Fastify from "fastify";
 import { registerAuditRoutes } from "./audit-routes.js";
 import type { EnrollmentClaimRateLimiter } from "./enrollment-claim-rate-limiter.js";
 import { registerFleetRoutes } from "./fleet-routes.js";
+import { registerIntegrationRoutes } from "./integration-routes.js";
+import type { IntegrationHttpDependencies } from "./integration-routes.js";
 import { registerMcpHttp } from "./mcp-http.js";
 import type { McpHttpDependencies } from "./mcp-http.js";
 import type { FastifyInstance } from "fastify";
@@ -61,6 +63,7 @@ export interface BuildAppOptions {
   readonly allowedOrigins?: readonly string[];
   readonly audit?: AuditHttpDependencies;
   readonly fleet?: FleetHttpDependencies;
+  readonly integrations?: IntegrationHttpDependencies;
   readonly mcp?: McpHttpDependencies;
 }
 
@@ -187,6 +190,11 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     registerFleetRoutes(app, fleet);
   }
 
+  const integrations = options.integrations;
+  if (integrations !== undefined) {
+    registerIntegrationRoutes(app, integrations);
+  }
+
   const audit = options.audit;
   if (audit !== undefined) {
     registerAuditRoutes(app, audit);
@@ -195,4 +203,5 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   return app;
 }
 
+export type { IntegrationHttpDependencies } from "./integration-routes.js";
 export type { McpHttpDependencies, McpHttpInterface } from "./mcp-http.js";

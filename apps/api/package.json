@@ -16,6 +16,8 @@
     "@aether-cloud/domain": "workspace:*",
     "@aether-cloud/fleet-memory-adapter": "workspace:*",
     "@aether-cloud/fleet-postgres-adapter": "workspace:*",
+    "@aether-cloud/integration-projection-memory-adapter": "workspace:*",
+    "@aether-cloud/integration-projection-postgres-adapter": "workspace:*",
     "@aether-cloud/mcp-interface": "workspace:*",
     "@fastify/cors": "11.3.0",
     "fastify": "5.10.0",
