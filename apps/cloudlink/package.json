@@ -6,6 +6,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node --import tsx src/server.ts"
+  },
   "dependencies": {
     "@aether-cloud/application": "workspace:*",
     "@aether-cloud/cloudlink-memory-adapter": "workspace:*",
@@ -16,7 +20,8 @@
     "@aether-cloud/integration-aether-contracts-adapter": "workspace:*",
     "@aether-cloud/integration-projection-memory-adapter": "workspace:*",
     "@aether-cloud/integration-projection-postgres-adapter": "workspace:*",
-    "@aether-cloud/runtime-memory-adapter": "workspace:*"
+    "@aether-cloud/runtime-memory-adapter": "workspace:*",
+    "tsx": "4.23.1"
   },
   "devDependencies": {
     "@aether-cloud/integration-control-memory-adapter": "workspace:*",

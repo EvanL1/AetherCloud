@@ -739,6 +739,66 @@ describe("composeCloudLinkRuntime", () => {
     });
   });
 
+  describe("operator-configured Broker TLS trust", () => {
+    const tlsEnvironment = {
+      AETHER_CLOUD_CLOUDLINK_MQTT_TLS_CA_PATH: "/etc/aether/broker-ca.pem",
+      AETHER_CLOUD_CLOUDLINK_MQTT_TLS_CLIENT_CERTIFICATE_PATH:
+        "/etc/aether/ingress.crt",
+      AETHER_CLOUD_CLOUDLINK_MQTT_TLS_CLIENT_PRIVATE_KEY_PATH:
+        "/etc/aether/ingress.key",
+    } as const;
+
+    it("omits tls entirely when no trust material is configured", async () => {
+      const connector = new FakeConnector();
+      const runtime = composeCloudLinkRuntime(environment(), { connector });
+
+      await runtime.start();
+      await runtime.close();
+
+      // An absent key, not an undefined one: the transport rejects unsupported
+      // fields, and the default system trust chain applies instead.
+      expect(connector.input).toBeTypeOf("object");
+      expect(Object.keys(record(connector.input, "connection"))).not.toContain(
+        "tls",
+      );
+    });
+
+    it("passes the complete trust bundle to the transport", async () => {
+      const connector = new FakeConnector();
+      const runtime = composeCloudLinkRuntime(
+        environment({
+          AETHER_CLOUD_CLOUDLINK_MQTT_URL: "mqtts://broker.example:8883",
+          ...tlsEnvironment,
+        }),
+        { connector },
+      );
+
+      await runtime.start();
+      await runtime.close();
+
+      expect(connector.input).toMatchObject({
+        url: "mqtts://broker.example:8883",
+        tls: {
+          caPath: "/etc/aether/broker-ca.pem",
+          clientCertificatePath: "/etc/aether/ingress.crt",
+          clientPrivateKeyPath: "/etc/aether/ingress.key",
+        },
+      });
+    });
+
+    for (const omitted of Object.keys(tlsEnvironment)) {
+      it(`rejects a partial trust bundle missing ${omitted}`, () => {
+        const partial: NodeJS.ProcessEnv = Object.fromEntries(
+          Object.entries(tlsEnvironment).filter(([key]) => key !== omitted),
+        );
+
+        expect(() => composeCloudLinkRuntime(environment(partial))).toThrow(
+          "must be set together or not at all",
+        );
+      });
+    }
+  });
+
   describe("read-only Integration projection over the trusted connector", () => {
     it("projects a Home Assistant topology reported on a trusted-connector session", async () => {
       const { runtime, transport, projections } = await startedRuntime();

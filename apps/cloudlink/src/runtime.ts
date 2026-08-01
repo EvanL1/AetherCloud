@@ -11,7 +11,10 @@ import {
   InMemoryCloudLinkSessionRepository,
   InMemoryGatewayCredentialVerifier,
 } from "@aether-cloud/cloudlink-memory-adapter";
-import { mqttUplinkFilters } from "@aether-cloud/cloudlink-mqtt-adapter";
+import {
+  mqttUplinkFilters,
+  type NodeMqttTlsFileConfig,
+} from "@aether-cloud/cloudlink-mqtt-adapter";
 import { PostgresCloudLinkSessionRepository } from "@aether-cloud/cloudlink-postgres-adapter";
 import { parseCloudLinkSessionId, parseUtcInstant } from "@aether-cloud/domain";
 import { NodeIntegrationPayloadDigestor } from "@aether-cloud/integration-projection-memory-adapter";
@@ -147,6 +150,44 @@ function clientId(environment: NodeJS.ProcessEnv): string {
   return value;
 }
 
+const tlsVariables = {
+  caPath: "AETHER_CLOUD_CLOUDLINK_MQTT_TLS_CA_PATH",
+  clientCertificate: "AETHER_CLOUD_CLOUDLINK_MQTT_TLS_CLIENT_CERTIFICATE_PATH",
+  clientPrivateKey: "AETHER_CLOUD_CLOUDLINK_MQTT_TLS_CLIENT_PRIVATE_KEY_PATH",
+} as const;
+
+/**
+ * ADR-0014 decision 2 makes Broker TLS trust operator configuration, which a
+ * self-signed homelab Broker needs; without it an operator's only options are
+ * not connecting or turning verification off somewhere else.
+ *
+ * The transport accepts the three files only as one mutual-TLS bundle, so a CA
+ * alone cannot be expressed and this reproduces that rule rather than inventing
+ * a looser one. Absolute-path, symlink, size, permission, and `mqtts` checks
+ * stay in the transport; only the all-or-nothing rule is enforced here, where
+ * an operator sees it before any Broker connection exists.
+ */
+function tlsFiles(
+  environment: NodeJS.ProcessEnv,
+): NodeMqttTlsFileConfig | undefined {
+  const caPath = environment[tlsVariables.caPath] ?? "";
+  const clientCertificatePath =
+    environment[tlsVariables.clientCertificate] ?? "";
+  const clientPrivateKeyPath = environment[tlsVariables.clientPrivateKey] ?? "";
+  const configured = [
+    caPath,
+    clientCertificatePath,
+    clientPrivateKeyPath,
+  ].filter((value) => value.length > 0).length;
+  if (configured === 0) return undefined;
+  if (configured !== 3) {
+    throw new Error(
+      `${tlsVariables.caPath}, ${tlsVariables.clientCertificate}, and ${tlsVariables.clientPrivateKey} must be set together or not at all`,
+    );
+  }
+  return { caPath, clientCertificatePath, clientPrivateKeyPath };
+}
+
 /** Low-cardinality only: failure codes, never a failure message or payload. */
 function stderrObserver(): CloudLinkIngressObserver {
   return {
@@ -170,6 +211,7 @@ interface IngressCollaborators {
     clientId: string;
     username?: string;
     password?: string;
+    tls?: NodeMqttTlsFileConfig;
   }>;
   readonly connector?: CloudLinkMqttTransportConnector;
   readonly topicPrefix: string;
@@ -267,8 +309,7 @@ export function composeCloudLinkRuntime(
   const brokerClientId = clientId(environment);
   const username = environment.AETHER_CLOUD_CLOUDLINK_MQTT_USERNAME;
   const password = environment.AETHER_CLOUD_CLOUDLINK_MQTT_PASSWORD;
-  // Broker mTLS trust material is deliberately deferred to Task 4 alongside the
-  // deployment configuration; the transport already accepts `tls` file paths.
+  const tls = tlsFiles(environment);
 
   const store =
     factories.projectionStore ?? composeIntegrationProjectionStore(environment);
@@ -304,6 +345,7 @@ export function composeCloudLinkRuntime(
       clientId: brokerClientId,
       ...(username === undefined || username.length === 0 ? {} : { username }),
       ...(password === undefined || password.length === 0 ? {} : { password }),
+      ...(tls === undefined ? {} : { tls }),
     },
     ...(factories.connector === undefined
       ? {}

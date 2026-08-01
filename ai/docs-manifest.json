@@ -789,6 +789,49 @@
       "priority": "core"
     },
     {
+      "id": "cloudlink-ingress-deployment",
+      "path": "docs/reference/cloudlink-ingress-deployment.md",
+      "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/cloudlink-ingress-deployment.md",
+      "title": "CloudLink ingress deployment",
+      "description": "Deploy the read-only CloudLink MQTT ingress process, configure its environment, and understand that its authentication is your Broker ACL",
+      "locale": "en",
+      "translation_of": null,
+      "document_role": "operations",
+      "agent_profiles": ["coding-agent", "operator-agent"],
+      "intents": ["deploy-cloudlink-ingress", "configure-cloudlink-ingress"],
+      "implementation_status": "partial",
+      "production_readiness": "experimental",
+      "context_sensitivity": "redacted-only",
+      "updated": "2026-08-01",
+      "priority": "core",
+      "capability_refs": [
+        "cloudlink.session.open",
+        "cloudlink.session.heartbeat",
+        "fleet.runtime-manifest.report",
+        "integration.topology.report",
+        "integration.observations.report"
+      ],
+      "implemented_layers": [
+        "mqtt-uplink-ingress-composition",
+        "operator-configured-trusted-connector-credentials",
+        "operator-configured-broker-tls-trust",
+        "postgresql-integration-projection-store",
+        "railway-service-configuration"
+      ],
+      "missing_layers": [
+        "gateway-signed-session-authentication",
+        "broker-publisher-attestation",
+        "postgresql-runtime-manifest-repository",
+        "multi-instance-ingress-ownership"
+      ],
+      "preconditions": [
+        "per-Gateway Broker ACLs restrict each publisher to its own uplink topics",
+        "aethercloud_cloudlink_ingress has been granted LOGIN and a password out of band"
+      ],
+      "recovery_route": "docs/recovery/cloudlink-offline-and-reconnect.md",
+      "human_escalation": "required before exposing the ingress to a Broker whose publisher ACLs are unverified"
+    },
+    {
       "id": "cloudlink-mqtt-v1",
       "path": "docs/reference/cloudlink-mqtt-v1.md",
       "canonical_url": "https://docs.aetheriot.dev/aethercloud/reference/cloudlink-mqtt-v1.md",
@@ -824,7 +867,7 @@
       "implementation_status": "implemented",
       "production_readiness": "not-applicable",
       "context_sensitivity": "internal",
-      "updated": "2026-07-29",
+      "updated": "2026-08-01",
       "priority": "optional"
     },
     {
