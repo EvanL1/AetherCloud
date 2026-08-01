@@ -81,6 +81,18 @@ describe("API runtime composition", () => {
       "AETHER_CLOUD_POSTGRES_URL is required when AETHER_CLOUD_AUDIT_STORE=postgres",
     );
 
+    // The whole point of threading requiredWhen is that the message names the
+    // gate the operator actually set. Two call sites share one validator, so
+    // passing the wrong literal at either is the hazard the parameter creates.
+    expect(() =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_INTEGRATION_PROJECTION_STORE: "postgres",
+      }),
+    ).toThrow(
+      "AETHER_CLOUD_POSTGRES_URL is required when AETHER_CLOUD_INTEGRATION_PROJECTION_STORE=postgres",
+    );
+
     expect(() =>
       composeApiRuntime({
         ...authenticatedEnvironment,

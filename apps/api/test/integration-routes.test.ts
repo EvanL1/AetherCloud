@@ -363,6 +363,53 @@ describe("GET /api/v1/integrations", () => {
     });
   });
 
+  it("translates an undecodable stored projection to 503, not 400", async () => {
+    // The application returns this when a stored row fails to decode: schema
+    // drift, or a bad ingress write. 400 would tell the console the operator's
+    // request was wrong and stop it retrying; 503 says the platform is at
+    // fault. Deleting the clause from catalogFailureStatus makes this fail.
+    const app = appWithIntegrations({
+      list: recordingList({
+        ok: false,
+        failure: {
+          code: "invalid-integration-repository-result",
+          message: "integration projection catalog returned invalid data",
+        },
+      }).stub,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/integrations",
+      headers: { authorization: "Bearer valid" },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      error: { code: "invalid-integration-repository-result" },
+    });
+  });
+
+  it("translates a catalog input rejection from the application to 400", async () => {
+    // The route rejects unknown query fields itself, so this default branch is
+    // otherwise only reachable when the application decodes the input more
+    // strictly than the route does.
+    const app = appWithIntegrations({
+      list: recordingList({
+        ok: false,
+        failure: { code: "invalid-input", message: "cursor is not canonical" },
+      }).stub,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/integrations",
+      headers: { authorization: "Bearer valid" },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
   it("translates storage unavailability to 503", async () => {
     const app = appWithIntegrations({
       list: recordingList({
@@ -443,6 +490,27 @@ describe("GET /api/v1/integrations/:gatewayId/:integrationId", () => {
     expect(get.calls).toHaveLength(0);
   });
 
+  it("reaches the handler for the longest Integration id the domain allows", async () => {
+    // Fastify's default maxParamLength is 100 while the domain allows 128. A
+    // longer id was rejected by the router with a 414 whose error was a string
+    // rather than the documented object, and with no correlation header, so
+    // the catalog could list a projection the detail route could never return.
+    const longest = parseIntegrationId(`h${"x".repeat(127)}`);
+    const app = appWithIntegrations();
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/integrations/${gatewayId}/${longest}`,
+      headers: { authorization: "Bearer valid" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers["x-correlation-id"]).toBeDefined();
+    expect(response.json()).toMatchObject({
+      error: { code: "integration-projection-not-found" },
+    });
+  });
+
   it("translates a missing projection to 404", async () => {
     const app = appWithIntegrations();
 
@@ -508,6 +576,32 @@ describe("GET /api/v1/integrations/:gatewayId/:integrationId", () => {
       permissions: ["integration.projection.read"],
     });
     expect(get.calls[0]?.input).toEqual({ gatewayId, integrationId });
+  });
+
+  it("translates an undecodable stored projection detail to 503, not 400", async () => {
+    // Same reasoning as the catalog case: a row that fails to decode is the
+    // platform's fault, and the console should retry rather than treat it as a
+    // bad request. Deleting the clause from projectionFailureStatus fails this.
+    const app = appWithIntegrations({
+      get: recordingGet({
+        ok: false,
+        failure: {
+          code: "invalid-integration-repository-result",
+          message: "integration projection returned invalid data",
+        },
+      }).stub,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/integrations/${gatewayId}/${integrationId}`,
+      headers: { authorization: "Bearer valid" },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      error: { code: "invalid-integration-repository-result" },
+    });
   });
 
   it("translates a detail storage failure to 503", async () => {
