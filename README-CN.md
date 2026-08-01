@@ -2,6 +2,9 @@
 
 [English](README.md)
 
+**产品站：** [aetheriot.ai](https://aetheriot.ai/) ·
+**开发者站：** [aetheriot.dev](https://aetheriot.dev/)
+
 **文档网站：** [docs.aetheriot.dev/aethercloud](https://docs.aetheriot.dev/aethercloud/)
 
 **AetherIoT 正在演进中的智能体与控制平面。**

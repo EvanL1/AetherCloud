@@ -2,6 +2,9 @@
 
 [中文说明](README-CN.md)
 
+**Product site:** [aetheriot.ai](https://aetheriot.ai/) ·
+**Developer site:** [aetheriot.dev](https://aetheriot.dev/)
+
 **Documentation website:** [docs.aetheriot.dev/aethercloud](https://docs.aetheriot.dev/aethercloud/)
 
 **The evolving agent and control plane for AetherIoT.**
