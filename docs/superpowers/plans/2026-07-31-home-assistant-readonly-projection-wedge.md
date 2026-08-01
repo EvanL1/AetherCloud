@@ -528,6 +528,54 @@ git commit -m "feat: select the CloudLink integration projection store by enviro
 
 ## Task 3: CloudLink 生产组合根
 
+> **本 Task 的 spec 已于 2026-08-01 重写。** 下方 Step 3 与 Step 5 的原始代码走的是
+> Gateway 逐条签名路径，而该路径**在本仓库没有生产实现**——见下方"凭据路径"。
+> 以本节开头的说明为准，原始 Step 3/Step 5 正文仅作历史保留。
+
+### 凭据路径：走 trusted connector，不走 Gateway 签名
+
+派发前的核查发现三件事，指向同一个结论：
+
+- `resolvePublicKey` 的**每一个**实现都在测试或 harness 脚本里，无生产适配器；
+- `GatewayCredentialVerifier` 只有 `InMemoryGatewayCredentialVerifier` 一个实现，
+  没有 PostgreSQL 版本；
+- `PostgresGatewayIdentityRepository` 只存 `credential_request_fingerprint`
+  （入网申领指纹），不是可用于签名的活跃凭据。
+
+这与 `docs/concepts/current-state-audit.md` 一致：Gateway 的注册、Claim 签发、
+指纹绑定消费已实现，而 **active credential issuance、trust-key lifecycle、
+CA/KMS 仍是 planned**。因此 Gateway 逐条签名路径无法在 A0 落地。
+
+`apps/cloudlink/src/cloudlink-mqtt-application-bridge.ts` 的 `#openSession`
+按 `message.credential_binding.origin_model` 分叉：值为 `"gateway-signed"` 时走
+签名路径，**其他值走 trusted connector 路径**，只需要
+`resolveTrustedConnectorCredential` 返回 `{ credentialId, proof }`
+（见同文件 `trustedConnectorCredential()`，第 136 行；`proof` 上限 4096 字节）。
+
+这条路径是 ADR-0014 第 5 条明确留下的合法替代方案，不是绕过它。
+
+**因此 A0 的组合根：**
+
+- **不接** `requestSessionChallenge`、`acceptGatewaySignedSession`、
+  `authenticateGatewaySignedUplink` 三个依赖（它们都是可选的）；
+- **接** `resolveTrustedConnectorCredential`，凭据由运营方通过环境配置提供；
+- `OpenCloudLinkSession` 需要的 `credentialVerifier` 用
+  `InMemoryGatewayCredentialVerifier` 从同一份配置播种——这里的"内存"指
+  凭据的真源是运营方配置而非云端数据库，这是刻意的：**云端不存长期凭据**；
+- 其余只读投影接线不变。
+
+**诚实性要求（必须落到文档）：** 这是受限模式，只适用于运营方能带外确认发布者
+身份的小规模部署（A0 的 homelab 目标场景）。不得宣称支持多租户多 Gateway 规模，
+也不得暗示 Gateway 逐条签名认证已可用。交付时更新
+`docs/concepts/current-state-audit.md` 与 `docs/concepts/cloudlink-and-core-state-machines.md`
+说明这一点。
+
+**安全：** 凭据 `proof` 是机密，来自环境变量。它不得进入日志、错误信息、审计负载、
+测试夹具或任何输出。
+
+---
+
+以下为原始 spec 正文（Step 3、Step 5 的 Gateway 签名接线已作废，其余仍适用）。
 参考实现是 `scripts/run-home-assistant-e2e-harness.ts:673-834`。
 本 Task 把那段接线搬进组合根，并做三处删改：去掉 `integrationControlFactory`、
 去掉 `INTEGRATION_CONTROL_PROTOCOL` 扩展、去掉 harness 专用的 `Observed*` 包装。
