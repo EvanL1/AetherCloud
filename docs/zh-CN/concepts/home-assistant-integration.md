@@ -47,7 +47,7 @@ Home Assistant 地址、访问令牌、刷新令牌和授权客户端材料只�
 ## 云端入口的认证完全依赖你的消息代理访问控制
 
 云端这一侧运行的是一种刻意受限的 CloudLink 模式。完整说明见
-[CloudLink 可靠性与生命周期](https://docs.aetheriot.dev/aethercloud/concepts/cloudlink-and-core-state-machines.md)，
+[CloudLink 可靠性与生命周期](https://docs.aetheriot.ai/aethercloud/concepts/cloudlink-and-core-state-machines.md)，
 但只读到本页就停下的读者，也必须知道下面这条约束。
 
 云端入口不校验任何 Gateway 签名——无论是建立会话时还是之后的每一条上行——因为本仓库
@@ -151,5 +151,5 @@ AetherCloud 同样要求观测批次绑定准确的拓扑代次。任何一端�
 - 面向生产的授权接入和令牌轮换。
 
 配置和持久发布步骤见
-[AetherEdge 的 Home Assistant 指南](https://docs.aetheriot.dev/guides/home-assistant/)。
+[AetherEdge 的 Home Assistant 指南](https://docs.aetheriot.ai/guides/home-assistant/)。
 以上缺口仍是正式产品门槛。仓库测试通过不能被描述成已经支持生产部署。
