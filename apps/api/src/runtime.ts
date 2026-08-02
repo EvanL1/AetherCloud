@@ -128,6 +128,24 @@ function authenticator(environment: NodeJS.ProcessEnv): HttpAuthenticator {
   return new SupabaseJwtAuthenticator({ issuer });
 }
 
+/**
+ * Web domains this product serves browsers from.
+ *
+ * Both are legal while `aetheriot.ai` replaces `aetheriot.dev`. Remove
+ * `aetheriot.dev` once no browser reaches the API from it; removing it while a
+ * deployed origin still names it throws at composition and takes the API
+ * process down at boot.
+ */
+const PRODUCT_WEB_DOMAINS = ["aetheriot.ai", "aetheriot.dev"] as const;
+
+function isProductWebHost(hostname: string): boolean {
+  // The leading dot matters: a bare suffix test would also admit
+  // `notaetheriot.ai` and `aetheriot.ai.example.com`.
+  return PRODUCT_WEB_DOMAINS.some(
+    (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+  );
+}
+
 function allowedOrigins(
   environment: NodeJS.ProcessEnv,
 ): readonly string[] | undefined {
@@ -156,8 +174,7 @@ function allowedOrigins(
       parsed.protocol !== "https:" ||
       parsed.origin !== origin ||
       (environment.RAILWAY_ENVIRONMENT_NAME === "production" &&
-        parsed.hostname !== "aetheriot.dev" &&
-        !parsed.hostname.endsWith(".aetheriot.dev")) ||
+        !isProductWebHost(parsed.hostname)) ||
       unique.has(origin)
     ) {
       throw new Error("AETHER_CLOUD_ALLOWED_WEB_ORIGINS is invalid");
