@@ -321,6 +321,60 @@ describe("API runtime composition", () => {
     ).toThrow(/AETHER_CLOUD_ALLOWED_WEB_ORIGINS/);
   });
 
+  it("serves the product's own web origins on either domain in production", () => {
+    // The product answers on aetheriot.dev and aetheriot.ai during the move to
+    // .ai. An origin this list rejects makes composeApiRuntime throw, which
+    // takes the whole API process down at boot rather than failing one request,
+    // so both domains have to be legal before any .ai origin is configured.
+    const productionRuntime = (origins: string) =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_AUTH_MODE: "supabase-jwt",
+        AETHER_CLOUD_SUPABASE_AUTH_ISSUER:
+          "https://exampleproject.supabase.co/auth/v1",
+        AETHER_CLOUD_ALLOWED_WEB_ORIGINS: origins,
+        RAILWAY_ENVIRONMENT_NAME: "production",
+      });
+
+    for (const origins of [
+      "https://aetheriot.ai",
+      "https://cloud.aetheriot.ai",
+      "https://aetheriot.dev",
+      "https://cloud.aetheriot.dev",
+      "https://cloud.aetheriot.dev,https://cloud.aetheriot.ai",
+    ]) {
+      runtimes.push(productionRuntime(origins));
+    }
+  });
+
+  it("refuses a production web origin outside the product's domains", () => {
+    const productionRuntime = (origins: string) =>
+      composeApiRuntime({
+        ...authenticatedEnvironment,
+        AETHER_CLOUD_AUDIT_STORE: "memory",
+        AETHER_CLOUD_AUTH_MODE: "supabase-jwt",
+        AETHER_CLOUD_SUPABASE_AUTH_ISSUER:
+          "https://exampleproject.supabase.co/auth/v1",
+        AETHER_CLOUD_ALLOWED_WEB_ORIGINS: origins,
+        RAILWAY_ENVIRONMENT_NAME: "production",
+      });
+
+    for (const origins of [
+      "https://example.com",
+      // A suffix match on the bare name would admit these.
+      "https://aetheriot.ai.example.com",
+      "https://notaetheriot.ai",
+      "https://aetheriot.dev.attacker.test",
+      // One bad entry must condemn the whole list.
+      "https://cloud.aetheriot.ai,https://example.com",
+    ]) {
+      expect(() => productionRuntime(origins)).toThrow(
+        /AETHER_CLOUD_ALLOWED_WEB_ORIGINS/,
+      );
+    }
+  });
+
   it("fails closed instead of using configured bearer auth in production", () => {
     expect(() =>
       composeApiRuntime({
