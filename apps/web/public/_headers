@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.aetheriot.dev https://dvzmvjbiwytvbdedetxs.supabase.co; img-src 'self' https://aetheriot.dev data:; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.aetheriot.ai https://api.aetheriot.dev https://dvzmvjbiwytvbdedetxs.supabase.co; img-src 'self' https://aetheriot.ai https://aetheriot.dev data:; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff

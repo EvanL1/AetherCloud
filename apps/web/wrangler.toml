@@ -6,6 +6,15 @@ preview_urls = false
 directory = "./dist"
 not_found_handling = "single-page-application"
 
+# Both hostnames serve this Worker while aetheriot.ai replaces aetheriot.dev.
+# cloud.aetheriot.ai was attached outside this file and so was invisible to
+# `wrangler deploy`; declaring it here keeps a deploy from dropping a domain
+# that is already serving. cloud.aetheriot.dev comes out once no one reaches
+# the console from it.
+[[routes]]
+pattern = "cloud.aetheriot.ai"
+custom_domain = true
+
 [[routes]]
 pattern = "cloud.aetheriot.dev"
 custom_domain = true
