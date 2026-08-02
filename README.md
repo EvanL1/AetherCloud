@@ -5,7 +5,7 @@
 **Product site:** [aetheriot.ai](https://aetheriot.ai/) ·
 **Developer site:** [aetheriot.dev](https://aetheriot.dev/)
 
-**Documentation website:** [docs.aetheriot.dev/aethercloud](https://docs.aetheriot.dev/aethercloud/)
+**Documentation website:** [docs.aetheriot.ai/aethercloud](https://docs.aetheriot.ai/aethercloud/)
 
 **The evolving agent and control plane for AetherIoT.**
 
@@ -24,7 +24,7 @@ repository currently provides tested domain and application foundations for
 that direction; it does not yet ship a production end-user Agent.
 
 > **Want something you can run today?** Start with the
-> [AetherEdge safe commissioning journey](https://docs.aetheriot.dev/overview/user-journeys/) —
+> [AetherEdge safe commissioning journey](https://docs.aetheriot.ai/overview/user-journeys/) —
 > install a safe-empty runtime, prove the read-only data path, and only then
 > commission deterministic behavior for this control plane to coordinate.
 
