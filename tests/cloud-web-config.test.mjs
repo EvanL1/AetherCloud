@@ -28,7 +28,10 @@ test("the AetherCloud console is an independently deployed cloud subdomain", asy
     headers,
     /connect-src 'self' https:\/\/api\.aetheriot\.ai https:\/\/api\.aetheriot\.dev https:\/\/dvzmvjbiwytvbdedetxs\.supabase\.co/,
   );
-  assert.match(headers, /img-src 'self' https:\/\/aetheriot\.ai https:\/\/aetheriot\.dev data:/);
+  assert.match(
+    headers,
+    /img-src 'self' https:\/\/aetheriot\.ai https:\/\/aetheriot\.dev data:/,
+  );
   assert.match(headers, /frame-ancestors 'none'/);
 });
 
