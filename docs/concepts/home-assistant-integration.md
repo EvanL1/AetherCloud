@@ -7,7 +7,7 @@ status: mixed
 
 # Home Assistant integration
 
-[Simplified Chinese](https://docs.aetheriot.dev/zh/aethercloud/concepts/home-assistant-integration/)
+[Simplified Chinese](https://docs.aetheriot.ai/zh/aethercloud/concepts/home-assistant-integration/)
 
 Home Assistant is integrated at AetherEdge, close to the home network and
 devices. AetherCloud does not connect to a person's Home Assistant instance,
@@ -58,7 +58,7 @@ logs, prompts, and Agent context.
 ## Cloud ingress authentication depends on your Broker ACL
 
 The cloud side of this path runs a deliberately restricted CloudLink mode.
-[CloudLink reliability and lifecycle](https://docs.aetheriot.dev/aethercloud/concepts/cloudlink-and-core-state-machines.md)
+[CloudLink reliability and lifecycle](https://docs.aetheriot.ai/aethercloud/concepts/cloudlink-and-core-state-machines.md)
 carries the full description, but a reader who stops at this page must still
 leave knowing the constraint below.
 
@@ -196,6 +196,6 @@ unknown topology, or treats `unknown` and `unavailable` as fabricated strings.
 - production OAuth onboarding and token rotation.
 
 The setup and durable publishing procedure is documented in the
-[AetherEdge Home Assistant guide](https://docs.aetheriot.dev/guides/home-assistant/).
+[AetherEdge Home Assistant guide](https://docs.aetheriot.ai/guides/home-assistant/).
 These remaining gaps are product gates. Passing the repository tests must not
 be described as a supported production deployment.

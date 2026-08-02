@@ -7,7 +7,7 @@ status: mixed
 
 # MCP application interface
 
-[Simplified Chinese](https://docs.aetheriot.dev/zh/aethercloud/concepts/mcp-application-interface/)
+[Simplified Chinese](https://docs.aetheriot.ai/zh/aethercloud/concepts/mcp-application-interface/)
 
 The MCP interface is an adapter over AetherCloud application commands and
 queries. It does not own business state, relax authorization, manufacture a
