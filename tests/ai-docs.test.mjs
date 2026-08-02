@@ -11,7 +11,7 @@ const root = resolve(import.meta.dirname, "..");
 const githubBlobBase = "https://github.com/EvanL1/AetherCloud/blob/main";
 const githubRawBase =
   "https://raw.githubusercontent.com/EvanL1/AetherCloud/main";
-const publicDocsBase = "https://docs.aetheriot.dev";
+const publicDocsBase = "https://docs.aetheriot.ai";
 const manifestSchemaUrl = `${githubRawBase}/ai/docs-manifest.schema.json`;
 
 const requiredDocuments = [

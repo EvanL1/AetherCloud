@@ -5,7 +5,7 @@
 **产品站：** [aetheriot.ai](https://aetheriot.ai/) ·
 **开发者站：** [aetheriot.dev](https://aetheriot.dev/)
 
-**文档网站：** [docs.aetheriot.dev/aethercloud](https://docs.aetheriot.dev/aethercloud/)
+**文档网站：** [docs.aetheriot.ai/aethercloud](https://docs.aetheriot.ai/aethercloud/)
 
 **AetherIoT 正在演进中的智能体与控制平面。**
 
@@ -16,7 +16,7 @@ AetherCloud 负责把人的意图转化为受治理的期望状态、能力任�
 完整的终端用户对话体验仍在开发中。当前仓库提供经过测试的领域层和应用层基础，并不代表已经交付可用于生产环境的终端用户智能体。
 
 > **希望先运行当前已经交付的能力？** 请从
-> [AetherEdge 安全投运旅程](https://docs.aetheriot.dev/zh/overview/user-journeys/)开始：
+> [AetherEdge 安全投运旅程](https://docs.aetheriot.ai/zh/overview/user-journeys/)开始：
 > 安装安全空运行时，先证明只读数据链路，再显式投运由本控制平面协调的确定性行为。
 
 AetherCloud 是 [AetherIoT 平台](docs/get-started/aetheriot-product-family.md)的一部分，另外两个核心产品是 [AetherEdge](https://github.com/EvanL1/AetherEdge) 和 [AetherContracts](https://github.com/EvanL1/AetherContracts)。
