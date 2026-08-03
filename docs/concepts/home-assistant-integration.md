@@ -195,7 +195,5 @@ unknown topology, or treats `unknown` and `unavailable` as fabricated strings.
   default off, and cannot claim physical completion;
 - production OAuth onboarding and token rotation.
 
-The setup and durable publishing procedure is documented in the
-[AetherEdge Home Assistant guide](https://docs.aetheriot.ai/guides/home-assistant/).
 These remaining gaps are product gates. Passing the repository tests must not
 be described as a supported production deployment.
