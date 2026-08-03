@@ -150,6 +150,4 @@ AetherCloud 同样要求观测批次绑定准确的拓扑代次。任何一端�
   并且不能宣称物理动作已经完成；
 - 面向生产的授权接入和令牌轮换。
 
-配置和持久发布步骤见
-[AetherEdge 的 Home Assistant 指南](https://docs.aetheriot.ai/guides/home-assistant/)。
 以上缺口仍是正式产品门槛。仓库测试通过不能被描述成已经支持生产部署。
