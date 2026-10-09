@@ -131,10 +131,12 @@ function authenticator(environment: NodeJS.ProcessEnv): HttpAuthenticator {
 /**
  * Web domains this product serves browsers from.
  *
- * Both are legal while `aetheriot.ai` replaces `aetheriot.dev`. Remove
- * `aetheriot.dev` once no browser reaches the API from it; removing it while a
- * deployed origin still names it throws at composition and takes the API
- * process down at boot.
+ * `aetheriot.ai` is primary and `aetheriot.dev` is kept indefinitely, not
+ * pending removal — both carry real console traffic.
+ *
+ * Dropping either entry throws at composition rather than failing a request,
+ * which takes the API process down at boot, so a domain leaves this list only
+ * after no deployed origin names it.
  */
 const PRODUCT_WEB_DOMAINS = ["aetheriot.ai", "aetheriot.dev"] as const;
 

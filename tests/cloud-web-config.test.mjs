@@ -11,9 +11,9 @@ test("the AetherCloud console is an independently deployed cloud subdomain", asy
   const headers = await read("apps/web/public/_headers");
 
   assert.match(wrangler, /name = "aethercloud-console"/);
-  // Both hostnames are declared while aetheriot.ai replaces aetheriot.dev. A
-  // custom domain missing from this file is invisible to `wrangler deploy`,
-  // which is how cloud.aetheriot.ai came to serve without being declared.
+  // Both hostnames serve permanently and both must stay declared. A custom
+  // domain missing from this file is invisible to `wrangler deploy`, which is
+  // how cloud.aetheriot.ai came to serve without being declared at all.
   assert.match(wrangler, /pattern = "cloud\.aetheriot\.ai"/);
   assert.match(wrangler, /pattern = "cloud\.aetheriot\.dev"/);
   assert.match(wrangler, /custom_domain = true/);
