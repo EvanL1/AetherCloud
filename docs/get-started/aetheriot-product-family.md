@@ -45,6 +45,3 @@ The common documentation entry point is
 Its primary sections are Overview, AetherEdge, AetherCloud, AetherContracts,
 Tutorials, Compatibility, and Roadmap. Product repositories remain
 authoritative for implementation details.
-
-The public [AetherIot to AetherEdge migration guide](https://docs.aetheriot.ai/migration/aetheriot-to-aetheredge/)
-explains repository URL changes and the identifiers that remain stable.
