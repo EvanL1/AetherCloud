@@ -6,18 +6,19 @@ import { URL } from "node:url";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("the AetherCloud console is an independently deployed cloud subdomain", async () => {
-  const wrangler = await read("apps/web/wrangler.toml");
+  const config = await read("apps/web/cloudflare.config.ts");
   const website = await read("apps/web/index.html");
   const headers = await read("apps/web/public/_headers");
 
-  assert.match(wrangler, /name = "aethercloud-console"/);
+  assert.match(config, /name: "aethercloud-console"/);
   // Both hostnames are declared while aetheriot.ai replaces aetheriot.dev. A
-  // custom domain missing from this file is invisible to `wrangler deploy`,
-  // which is how cloud.aetheriot.ai came to serve without being declared.
-  assert.match(wrangler, /pattern = "cloud\.aetheriot\.ai"/);
-  assert.match(wrangler, /pattern = "cloud\.aetheriot\.dev"/);
-  assert.match(wrangler, /custom_domain = true/);
-  assert.match(wrangler, /not_found_handling = "single-page-application"/);
+  // custom domain missing from this file is invisible to `cf deploy`, which is
+  // how cloud.aetheriot.ai came to serve without being declared.
+  assert.match(
+    config,
+    /domains: \["cloud\.aetheriot\.ai", "cloud\.aetheriot\.dev"\]/,
+  );
+  assert.match(config, /notFoundHandling: "single-page-application"/);
   assert.match(website, /<title>AetherCloud Console<\/title>/);
   assert.match(headers, /Content-Security-Policy:/);
   // connect-src has to name every API host the console may call. It is a

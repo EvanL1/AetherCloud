@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "cf deploy",
     "dev": "vite",
     "preview": "vite preview"
   },
@@ -15,10 +15,11 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-c82c3efb3",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
-    "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "cf": "1.0.0-beta.14",
+    "vite": "8.0.13"
   }
 }
